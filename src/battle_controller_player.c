@@ -50,7 +50,7 @@
 #include "pokedex.h"
 #include "test/battle.h"
 
-static const u8 sCompactMoveTextColors[] = {TEXT_COLOR_TRANSPARENT, 13, 13};
+static const u8 sCompactMoveTextColors[] = {TEXT_COLOR_TRANSPARENT, 13, 15};
 static bool8 sUsingCompactMoveList;
 static void PlayerHandleLoadMonSprite(enum BattlerId battler);
 static void PlayerHandleDrawTrainerPic(enum BattlerId battler);
