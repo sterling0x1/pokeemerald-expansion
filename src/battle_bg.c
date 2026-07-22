@@ -180,41 +180,41 @@ static const struct WindowTemplate sStandardBattleWindowTemplates[] =
         .paletteNum = 5,
         .baseBlock = 0x0190,
     },
-    [B_WIN_MOVE_NAME_1] = {
+  [B_WIN_MOVE_NAME_1] = {
+    .bg = 0,
+    .tilemapLeft = 2,
+    .tilemapTop = 55,
+    .width = 13,
+    .height = 4,
+    .paletteNum = 5,
+    .baseBlock = 0x0300,
+},
+    [B_WIN_MOVE_NAME_2] = {
         .bg = 0,
         .tilemapLeft = 2,
         .tilemapTop = 55,
-        .width = 16,    //for z move names
+        .width = 13,
         .height = 2,
         .paletteNum = 5,
-        .baseBlock = 0x0300,
-    },
-    [B_WIN_MOVE_NAME_2] = {
-        .bg = 0,
-        .tilemapLeft = 11,
-        .tilemapTop = 55,
-        .width = 8,
-        .height = 2,
-        .paletteNum = 5,
-        .baseBlock = 0x0318,
+        .baseBlock = 0x031a,
     },
     [B_WIN_MOVE_NAME_3] = {
         .bg = 0,
         .tilemapLeft = 2,
-        .tilemapTop = 57,
-        .width = 16,    //for z effect descriptions
+        .tilemapTop = 55,
+        .width = 13,
         .height = 2,
         .paletteNum = 5,
-        .baseBlock = 0x0328,
+        .baseBlock = 0x0334,
     },
     [B_WIN_MOVE_NAME_4] = {
         .bg = 0,
-        .tilemapLeft = 11,
+        .tilemapLeft = 2,
         .tilemapTop = 57,
-        .width = 8,
+        .width = 13,
         .height = 2,
         .paletteNum = 5,
-        .baseBlock = 0x0340,
+        .baseBlock = 0x034e,
     },
     [B_WIN_PP] = {
         .bg = 0,
@@ -371,12 +371,12 @@ static const struct WindowTemplate sStandardBattleWindowTemplates[] =
     },
     [B_WIN_MOVE_DESCRIPTION] = {
         .bg = 0,
-        .tilemapLeft = 1,
-        .tilemapTop = 47,
-        .width = 18,
-        .height = 6,
+        .tilemapLeft = 17,
+        .tilemapTop = 55,
+        .width = 12,
+        .height = 4,
         .paletteNum = 5,
-        .baseBlock = 0x0350,
+        .baseBlock = 0x0368,
     },
     DUMMY_WIN_TEMPLATE
 };
@@ -1369,4 +1369,3 @@ void DrawTerrainTypeBattleBackground(void)
         break;
     }
 }
-

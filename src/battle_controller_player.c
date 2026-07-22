@@ -6,6 +6,7 @@
 #include "battle_dome.h"
 #include "battle_interface.h"
 #include "battle_message.h"
+#include "battle_script_commands.h"
 #include "battle_setup.h"
 #include "battle_tv.h"
 #include "battle_z_move.h"
@@ -49,6 +50,8 @@
 #include "pokedex.h"
 #include "test/battle.h"
 
+static const u8 sCompactMoveTextColors[] = {TEXT_COLOR_TRANSPARENT, 13, 13};
+static bool8 sUsingCompactMoveList;
 static void PlayerHandleLoadMonSprite(enum BattlerId battler);
 static void PlayerHandleDrawTrainerPic(enum BattlerId battler);
 static void PlayerHandleTrainerSlide(enum BattlerId battler);
@@ -80,8 +83,11 @@ static void MoveSelectionDisplayPpNumber(enum BattlerId battler);
 static void MoveSelectionDisplayPpString(enum BattlerId battler);
 static void MoveSelectionDisplayMoveType(enum BattlerId battler);
 static void MoveSelectionDisplayMoveNames(enum BattlerId battler);
+static void DrawCompactMoveList(enum BattlerId battler);
+static void DrawCompactMoveInfo(enum BattlerId battler);
 static void TryMoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void MoveSelectionDisplayMoveDescription(enum BattlerId battler);
+static void DrawModernMoveSelectionPanels(void);
 static void WaitForMonSelection(enum BattlerId battler);
 static void CompleteWhenChoseItem(enum BattlerId battler);
 static void Task_LaunchLvlUpAnim(u8);
@@ -814,14 +820,13 @@ void HandleInputChooseMove(enum BattlerId battler)
             TryToHideMoveInfoWindow();
         }
     }
-    else if (JOY_NEW(DPAD_LEFT) && !gBattleStruct->zmove.viewing)
+    else if (FALSE && JOY_NEW(DPAD_LEFT) && !gBattleStruct->zmove.viewing)
     {
         if (gMoveSelectionCursor[battler] & 1)
         {
-            MoveSelectionDestroyCursorAt(gMoveSelectionCursor[battler]);
             gMoveSelectionCursor[battler] ^= 1;
             PlaySE(SE_SELECT);
-            MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
+            DrawCompactMoveList(battler);
             if (B_SHOW_EFFECTIVENESS)
                 MoveSelectionDisplayMoveEffectiveness(CheckTargetTypeEffectiveness(battler), battler);
             MoveSelectionDisplayPpNumber(battler);
@@ -830,15 +835,14 @@ void HandleInputChooseMove(enum BattlerId battler)
             TryChangeZTrigger(battler, gMoveSelectionCursor[battler]);
         }
     }
-    else if (JOY_NEW(DPAD_RIGHT) && !gBattleStruct->zmove.viewing)
+    else if (FALSE && JOY_NEW(DPAD_RIGHT) && !gBattleStruct->zmove.viewing)
     {
         if (!(gMoveSelectionCursor[battler] & 1)
          && (gMoveSelectionCursor[battler] ^ 1) < gNumberOfMovesToChoose)
         {
-            MoveSelectionDestroyCursorAt(gMoveSelectionCursor[battler]);
             gMoveSelectionCursor[battler] ^= 1;
             PlaySE(SE_SELECT);
-            MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
+            DrawCompactMoveList(battler);
             if (B_SHOW_EFFECTIVENESS)
                 MoveSelectionDisplayMoveEffectiveness(CheckTargetTypeEffectiveness(battler), battler);
             MoveSelectionDisplayPpNumber(battler);
@@ -849,12 +853,11 @@ void HandleInputChooseMove(enum BattlerId battler)
     }
     else if (JOY_NEW(DPAD_UP) && !gBattleStruct->zmove.viewing)
     {
-        if (gMoveSelectionCursor[battler] & 2)
+        if (gMoveSelectionCursor[battler] > 0)
         {
-            MoveSelectionDestroyCursorAt(gMoveSelectionCursor[battler]);
-            gMoveSelectionCursor[battler] ^= 2;
+            gMoveSelectionCursor[battler]--;
             PlaySE(SE_SELECT);
-            MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
+            DrawCompactMoveList(battler);
             if (B_SHOW_EFFECTIVENESS)
                 MoveSelectionDisplayMoveEffectiveness(CheckTargetTypeEffectiveness(battler), battler);
             MoveSelectionDisplayPpNumber(battler);
@@ -865,13 +868,11 @@ void HandleInputChooseMove(enum BattlerId battler)
     }
     else if (JOY_NEW(DPAD_DOWN) && !gBattleStruct->zmove.viewing)
     {
-        if (!(gMoveSelectionCursor[battler] & 2)
-         && (gMoveSelectionCursor[battler] ^ 2) < gNumberOfMovesToChoose)
+        if (gMoveSelectionCursor[battler] + 1 < gNumberOfMovesToChoose)
         {
-            MoveSelectionDestroyCursorAt(gMoveSelectionCursor[battler]);
-            gMoveSelectionCursor[battler] ^= 2;
+            gMoveSelectionCursor[battler]++;
             PlaySE(SE_SELECT);
-            MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
+            DrawCompactMoveList(battler);
             if (B_SHOW_EFFECTIVENESS)
                 MoveSelectionDisplayMoveEffectiveness(CheckTargetTypeEffectiveness(battler), battler);
             MoveSelectionDisplayPpNumber(battler);
@@ -884,19 +885,17 @@ void HandleInputChooseMove(enum BattlerId battler)
     {
         if (gNumberOfMovesToChoose > 1 && !(gBattleTypeFlags & BATTLE_TYPE_LINK))
         {
-            MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 29);
-
             if (gMoveSelectionCursor[battler] != 0)
                 gMultiUsePlayerCursor = 0;
             else
                 gMultiUsePlayerCursor = gMoveSelectionCursor[battler] + 1;
 
-            MoveSelectionCreateCursorAt(gMultiUsePlayerCursor, 27);
+            DrawCompactMoveList(battler);
             BattlePutTextOnWindow(gText_BattleSwitchWhich, B_WIN_SWITCH_PROMPT);
             gBattlerControllerFuncs[battler] = HandleMoveSwitching;
         }
     }
-    else if (gBattleStruct->descriptionSubmenu)
+    else if (FALSE && gBattleStruct->descriptionSubmenu)
     {
         if (JOY_NEW(B_MOVE_DESCRIPTION_BUTTON) || JOY_NEW(A_BUTTON) || JOY_NEW(B_BUTTON))
         {
@@ -917,7 +916,7 @@ void HandleInputChooseMove(enum BattlerId battler)
             MoveSelectionDisplayMoveType(battler);
         }
     }
-    else if (JOY_NEW(B_MOVE_DESCRIPTION_BUTTON) &&
+    else if (FALSE && JOY_NEW(B_MOVE_DESCRIPTION_BUTTON) &&
         !(B_MOVE_DESCRIPTION_BUTTON == L_BUTTON && gSaveBlock2Ptr->optionsButtonMode == OPTIONS_BUTTON_MODE_L_EQUALS_A))
     {
         gBattleStruct->descriptionSubmenu = TRUE;
@@ -942,6 +941,7 @@ static void ReloadMoveNames(enum BattlerId battler)
 {
     if (gBattleStruct->zmove.viable && !gBattleStruct->zmove.viewing)
     {
+        sUsingCompactMoveList = FALSE;
         struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
         MoveSelectionDisplayZMove(GetUsableZMove(battler, moveInfo->moves[gMoveSelectionCursor[battler]]), battler);
     }
@@ -949,6 +949,7 @@ static void ReloadMoveNames(enum BattlerId battler)
     {
         gBattleStruct->zmove.viewing = FALSE;
         MoveSelectionDestroyCursorAt(battler);
+        sUsingCompactMoveList = TRUE;
         MoveSelectionDisplayMoveNames(battler);
         MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
         if (B_SHOW_EFFECTIVENESS)
@@ -1670,6 +1671,14 @@ static void MoveSelectionDisplayMoveNames(enum BattlerId battler)
 {
     s32 i;
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
+    static const u8 sPpStart[] = _("{CLEAR_TO 64}PP");
+    static const u8 sSlash[] = _("/");
+    if (!gBattleStruct->zmove.viewing)
+    {
+        DrawCompactMoveList(battler);
+        return;
+    }
+
     gNumberOfMovesToChoose = 0;
 
     for (i = 0; i < MAX_MON_MOVES; i++)
@@ -1679,7 +1688,15 @@ static void MoveSelectionDisplayMoveNames(enum BattlerId battler)
             StringCopy(gDisplayedStringBattle, GetMoveName(GetMaxMove(battler, moveInfo->moves[i])));
         else
             StringCopy(gDisplayedStringBattle, GetMoveName(moveInfo->moves[i]));
-        // Prints on windows B_WIN_MOVE_NAME_1, B_WIN_MOVE_NAME_2, B_WIN_MOVE_NAME_3, B_WIN_MOVE_NAME_4
+
+        if (!gBattleStruct->zmove.viewing)
+        {
+            u8 *txtPtr = StringAppend(gDisplayedStringBattle, sPpStart);
+            ConvertIntToDecimalStringN(txtPtr, moveInfo->currentPp[i], STR_CONV_MODE_RIGHT_ALIGN, 2);
+            txtPtr = StringAppend(gDisplayedStringBattle, sSlash);
+            ConvertIntToDecimalStringN(txtPtr, moveInfo->maxPp[i], STR_CONV_MODE_RIGHT_ALIGN, 2);
+        }
+
         BattlePutTextOnWindow(gDisplayedStringBattle, i + B_WIN_MOVE_NAME_1);
         if (moveInfo->moves[i] != MOVE_NONE)
             gNumberOfMovesToChoose++;
@@ -1688,6 +1705,9 @@ static void MoveSelectionDisplayMoveNames(enum BattlerId battler)
 
 static void MoveSelectionDisplayPpString(enum BattlerId battler)
 {
+    if (sUsingCompactMoveList)
+        return;
+
     StringCopy(gDisplayedStringBattle, gText_MoveInterfacePP);
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_PP);
 }
@@ -1697,7 +1717,7 @@ static void MoveSelectionDisplayPpNumber(enum BattlerId battler)
     u8 *txtPtr;
     struct ChooseMoveStruct *moveInfo;
 
-    if (gBattleResources->bufferA[battler][2] == TRUE) // check if we didn't want to display pp number
+    if (sUsingCompactMoveList || gBattleResources->bufferA[battler][2] == TRUE) // check if we didn't want to display pp number
         return;
 
     SetPpNumbersPaletteInMoveSelection(battler);
@@ -1712,6 +1732,9 @@ static void MoveSelectionDisplayPpNumber(enum BattlerId battler)
 static void MoveSelectionDisplayMoveType(enum BattlerId battler)
 {
     u8 *txtPtr, *end;
+
+    if (sUsingCompactMoveList)
+        return;
     enum Species speciesId = gBattleMons[battler].species;
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
     txtPtr = StringCopy(gDisplayedStringBattle, gText_MoveInterfaceType);
@@ -1758,17 +1781,22 @@ static void TryMoveSelectionDisplayMoveDescription(enum BattlerId battler)
     if (!B_SHOW_MOVE_DESCRIPTION)
         return;
 
-    if (gBattleStruct->descriptionSubmenu)
-        MoveSelectionDisplayMoveDescription(battler);
+    MoveSelectionDisplayMoveDescription(battler);
 }
 
 static void MoveSelectionDisplayMoveDescription(enum BattlerId battler)
 {
+    if (sUsingCompactMoveList)
+    {
+        DrawCompactMoveInfo(battler);
+        return;
+    }
+
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct*)(&gBattleResources->bufferA[battler][4]);
     enum Move move = moveInfo->moves[gMoveSelectionCursor[battler]];
     u16 pwr = GetMovePower(move);
     u16 acc = GetMoveAccuracy(move);
-    enum DamageCategory cat = GetBattleMoveCategory(move);
+    enum Type type;
 
     if (GetActiveGimmick(battler) == GIMMICK_DYNAMAX || IsGimmickSelected(battler, GIMMICK_DYNAMAX))
     {
@@ -1777,15 +1805,13 @@ static void MoveSelectionDisplayMoveDescription(enum BattlerId battler)
         acc = 0;
     }
 
+    type = GetMoveType(move);
+
     u8 pwr_num[3], acc_num[3];
-    u8 cat_desc[7] = _("CAT: ");
-    u8 pwr_desc[7] = _("PWR: ");
-    u8 acc_desc[7] = _("ACC: ");
-    u8 cat_start[] = _("{CLEAR_TO 3}");
-    u8 pwr_start[] = _("{CLEAR_TO 56}");
-    u8 acc_start[] = _("{CLEAR_TO 108}");
-    LoadMessageBoxAndBorderGfx();
-    DrawStdWindowFrame(B_WIN_MOVE_DESCRIPTION, FALSE);
+    u8 pwr_desc[6] = _("PWR: ");
+    u8 acc_desc[6] = _("ACC: ");
+    u8 type_desc[7] = _("TYPE: ");
+    static const u8 sSpace[] = _(" ");
     if (pwr < 2)
         StringCopy(pwr_num, gText_BattleSwitchWhich5);
     else
@@ -1794,43 +1820,101 @@ static void MoveSelectionDisplayMoveDescription(enum BattlerId battler)
         StringCopy(acc_num, gText_BattleSwitchWhich5);
     else
         ConvertIntToDecimalStringN(acc_num, acc, STR_CONV_MODE_LEFT_ALIGN, 3);
-    StringCopy(gDisplayedStringBattle, cat_start);
-    StringAppend(gDisplayedStringBattle, cat_desc);
-    StringAppend(gDisplayedStringBattle, pwr_start);
+    StringCopy(gDisplayedStringBattle, GetMoveDescription(move));
+    StringAppend(gDisplayedStringBattle, gText_NewLine);
     StringAppend(gDisplayedStringBattle, pwr_desc);
     StringAppend(gDisplayedStringBattle, pwr_num);
-    StringAppend(gDisplayedStringBattle, acc_start);
+    StringAppend(gDisplayedStringBattle, sSpace);
     StringAppend(gDisplayedStringBattle, acc_desc);
     StringAppend(gDisplayedStringBattle, acc_num);
     StringAppend(gDisplayedStringBattle, gText_NewLine);
-    StringAppend(gDisplayedStringBattle, GetMoveDescription(move));
+    StringAppend(gDisplayedStringBattle, type_desc);
+    StringAppend(gDisplayedStringBattle, gTypesInfo[type].name);
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MOVE_DESCRIPTION);
+}
 
-    if (gCategoryIconSpriteId == 0xFF)
-        gCategoryIconSpriteId = CreateSprite(&gSpriteTemplate_CategoryIcons, 38, 64, 1);
+static void DrawCompactMoveInfo(enum BattlerId battler)
+{
+    static const u8 sPwr[] = _("PWR: ");
+    static const u8 sAcc[] = _("ACC: ");
+    static const u8 sType[] = _("TYPE: ");
+    const u8 *description;
+    u8 *dst;
+    struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
+    enum Move move = moveInfo->moves[gMoveSelectionCursor[battler]];
+    u16 pwr = GetMovePower(move);
+    u16 acc = GetMoveAccuracy(move);
+    enum Type type;
 
-    StartSpriteAnim(&gSprites[gCategoryIconSpriteId], cat);
+    if (GetActiveGimmick(battler) == GIMMICK_DYNAMAX || IsGimmickSelected(battler, GIMMICK_DYNAMAX))
+    {
+        pwr = GetMaxMovePower(move);
+        move = GetMaxMove(battler, move);
+        acc = 0;
+    }
 
+    type = GetMoveType(move);
+    FillWindowPixelBuffer(B_WIN_MOVE_DESCRIPTION, PIXEL_FILL(0xE));
+
+    // Move descriptions are stored as two short lines. Draw each at a fixed 12px interval.
+    description = GetMoveDescription(move);
+    dst = gDisplayedStringBattle;
+    while (*description != CHAR_NEWLINE && *description != EOS)
+        *dst++ = *description++;
+    *dst = EOS;
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 0, 0, 0,
+                                 sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+
+    if (*description == CHAR_NEWLINE)
+        description++;
+    dst = gDisplayedStringBattle;
+    while (*description != CHAR_NEWLINE && *description != EOS)
+        *dst++ = *description++;
+    *dst = EOS;
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 8, 0, 0,
+                                 sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+
+    dst = StringCopy(gDisplayedStringBattle, sPwr);
+    dst = ConvertIntToDecimalStringN(dst, pwr, STR_CONV_MODE_LEFT_ALIGN, 3);
+    dst = StringAppend(dst, sAcc);
+    ConvertIntToDecimalStringN(dst, acc, STR_CONV_MODE_LEFT_ALIGN, 3);
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 16, 0, 0,
+                                 sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+
+    dst = StringCopy(gDisplayedStringBattle, sType);
+    StringCopy(dst, gTypesInfo[type].name);
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 24, 0, 0,
+                                 sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+
+    PutWindowTilemap(B_WIN_MOVE_DESCRIPTION);
     CopyWindowToVram(B_WIN_MOVE_DESCRIPTION, COPYWIN_FULL);
 }
 
 void MoveSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum)
 {
     u16 src[2];
+
+    if (sUsingCompactMoveList)
+        return;
+
     src[0] = baseTileNum + 1;
     src[1] = baseTileNum + 2;
 
-    CopyToBgTilemapBufferRect_ChangePalette(0, src, 9 * (cursorPosition & 1) + 1, 55 + (cursorPosition & 2), 1, 2, 0x11);
+    CopyToBgTilemapBufferRect_ChangePalette(0, src, 1, 51 + cursorPosition * 2, 1, 2, 0x11);
     CopyBgTilemapBufferToVram(0);
 }
 
 void MoveSelectionDestroyCursorAt(u8 cursorPosition)
 {
     u16 src[2];
+
+    if (sUsingCompactMoveList)
+        return;
+
     src[0] = 0x1016;
     src[1] = 0x1016;
 
-    CopyToBgTilemapBufferRect_ChangePalette(0, src, 9 * (cursorPosition & 1) + 1, 55 + (cursorPosition & 2), 1, 2, 0x11);
+    CopyToBgTilemapBufferRect_ChangePalette(0, src, 1, 51 + cursorPosition * 2, 1, 2, 0x11);
     CopyBgTilemapBufferToVram(0);
 }
 
@@ -2142,16 +2226,90 @@ void PlayerHandleChooseMove(enum BattlerId battler)
 
 void InitMoveSelectionsVarsAndStrings(enum BattlerId battler)
 {
+    DrawModernMoveSelectionPanels();
     LoadTypeIcons(battler);
-    MoveSelectionDisplayMoveNames(battler);
+    sUsingCompactMoveList = TRUE;
+    DrawCompactMoveList(battler);
     gMultiUsePlayerCursor = 0xFF;
     MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
-    if (B_SHOW_EFFECTIVENESS)
-        MoveSelectionDisplayMoveEffectiveness(CheckTargetTypeEffectiveness(battler), battler);
-    else
-        MoveSelectionDisplayPpString(battler);
-    MoveSelectionDisplayPpNumber(battler);
-    MoveSelectionDisplayMoveType(battler);
+    TryMoveSelectionDisplayMoveDescription(battler);
+}
+
+static void DrawCompactMoveList(enum BattlerId battler)
+{
+    static const u8 sCursor[] = _("{RIGHT_ARROW}");
+    static const u8 sBlank[] = _(" ");
+    static const u8 sPp[] = _("PP");
+    s32 i;
+    struct ChooseMoveStruct *moveInfo =
+        (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
+
+    gNumberOfMovesToChoose = 0;
+    FillWindowPixelBuffer(B_WIN_MOVE_NAME_1, PIXEL_FILL(0xE));
+
+    for (i = 0; i < MAX_MON_MOVES; i++)
+    {
+        u8 *txtPtr;
+        u8 y = i * 8;
+
+        if (i == gMoveSelectionCursor[battler])
+            StringCopy(gDisplayedStringBattle, sCursor);
+        else
+            StringCopy(gDisplayedStringBattle, sBlank);
+
+        if (IsGimmickSelected(battler, GIMMICK_DYNAMAX) || GetActiveGimmick(battler) == GIMMICK_DYNAMAX)
+            StringAppend(gDisplayedStringBattle, GetMoveName(GetMaxMove(battler, moveInfo->moves[i])));
+        else
+            StringAppend(gDisplayedStringBattle, GetMoveName(moveInfo->moves[i]));
+        AddTextPrinterParameterized4(
+            B_WIN_MOVE_NAME_1,
+            FONT_COMPACT,
+            0,
+            y,
+            0,
+            0,
+            sCompactMoveTextColors,
+            TEXT_SKIP_DRAW,
+            gDisplayedStringBattle);
+
+        txtPtr = StringCopy(gDisplayedStringBattle, sPp);
+        txtPtr = ConvertIntToDecimalStringN(
+            txtPtr,
+            moveInfo->currentPp[i],
+            STR_CONV_MODE_RIGHT_ALIGN,
+            2);
+        *txtPtr++ = CHAR_SLASH;
+        ConvertIntToDecimalStringN(
+            txtPtr,
+            moveInfo->maxPp[i],
+            STR_CONV_MODE_RIGHT_ALIGN,
+            2);
+
+        AddTextPrinterParameterized4(
+            B_WIN_MOVE_NAME_1,
+            FONT_COMPACT,
+            68,
+            y,
+            0,
+            0,
+            sCompactMoveTextColors,
+            TEXT_SKIP_DRAW,
+            gDisplayedStringBattle);
+
+        if (moveInfo->moves[i] != MOVE_NONE)
+            gNumberOfMovesToChoose++;
+    }
+
+    PutWindowTilemap(B_WIN_MOVE_NAME_1);
+    CopyWindowToVram(B_WIN_MOVE_NAME_1, COPYWIN_FULL);
+}
+
+static void DrawModernMoveSelectionPanels(void)
+{
+    FillBgTilemapBufferRect(0, 0, 0, 54, 30, 6, 0x11);
+    HandleBattleWindow(0, 54, 15, 59, 0);
+    HandleBattleWindow(16, 54, 29, 59, 0);
+    CopyBgTilemapBufferToVram(0);
 }
 
 static void PlayerHandleChooseItem(enum BattlerId battler)
@@ -2456,6 +2614,9 @@ static void MoveSelectionDisplayMoveEffectiveness(u32 foeEffectiveness, enum Bat
     static const u8 immuneIcon[] =  _("{BIG_MULT_X}");
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
     u8 *txtPtr;
+
+    if (sUsingCompactMoveList)
+        return;
 
     txtPtr = StringCopy(gDisplayedStringBattle, gText_MoveInterfacePP);
 

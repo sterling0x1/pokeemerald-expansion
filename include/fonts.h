@@ -15,6 +15,7 @@ extern const u16 gFontNarrowLatinGlyphs[];
 extern const u8 gFontNarrowLatinGlyphWidths[];
 extern const u16 gFontSmallNarrowLatinGlyphs[];
 extern const u8 gFontSmallNarrowLatinGlyphWidths[];
+extern const u16 gFontCompactLatinGlyphs[];
 extern const u8 gFontNarrowerLatinGlyphWidths[];
 extern const u16 gFontNarrowerLatinGlyphs[];
 extern const u8 gFontSmallNarrowerLatinGlyphWidths[];
