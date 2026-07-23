@@ -866,7 +866,8 @@ void CreateMonWithIVs(struct Pokemon *mon, enum Species species, u8 level, u32 p
 
 bool32 ComputePlayerShinyOdds(u32 personality, u32 value)
 {
-    u32 shinyThreshold = 8 << ExtendedOptions_Get(EXT_OPT_SHINY_ODDS);
+    u8 shinyOdds = ExtendedOptions_Get(EXT_OPT_SHINY_ODDS);
+    u32 shinyThreshold;
 
     if (P_FLAG_FORCE_NO_SHINY != 0 && FlagGet(P_FLAG_FORCE_NO_SHINY))
         return FALSE;
@@ -874,6 +875,10 @@ bool32 ComputePlayerShinyOdds(u32 personality, u32 value)
     if (P_FLAG_FORCE_SHINY != 0 && FlagGet(P_FLAG_FORCE_SHINY))
         return TRUE;
 
+    if (shinyOdds == SHINY_ODDS_ALWAYS)
+        return TRUE;
+
+    shinyThreshold = 8 << shinyOdds;
     if (P_ONLY_OBTAINABLE_SHINIES && (CurrentBattlePyramidLocation() != PYRAMID_LOCATION_NONE || (FlagGet(WE_FLAG_NO_CATCHING))))
         return FALSE;
 

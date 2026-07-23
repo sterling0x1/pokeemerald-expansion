@@ -150,6 +150,10 @@ static const u8 sTextOdds4096[]    = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/4096"
 static const u8 sTextOdds2048[]    = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/2048");
 static const u8 sTextOdds1024[]    = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/1024");
 static const u8 sTextOdds512[]     = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/512");
+static const u8 sTextOdds256[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/256");
+static const u8 sTextOdds128[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/128");
+static const u8 sTextOdds64[]  = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/64");
+//static const u8 sTextAlways[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}ALWAYS");
 
 static const u16 sOptionMenuTextPal[] = INCGFX_U16("graphics/interface/option_menu_text.pal", ".gbapal");
 static const u16 sOptionMenuBgPal[] = {RGB(17, 18, 31)};
@@ -286,15 +290,22 @@ static const u8 *GetExtendedValueText(enum ExtendedOption option)
         return value == DIFFICULTY_EASY ? sTextEasy : value == DIFFICULTY_NORMAL ? sTextNormal : sTextHard;
     case EXT_OPT_ENCOUNTER_STYLE:
         return value == ENCOUNTER_STYLE_VISIBLE ? sTextVisible : sTextTraditional;
-    case EXT_OPT_SHINY_ODDS:
-        switch (value)
-        {
-        case SHINY_ODDS_4096: return sTextOdds4096;
-        case SHINY_ODDS_2048: return sTextOdds2048;
-        case SHINY_ODDS_1024: return sTextOdds1024;
-        case SHINY_ODDS_512:  return sTextOdds512;
-        default:              return sTextOdds8192;
-        }
+case EXT_OPT_SHINY_ODDS:
+    switch (value)
+    {
+    case SHINY_ODDS_4096: return sTextOdds4096;
+    case SHINY_ODDS_2048: return sTextOdds2048;
+    case SHINY_ODDS_1024: return sTextOdds1024;
+    case SHINY_ODDS_512:  return sTextOdds512;
+    case SHINY_ODDS_256:  return sTextOdds256;
+    case SHINY_ODDS_128:  return sTextOdds128;
+    case SHINY_ODDS_64:   return sTextOdds64;
+    case SHINY_ODDS_ALWAYS: return sTextAlways;
+    case SHINY_ODDS_8192:
+    default:
+        return sTextOdds8192;
+    }    
+    
     case EXT_OPT_LEVEL_CAPS:
         return value == LEVEL_CAPS_OFF ? sTextOff : value == LEVEL_CAPS_NORMAL ? sTextNormal : sTextHard;
     default:
