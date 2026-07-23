@@ -341,9 +341,20 @@ static const u8 *GetOptionValueText(u8 taskId, enum OptionId option)
 {
     switch (option)
     {
-    case OPT_TEXT_SPEED:
-        return gTasks[taskId].tTextSpeed == 0 ? sTextSlow : gTasks[taskId].tTextSpeed == 1 ? sTextMid : sTextFast;
-    case OPT_SOUND:
+   case OPT_TEXT_SPEED:
+    switch (gTasks[taskId].tTextSpeed)
+    {
+    case OPTIONS_TEXT_SPEED_SLOW:
+        return sTextSlow;
+    case OPTIONS_TEXT_SPEED_MID:
+        return sTextMid;
+    case OPTIONS_TEXT_SPEED_FAST:
+        return sTextFast;
+    case OPTIONS_TEXT_SPEED_INSTANT:
+    default:
+        return sTextInstant;
+    }
+        case OPT_SOUND:
         return gTasks[taskId].tSound ? sTextStereo : sTextMono;
     case OPT_BUTTON_MODE:
         return gTasks[taskId].tButtonMode == 0 ? sTextNormal : gTasks[taskId].tButtonMode == 1 ? sTextLR : sTextLEqualsA;
@@ -419,9 +430,10 @@ static void ChangeValue(u8 taskId, s8 direction)
 
     switch (option)
     {
-    case OPT_TEXT_SPEED:
-        gTasks[taskId].tTextSpeed = (gTasks[taskId].tTextSpeed + (direction > 0 ? 1 : 2)) % 3;
-        break;
+case OPT_TEXT_SPEED:
+    gTasks[taskId].tTextSpeed =
+        (gTasks[taskId].tTextSpeed + (direction > 0 ? 1 : 3)) % 4;
+    break;
     case OPT_SOUND:
         gTasks[taskId].tSound ^= 1;
         SetPokemonCryStereo(gTasks[taskId].tSound);
