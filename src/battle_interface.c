@@ -1,4 +1,5 @@
 #include "global.h"
+#include "extended_options.h"
 #include "malloc.h"
 #include "battle.h"
 #include "pokemon.h"
@@ -2055,7 +2056,9 @@ s32 MoveBattleBar(enum BattlerId battler, u8 healthboxSpriteId, u8 whichBar, u8 
 
     if (whichBar == HEALTH_BAR) // health bar
     {
-        u16 hpFraction = B_FAST_HP_DRAIN == FALSE ? 1 : max(gBattleSpritesDataPtr->battleBars[battler].maxValue / (B_HEALTHBAR_PIXELS / 2), 1);
+        u16 hpFraction = !ExtendedOptions_Get(EXT_OPT_FAST_HP_BARS)
+                       ? 1
+                       : max(gBattleSpritesDataPtr->battleBars[battler].maxValue / (B_HEALTHBAR_PIXELS / 2), 1);
         currentBarValue = CalcNewBarValue(gBattleSpritesDataPtr->battleBars[battler].maxValue,
                     gBattleSpritesDataPtr->battleBars[battler].oldValue,
                     gBattleSpritesDataPtr->battleBars[battler].receivedValue,
@@ -2299,7 +2302,7 @@ static u8 GetScaledExpFraction(s32 oldValue, s32 receivedValue, s32 maxValue, u8
     s32 newVal, result;
     s8 oldToMax, newToMax;
 
-    scale *= (B_FAST_EXP_GROW) ? 2 : 8;
+    scale *= ExtendedOptions_Get(EXT_OPT_FAST_EXP_BARS) ? 2 : 8;
     newVal = SubtractClamped(HP_EMPTY, maxValue, oldValue, receivedValue);
 
     oldToMax = oldValue * scale / maxValue;

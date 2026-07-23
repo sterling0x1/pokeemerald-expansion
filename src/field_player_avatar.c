@@ -1,4 +1,5 @@
 #include "global.h"
+#include "extended_options.h"
 #include "main.h"
 #include "bike.h"
 #include "event_data.h"
@@ -906,8 +907,8 @@ static void PlayerNotOnBikeMoving(enum Direction direction, u16 heldKeys)
     }
 
     if (!(gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_UNDERWATER)
-     && (heldKeys & B_BUTTON)
-     && FlagGet(FLAG_SYS_B_DASH)
+     && ((heldKeys & B_BUTTON) || ExtendedOptions_Get(EXT_OPT_AUTO_RUN))
+     && (FlagGet(FLAG_SYS_B_DASH) || ExtendedOptions_Get(EXT_OPT_AUTO_RUN))
      && IsRunningDisallowed(gObjectEvents[gPlayerAvatar.objectEventId].currentMetatileBehavior) == 0
      && !FollowerNPCComingThroughDoor()
      && (I_ORAS_DOWSING_FLAG == 0 || (I_ORAS_DOWSING_FLAG != 0 && !FlagGet(I_ORAS_DOWSING_FLAG))))

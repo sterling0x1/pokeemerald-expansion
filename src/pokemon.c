@@ -1,4 +1,5 @@
 #include "global.h"
+#include "extended_options.h"
 #include "malloc.h"
 #include "apprentice.h"
 #include "battle.h"
@@ -865,6 +866,8 @@ void CreateMonWithIVs(struct Pokemon *mon, enum Species species, u8 level, u32 p
 
 bool32 ComputePlayerShinyOdds(u32 personality, u32 value)
 {
+    u32 shinyThreshold = 8 << ExtendedOptions_Get(EXT_OPT_SHINY_ODDS);
+
     if (P_FLAG_FORCE_NO_SHINY != 0 && FlagGet(P_FLAG_FORCE_NO_SHINY))
         return FALSE;
 
@@ -890,13 +893,13 @@ bool32 ComputePlayerShinyOdds(u32 personality, u32 value)
     if (gDexNavSpecies)
         totalRerolls += CalculateDexNavShinyRolls();
 
-    while (GET_SHINY_VALUE(value, personality) >= SHINY_ODDS && totalRerolls > 0)
+    while (GET_SHINY_VALUE(value, personality) >= shinyThreshold && totalRerolls > 0)
     {
         personality = Random32();
         totalRerolls--;
     }
 
-    return GET_SHINY_VALUE(value, personality) < SHINY_ODDS;
+    return GET_SHINY_VALUE(value, personality) < shinyThreshold;
 }
 
 void SetBoxMonIVs(struct BoxPokemon *mon, u8 fixedIV)

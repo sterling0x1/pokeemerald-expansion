@@ -1,0 +1,16 @@
+#ifndef GUARD_RANDOMIZER_H
+#define GUARD_RANDOMIZER_H
+
+#include "global.h"
+
+enum Species Randomizer_GetWildSpecies(enum Species species);
+enum Species Randomizer_GetStarterSpecies(enum Species originalSpecies, u8 starterId);
+void Randomizer_InitNewGameSeed(void);
+void Randomizer_RerollSeed(void);
+u32 Randomizer_GetSeed(void);
+bool8 Randomizer_IsWildEnabled(void);
+bool8 Randomizer_AreStartersEnabled(void);
+void Randomizer_SetWildEnabled(bool8 enabled);
+void Randomizer_SetStartersEnabled(bool8 enabled);
+
+#endif // GUARD_RANDOMIZER_H

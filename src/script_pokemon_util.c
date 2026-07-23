@@ -1,4 +1,5 @@
 #include "global.h"
+#include "randomizer.h"
 #include "battle.h"
 #include "battle_gfx_sfx_util.h"
 #include "berry.h"
@@ -116,6 +117,9 @@ bool8 DoesPartyHaveEnigmaBerry(void)
 
 void CreateScriptedWildMon(enum Species species, u8 level, enum Item item)
 {
+    species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                                                       ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                                                       ^ species);
     u8 heldItem[2];
 
     ZeroEnemyPartyMons();
@@ -134,6 +138,11 @@ void CreateScriptedWildMon(enum Species species, u8 level, enum Item item)
 }
 void CreateScriptedDoubleWildMon(enum Species species1, u8 level1, enum Item item1, enum Species species2, u8 level2, enum Item item2)
 {
+    u32 mapKey = ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+               ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16);
+
+    species1 = Randomizer_GetGiftStaticSpecies(species1, mapKey ^ species1);
+    species2 = Randomizer_GetGiftStaticSpecies(species2, mapKey ^ species2 ^ 1);
     u8 heldItem1[2];
     u8 heldItem2[2];
 
@@ -361,6 +370,9 @@ void SetTeraType(struct ScriptContext *ctx)
  */
 static u32 ScriptGiveMonParameterized(u8 side, u8 slot, enum Species species, u8 level, enum Item item, enum PokeBall ball, u8 nature, u8 abilityNum, u8 gender, u16 *evs, u16 *ivs, enum Move *moves, enum ShinyMode shinyMode, bool8 gmaxFactor, enum Type teraType, u8 dmaxLevel)
 {
+    species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                                                       ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                                                       ^ species ^ slot);
     struct Pokemon mon;
     u32 i;
     bool32 isShiny;
@@ -478,6 +490,9 @@ static u32 ScriptGiveMonParameterized(u8 side, u8 slot, enum Species species, u8
 
 u32 ScriptGiveMon(enum Species species, u8 level, enum Item item)
 {
+    species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                                                       ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                                                       ^ species);
     struct Pokemon mon;
     u8 heldItem[2];
 

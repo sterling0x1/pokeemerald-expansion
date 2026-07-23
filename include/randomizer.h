@@ -5,6 +5,8 @@
 
 enum Species Randomizer_GetWildSpecies(enum Species species);
 enum Species Randomizer_GetStarterSpecies(enum Species originalSpecies, u8 starterId);
+enum Species Randomizer_GetTrainerSpecies(enum Species originalSpecies, u32 key);
+enum Species Randomizer_GetGiftStaticSpecies(enum Species originalSpecies, u32 key);
 void Randomizer_InitNewGameSeed(void);
 void Randomizer_RerollSeed(void);
 u32 Randomizer_GetSeed(void);

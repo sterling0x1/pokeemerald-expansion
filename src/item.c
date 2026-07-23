@@ -1,4 +1,5 @@
 #include "global.h"
+#include "extended_options.h"
 #include "item.h"
 #include "berry.h"
 #include "pokeball.h"
@@ -861,6 +862,10 @@ const u8 *GetItemDescription(enum Item itemId)
 
 u8 GetItemImportance(enum Item itemId)
 {
+    if (ExtendedOptions_Get(EXT_OPT_REUSABLE_TMS)
+     && gItemsInfo[SanitizeItemId(itemId)].pocket == POCKET_TM_HM)
+        return TRUE;
+
     return gItemsInfo[SanitizeItemId(itemId)].importance;
 }
 

@@ -1,4 +1,5 @@
 #include "global.h"
+#include "extended_options.h"
 #include "battle_setup.h"
 #include "bike.h"
 #include "coord_event_weather.h"
@@ -864,6 +865,9 @@ static bool8 UpdatePoisonStepCounter(void)
 {
     u16 *ptr;
 
+    if (!ExtendedOptions_Get(EXT_OPT_FIELD_POISON))
+        return FALSE;
+
     if (gMapHeader.mapType != MAP_TYPE_SECRET_BASE)
     {
         ptr = GetVarPointer(VAR_POISON_STEP_COUNTER);
@@ -896,6 +900,9 @@ static bool32 ShouldDisableRandomEncounters(void)
 {
     if (FlagGet(WE_FLAG_NO_ENCOUNTER))
         return TRUE;
+
+    if (ExtendedOptions_Get(EXT_OPT_ENCOUNTER_STYLE) == ENCOUNTER_STYLE_TRADITIONAL)
+        return FALSE;
 
     if (!WE_VANILLA_RANDOM && WE_OW_ENCOUNTERS)
     {

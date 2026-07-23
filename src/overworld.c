@@ -10,6 +10,7 @@
 #include "clock.h"
 #include "dexnav.h"
 #include "event_data.h"
+#include "extended_options.h"
 #include "event_object_movement.h"
 #include "event_scripts.h"
 #include "fake_rtc.h"
@@ -3728,7 +3729,7 @@ static u8 ReformatItemDescription(enum Item item, u8 *dest)
 
 void ScriptShowItemDescription(struct ScriptContext *ctx)
 {
-    if (OW_SHOW_ITEM_DESCRIPTIONS == OW_ITEM_DESCRIPTIONS_OFF)
+    if (ExtendedOptions_Get(EXT_OPT_ITEM_DESCRIPTIONS) == ITEM_DESCRIPTIONS_OFF)
     {
         (void) ScriptReadByte(ctx);
         return;
@@ -3777,7 +3778,7 @@ void ScriptShowItemDescription(struct ScriptContext *ctx)
 
 void ScriptHideItemDescription(struct ScriptContext *ctx)
 {
-    if (OW_SHOW_ITEM_DESCRIPTIONS == OW_ITEM_DESCRIPTIONS_OFF)
+    if (ExtendedOptions_Get(EXT_OPT_ITEM_DESCRIPTIONS) == ITEM_DESCRIPTIONS_OFF)
         return;
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_SAVE | SCREFF_HARDWARE);

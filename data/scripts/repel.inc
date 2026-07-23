@@ -23,6 +23,9 @@ EventScript_BufferSprayName_2:
 EventScript_SprayWoreOff::
 	lock
 	call EventScript_BufferSprayName
+	specialvar LOCAL_VAR_SPRAY_TYPE, IsRepelPromptEnabled
+	compare LOCAL_VAR_SPRAY_TYPE, FALSE
+	goto_if_eq EventScript_SprayWoreOffMessage
 	specialvar LOCAL_VAR_NUM_SPRAY_STRENGTH, GetNumberSprayStrength
 	switch LOCAL_VAR_NUM_SPRAY_STRENGTH
 	case 0, EventScript_SprayWoreOffMessage

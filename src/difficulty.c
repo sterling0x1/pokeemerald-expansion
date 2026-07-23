@@ -1,26 +1,21 @@
 #include "global.h"
 #include "data.h"
 #include "event_data.h"
+#include "extended_options.h"
 #include "script.h"
 #include "constants/battle.h"
 
 enum DifficultyLevel GetCurrentDifficultyLevel(void)
 {
-    if (!B_VAR_DIFFICULTY)
-        return DIFFICULTY_NORMAL;
-
-    return VarGet(B_VAR_DIFFICULTY);
+    return ExtendedOptions_Get(EXT_OPT_DIFFICULTY);
 }
 
 void SetCurrentDifficultyLevel(enum DifficultyLevel desiredDifficulty)
 {
-    if (!B_VAR_DIFFICULTY)
-        return;
-
     if (desiredDifficulty > DIFFICULTY_MAX)
         desiredDifficulty = DIFFICULTY_MAX;
 
-    VarSet(B_VAR_DIFFICULTY, desiredDifficulty);
+    ExtendedOptions_Set(EXT_OPT_DIFFICULTY, desiredDifficulty);
 }
 
 enum DifficultyLevel GetBattlePartnerDifficultyLevel(u16 partnerId)

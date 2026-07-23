@@ -1,5 +1,6 @@
 #include "global.h"
 #include "event_data.h"
+#include "extended_options.h"
 #include "pokemon.h"
 #include "random.h"
 #include "randomizer.h"
@@ -133,4 +134,20 @@ enum Species Randomizer_GetStarterSpecies(enum Species originalSpecies, u8 start
         return originalSpecies;
 
     return PickRandomizerSpecies(originalSpecies, Randomizer_GetSeed() ^ 0x53544152 ^ starterId);
+}
+
+enum Species Randomizer_GetTrainerSpecies(enum Species originalSpecies, u32 key)
+{
+    if (!ExtendedOptions_Get(EXT_OPT_RANDOM_TRAINERS))
+        return originalSpecies;
+
+    return PickRandomizerSpecies(originalSpecies, Randomizer_GetSeed() ^ 0x54524149 ^ key);
+}
+
+enum Species Randomizer_GetGiftStaticSpecies(enum Species originalSpecies, u32 key)
+{
+    if (!ExtendedOptions_Get(EXT_OPT_RANDOM_GIFTS_STATIC))
+        return originalSpecies;
+
+    return PickRandomizerSpecies(originalSpecies, Randomizer_GetSeed() ^ 0x47494654 ^ key);
 }

@@ -1,4 +1,5 @@
 #include "global.h"
+#include "extended_options.h"
 #include "wild_encounter_ow.h"
 #include "battle_setup.h"
 #include "battle_main.h"
@@ -233,6 +234,12 @@ void UpdateOverworldWildEncounter(void)
     //Check if possible to spawn.
 
     bool32 shouldSpawnWaterMons = ShouldSpawnWaterOWE();
+
+    if (ExtendedOptions_Get(EXT_OPT_ENCOUNTER_STYLE) == ENCOUNTER_STYLE_TRADITIONAL)
+    {
+        DespawnAllOverworldWildEncounters(OWE_GENERATED, 0);
+        return;
+    }
     
     if (ArePlayerFieldControlsLocked() || FlagGet(DN_FLAG_SEARCHING) || !CheckCurrentWildMonHeaderForOWE(shouldSpawnWaterMons))
         return;

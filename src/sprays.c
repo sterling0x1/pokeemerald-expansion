@@ -1,5 +1,6 @@
 #include "global.h"
 #include "event_data.h"
+#include "extended_options.h"
 #include "script_menu.h"
 #include "strings.h"
 #include "constants/items.h"
@@ -25,6 +26,12 @@ u32 SetSprayMenuCursorPosition(int, int);
 void DrawSprayMenu(void);
 #endif
 void HandleSprayMenuChoice(void);
+u32 IsRepelPromptEnabled(void);
+
+u32 IsRepelPromptEnabled(void)
+{
+    return ExtendedOptions_Get(EXT_OPT_REPEL_PROMPT);
+}
 
 u32 CountOrGetSprays(u32 func)
 {

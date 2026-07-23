@@ -19,6 +19,7 @@
 #include "rtc.h"
 #include "easy_chat.h"
 #include "event_data.h"
+#include "extended_options.h"
 #include "money.h"
 #include "trainer_hill.h"
 #include "trainer_tower.h"
@@ -193,6 +194,7 @@ SeedRng(
     PlayTimeCounter_Reset();
     ClearPokedexFlags();
     InitEventData();
+    ExtendedOptions_Init();
     Randomizer_InitNewGameSeed();
     ClearTVShowData();
     ResetGabbyAndTy();

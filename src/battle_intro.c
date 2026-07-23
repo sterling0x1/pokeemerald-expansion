@@ -1,4 +1,5 @@
 #include "global.h"
+#include "extended_options.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_environment.h"
@@ -187,7 +188,7 @@ static void BattleIntroNoSlide(u8 taskId)
 void BattleIntroSlide1(u8 taskId)
 {
     int i;
-    if (B_FAST_INTRO_NO_SLIDE || gTestRunnerHeadless)
+    if (ExtendedOptions_Get(EXT_OPT_FAST_BATTLE_INTRO) || gTestRunnerHeadless)
         return BattleIntroNoSlide(taskId);
 
     gBattle_BG1_X += 6;
@@ -274,7 +275,7 @@ void BattleIntroSlide1(u8 taskId)
 void BattleIntroSlide2(u8 taskId)
 {
     int i;
-    if (B_FAST_INTRO_NO_SLIDE || gTestRunnerHeadless)
+    if (ExtendedOptions_Get(EXT_OPT_FAST_BATTLE_INTRO) || gTestRunnerHeadless)
         return BattleIntroNoSlide(taskId);
 
     switch (gTasks[taskId].tEnvironment)
@@ -389,7 +390,7 @@ void BattleIntroSlide2(u8 taskId)
 void BattleIntroSlide3(u8 taskId)
 {
     int i;
-    if (B_FAST_INTRO_NO_SLIDE || gTestRunnerHeadless)
+    if (ExtendedOptions_Get(EXT_OPT_FAST_BATTLE_INTRO) || gTestRunnerHeadless)
         return BattleIntroNoSlide(taskId);
 
     gBattle_BG1_X += 8;
