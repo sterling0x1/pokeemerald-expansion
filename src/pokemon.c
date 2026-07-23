@@ -985,11 +985,11 @@ void CreateBoxMon(struct BoxPokemon *boxMon, enum Species species, u8 level, u32
         value = Random32();
         isShiny = FALSE;
     }
-    else if (trainerId.method == OT_ID_PRESET)
-    {
-        value = trainerId.value;
-        isShiny = GET_SHINY_VALUE(value, personality) < SHINY_ODDS;
-    }
+   else if (trainerId.method == OT_ID_PRESET)
+{
+    value = trainerId.value;
+    isShiny = ComputePlayerShinyOdds(personality, value);
+}
     else // Player is the OT
     {
         value = READ_OTID_FROM_SAVE;
