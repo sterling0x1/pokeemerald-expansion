@@ -30,6 +30,7 @@
 #define tFrame           data[5]
 #define tBattleSceneOff  data[6]
 #define tBattleStyle     data[7]
+#define tSection         data[8]
 
 enum
 {
@@ -78,6 +79,15 @@ enum OptionId
     OPTION_COUNT,
 };
 
+enum OptionSection
+{
+    SECTION_GENERAL,
+    SECTION_BATTLE,
+    SECTION_GAMEPLAY,
+    SECTION_RANDOMIZER,
+    SECTION_COUNT,
+};
+
 static void Task_OptionMenuFadeIn(u8 taskId);
 static void Task_OptionMenuInput(u8 taskId);
 static void Task_OptionMenuSave(u8 taskId);
@@ -124,6 +134,135 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
     [OPT_RANDOM_GIFTS_STATIC] = COMPOUND_STRING("RANDOM GIFTS/STATIC"),
     [OPT_RANDOM_ALL_DATA]     = COMPOUND_STRING("RANDOM GAME DATA"),
 };
+
+
+static const u8 sSectionGeneral[]    = _("GENERAL");
+static const u8 sSectionBattle[]     = _("BATTLE");
+static const u8 sSectionGameplay[]   = _("GAMEPLAY");
+static const u8 sSectionRandomizer[] = _("RANDOMIZER");
+
+static const u8 *const sSectionNames[SECTION_COUNT] =
+{
+    [SECTION_GENERAL]    = sSectionGeneral,
+    [SECTION_BATTLE]     = sSectionBattle,
+    [SECTION_GAMEPLAY]   = sSectionGameplay,
+    [SECTION_RANDOMIZER] = sSectionRandomizer,
+};
+
+static const enum OptionId sGeneralOptions[] =
+{
+    OPT_TEXT_SPEED,
+    OPT_SOUND,
+    OPT_BUTTON_MODE,
+    OPT_FRAME,
+    OPT_AUTO_RUN,
+    OPT_RUNNING_INDOORS,
+    OPT_ITEM_DESCRIPTIONS,
+    OPT_REPEL_PROMPT,
+};
+
+static const enum OptionId sBattleOptions[] =
+{
+    OPT_BATTLE_ANIMATIONS,
+    OPT_BATTLE_STYLE,
+    OPT_BATTLE_SPEED,
+    OPT_FAST_INTRO,
+    OPT_FAST_HP,
+    OPT_FAST_EXP,
+    OPT_MOVE_INFO,
+    OPT_EFFECTIVENESS,
+    OPT_OPPONENT_INFO,
+    OPT_BENCH_ATTACKER,
+};
+
+static const enum OptionId sGameplayOptions[] =
+{
+    OPT_REUSABLE_TMS,
+    OPT_EXP_ON_CATCH,
+    OPT_PARTY_EXP,
+    OPT_FIELD_POISON,
+    OPT_TRAINER_ESCAPE,
+    OPT_DIFFICULTY,
+    OPT_ENCOUNTER_STYLE,
+    OPT_FOLLOWER,
+    OPT_SHINY_ODDS,
+    OPT_LEVEL_CAPS,
+    OPT_NUZLOCKE,
+};
+
+static const enum OptionId sRandomizerOptions[] =
+{
+    OPT_RANDOM_WILD,
+    OPT_RANDOM_STARTERS,
+    OPT_RANDOM_SEED,
+    OPT_RANDOM_REROLL,
+    OPT_RANDOM_TRAINERS,
+    OPT_RANDOM_GIFTS_STATIC,
+    OPT_RANDOM_ALL_DATA,
+};
+
+static const enum OptionId *GetSectionOptions(enum OptionSection section, u8 *count)
+{
+    switch (section)
+    {
+    case SECTION_GENERAL:
+        *count = ARRAY_COUNT(sGeneralOptions);
+        return sGeneralOptions;
+    case SECTION_BATTLE:
+        *count = ARRAY_COUNT(sBattleOptions);
+        return sBattleOptions;
+    case SECTION_GAMEPLAY:
+        *count = ARRAY_COUNT(sGameplayOptions);
+        return sGameplayOptions;
+    case SECTION_RANDOMIZER:
+    default:
+        *count = ARRAY_COUNT(sRandomizerOptions);
+        return sRandomizerOptions;
+    }
+}
+
+static u8 GetSectionOptionCount(enum OptionSection section)
+{
+    u8 count;
+
+    GetSectionOptions(section, &count);
+    return count;
+}
+
+static enum OptionId GetSectionOption(enum OptionSection section, u8 index)
+{
+    u8 count;
+    const enum OptionId *options = GetSectionOptions(section, &count);
+
+    if (index >= count)
+        index = count - 1;
+
+    return options[index];
+}
+
+static enum OptionId GetCurrentOption(u8 taskId)
+{
+    return GetSectionOption(
+        gTasks[taskId].tSection,
+        gTasks[taskId].tSelection
+    );
+}
+
+static void ChangeSection(u8 taskId, s8 direction)
+{
+    s8 section = gTasks[taskId].tSection;
+
+    section += direction;
+
+    if (section < 0)
+        section = SECTION_COUNT - 1;
+    else if (section >= SECTION_COUNT)
+        section = 0;
+
+    gTasks[taskId].tSection = section;
+    gTasks[taskId].tSelection = 0;
+    gTasks[taskId].tScrollTop = 0;
+}
 
 static const u8 sTextOn[]          = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}ON");
 static const u8 sTextOff[]         = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}OFF");
@@ -256,6 +395,7 @@ void CB2_InitOptionMenu(void)
         taskId = CreateTask(Task_OptionMenuFadeIn, 0);
         gTasks[taskId].tSelection = 0;
         gTasks[taskId].tScrollTop = 0;
+        gTasks[taskId].tSection = SECTION_GENERAL;
         gTasks[taskId].tTextSpeed = gSaveBlock2Ptr->optionsTextSpeed;
         gTasks[taskId].tSound = gSaveBlock2Ptr->optionsSound;
         gTasks[taskId].tButtonMode = gSaveBlock2Ptr->optionsButtonMode;
@@ -387,55 +527,147 @@ static const u8 *GetOptionValueText(u8 taskId, enum OptionId option)
 static void DrawPage(u8 taskId)
 {
     u8 row;
+    u8 count;
     u8 header[32];
-    enum OptionId first = gTasks[taskId].tScrollTop;
+    enum OptionSection section = gTasks[taskId].tSection;
+    u8 first = gTasks[taskId].tScrollTop;
+    const enum OptionId *options = GetSectionOptions(section, &count);
 
     FillWindowPixelBuffer(WIN_HEADER, PIXEL_FILL(1));
-    StringCopy(header, COMPOUND_STRING("OPTIONS  "));
-    ConvertIntToDecimalStringN(header + StringLength(header), gTasks[taskId].tSelection + 1, STR_CONV_MODE_LEADING_ZEROS, 2);
-    StringAppend(header, COMPOUND_STRING("/36"));
-    AddTextPrinterParameterized(WIN_HEADER, FONT_NORMAL, header, 8, 1, TEXT_SKIP_DRAW, NULL);
+
+    StringCopy(header, sSectionNames[section]);
+    StringAppend(header, COMPOUND_STRING("  "));
+
+    ConvertIntToDecimalStringN(
+        header + StringLength(header),
+        gTasks[taskId].tSelection + 1,
+        STR_CONV_MODE_LEADING_ZEROS,
+        2
+    );
+
+    StringAppend(header, COMPOUND_STRING("/"));
+
+    ConvertIntToDecimalStringN(
+        header + StringLength(header),
+        count,
+        STR_CONV_MODE_LEADING_ZEROS,
+        2
+    );
+
+    AddTextPrinterParameterized(
+        WIN_HEADER,
+        FONT_NORMAL,
+        header,
+        8,
+        1,
+        TEXT_SKIP_DRAW,
+        NULL
+    );
 
     FillWindowPixelBuffer(WIN_OPTIONS, PIXEL_FILL(1));
+
     for (row = 0; row < OPTIONS_PER_PAGE; row++)
     {
-        enum OptionId option = first + row;
+        u8 index = first + row;
+        enum OptionId option;
         const u8 *value;
 
-        AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, sOptionNames[option], 8, row * 16 + 1, TEXT_SKIP_DRAW, NULL);
+        if (index >= count)
+            break;
+
+        option = options[index];
+
+        AddTextPrinterParameterized(
+            WIN_OPTIONS,
+            FONT_NORMAL,
+            sOptionNames[option],
+            8,
+            row * 16 + 1,
+            TEXT_SKIP_DRAW,
+            NULL
+        );
 
         if (option == OPT_FRAME)
         {
             u8 frameText[16];
-            StringCopy(frameText, COMPOUND_STRING("{COLOR GREEN}{SHADOW LIGHT_GREEN}TYPE "));
-            ConvertIntToDecimalStringN(frameText + StringLength(frameText), gTasks[taskId].tFrame + 1, STR_CONV_MODE_LEFT_ALIGN, 2);
-            AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, frameText,
-                                        GetStringRightAlignXOffset(FONT_NORMAL, frameText, 200), row * 16 + 1, TEXT_SKIP_DRAW, NULL);
+
+            StringCopy(
+                frameText,
+                COMPOUND_STRING("{COLOR GREEN}{SHADOW LIGHT_GREEN}TYPE ")
+            );
+
+            ConvertIntToDecimalStringN(
+                frameText + StringLength(frameText),
+                gTasks[taskId].tFrame + 1,
+                STR_CONV_MODE_LEFT_ALIGN,
+                2
+            );
+
+            AddTextPrinterParameterized(
+                WIN_OPTIONS,
+                FONT_NORMAL,
+                frameText,
+                GetStringRightAlignXOffset(FONT_NORMAL, frameText, 200),
+                row * 16 + 1,
+                TEXT_SKIP_DRAW,
+                NULL
+            );
         }
         else if (option == OPT_RANDOM_SEED)
         {
-            ConvertIntToHexStringN(gStringVar1, Randomizer_GetSeed(), STR_CONV_MODE_LEADING_ZEROS, 8);
-            AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, gStringVar1,
-                                        GetStringRightAlignXOffset(FONT_NORMAL, gStringVar1, 200), row * 16 + 1, TEXT_SKIP_DRAW, NULL);
+            ConvertIntToHexStringN(
+                gStringVar1,
+                Randomizer_GetSeed(),
+                STR_CONV_MODE_LEADING_ZEROS,
+                8
+            );
+
+            AddTextPrinterParameterized(
+                WIN_OPTIONS,
+                FONT_NORMAL,
+                gStringVar1,
+                GetStringRightAlignXOffset(FONT_NORMAL, gStringVar1, 200),
+                row * 16 + 1,
+                TEXT_SKIP_DRAW,
+                NULL
+            );
         }
         else
         {
             value = GetOptionValueText(taskId, option);
-            AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, value,
-                                        GetStringRightAlignXOffset(FONT_NORMAL, value, 200), row * 16 + 1, TEXT_SKIP_DRAW, NULL);
+
+            AddTextPrinterParameterized(
+                WIN_OPTIONS,
+                FONT_NORMAL,
+                value,
+                GetStringRightAlignXOffset(FONT_NORMAL, value, 200),
+                row * 16 + 1,
+                TEXT_SKIP_DRAW,
+                NULL
+            );
         }
     }
 
-    SetGpuReg(REG_OFFSET_WIN0H, WIN_RANGE(16, DISPLAY_WIDTH - 16));
-    SetGpuReg(REG_OFFSET_WIN0V, WIN_RANGE((gTasks[taskId].tSelection - gTasks[taskId].tScrollTop) * 16 + 40,
-                                         (gTasks[taskId].tSelection - gTasks[taskId].tScrollTop) * 16 + 56));
+    SetGpuReg(
+        REG_OFFSET_WIN0H,
+        WIN_RANGE(16, DISPLAY_WIDTH - 16)
+    );
+
+    SetGpuReg(
+        REG_OFFSET_WIN0V,
+        WIN_RANGE(
+            (gTasks[taskId].tSelection - gTasks[taskId].tScrollTop) * 16 + 40,
+            (gTasks[taskId].tSelection - gTasks[taskId].tScrollTop) * 16 + 56
+        )
+    );
+
     CopyWindowToVram(WIN_HEADER, COPYWIN_FULL);
     CopyWindowToVram(WIN_OPTIONS, COPYWIN_FULL);
 }
 
 static void ChangeValue(u8 taskId, s8 direction)
 {
-    enum OptionId option = gTasks[taskId].tSelection;
+    enum OptionId option = GetCurrentOption(taskId);
     u8 value;
     u8 max;
 
@@ -493,42 +725,42 @@ static void Task_OptionMenuFadeIn(u8 taskId)
 
 static void Task_OptionMenuInput(u8 taskId)
 {
+    u8 count = GetSectionOptionCount(gTasks[taskId].tSection);
+
     if (JOY_NEW(L_BUTTON))
     {
-        if (gTasks[taskId].tSelection < OPTIONS_PER_PAGE)
-            gTasks[taskId].tSelection = 0;
-        else
-            gTasks[taskId].tSelection -= OPTIONS_PER_PAGE;
-        gTasks[taskId].tScrollTop = gTasks[taskId].tSelection;
+        ChangeSection(taskId, -1);
         DrawPage(taskId);
     }
     else if (JOY_NEW(R_BUTTON))
     {
-        if (gTasks[taskId].tSelection + OPTIONS_PER_PAGE >= OPTION_COUNT)
-            gTasks[taskId].tSelection = OPTION_COUNT - 1;
-        else
-            gTasks[taskId].tSelection += OPTIONS_PER_PAGE;
-        gTasks[taskId].tScrollTop = min(gTasks[taskId].tSelection, OPTION_COUNT - OPTIONS_PER_PAGE);
+        ChangeSection(taskId, 1);
         DrawPage(taskId);
     }
     else if (JOY_NEW(DPAD_UP))
     {
         if (gTasks[taskId].tSelection == 0)
         {
-            gTasks[taskId].tSelection = OPTION_COUNT - 1;
-            gTasks[taskId].tScrollTop = OPTION_COUNT - OPTIONS_PER_PAGE;
+            gTasks[taskId].tSelection = count - 1;
+
+            if (count > OPTIONS_PER_PAGE)
+                gTasks[taskId].tScrollTop = count - OPTIONS_PER_PAGE;
+            else
+                gTasks[taskId].tScrollTop = 0;
         }
         else
         {
             gTasks[taskId].tSelection--;
+
             if (gTasks[taskId].tSelection < gTasks[taskId].tScrollTop)
                 gTasks[taskId].tScrollTop = gTasks[taskId].tSelection;
         }
+
         DrawPage(taskId);
     }
     else if (JOY_NEW(DPAD_DOWN))
     {
-        if (gTasks[taskId].tSelection == OPTION_COUNT - 1)
+        if (gTasks[taskId].tSelection + 1 >= count)
         {
             gTasks[taskId].tSelection = 0;
             gTasks[taskId].tScrollTop = 0;
@@ -536,9 +768,15 @@ static void Task_OptionMenuInput(u8 taskId)
         else
         {
             gTasks[taskId].tSelection++;
-            if (gTasks[taskId].tSelection >= gTasks[taskId].tScrollTop + OPTIONS_PER_PAGE)
-                gTasks[taskId].tScrollTop = gTasks[taskId].tSelection - OPTIONS_PER_PAGE + 1;
+
+            if (gTasks[taskId].tSelection
+                >= gTasks[taskId].tScrollTop + OPTIONS_PER_PAGE)
+            {
+                gTasks[taskId].tScrollTop =
+                    gTasks[taskId].tSelection - OPTIONS_PER_PAGE + 1;
+            }
         }
+
         DrawPage(taskId);
     }
     else if (JOY_NEW(DPAD_LEFT))
@@ -551,7 +789,7 @@ static void Task_OptionMenuInput(u8 taskId)
     }
     else if (JOY_NEW(A_BUTTON))
     {
-        enum OptionId option = gTasks[taskId].tSelection;
+        enum OptionId option = GetCurrentOption(taskId);
 
         if (option == OPT_RANDOM_REROLL && RandomizerUnlocked())
         {
