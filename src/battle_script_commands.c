@@ -3621,6 +3621,12 @@ static void Cmd_tryfaintmon(void)
                 }
             }
 
+            if (HandleReserveAttackerFaint(battler))
+            {
+                gBattlescriptCurrInstr = cmd->nextInstr;
+                return;
+            }
+
             SetValuesOnFaint(battler);
             BattleScriptPush(cmd->nextInstr);
             gBattlescriptCurrInstr = BattleScript_FaintBattler;
@@ -13996,4 +14002,3 @@ void BS_RestoreStatChangeQueue(void)
     ClearOtherStatChangeValues(gBattlerAttacker);
     gBattlescriptCurrInstr = cmd->nextInstr;
 }
-

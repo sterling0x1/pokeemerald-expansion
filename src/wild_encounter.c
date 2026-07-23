@@ -8,6 +8,7 @@
 #include "follower_npc.h"
 #include "item.h"
 #include "random.h"
+#include "randomizer.h"
 #include "field_player_avatar.h"
 #include "link.h"
 #include "metatile_behavior.h"
@@ -465,6 +466,7 @@ static u8 PickWildMonNature(enum Species species)
 
 void CreateWildMon(enum Species species, u8 level)
 {
+    species = Randomizer_GetWildSpecies(species);
     ZeroEnemyPartyMons();
     u32 personality = GetMonPersonality(species, GetSynchronizedGender(WILDMON_ORIGIN, species), PickWildMonNature(species), RANDOM_UNOWN_LETTER);
     CreateMonWithIVs(&gParties[B_TRAINER_OPPONENT_A][0], species, level, personality, OTID_STRUCT_PLAYER_ID, USE_RANDOM_IVS);

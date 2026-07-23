@@ -114,6 +114,8 @@ static void HandleTurnActionSelectionState(void);
 static void RunTurnActionsFunctions(void);
 static void SetActionsAndBattlersTurnOrder(void);
 static void UpdateBattlerPartyOrdersOnSwitch(enum BattlerId battler);
+static bool32 ShouldChooseReserveAttacker(enum BattlerId battler);
+static void EmitChooseMoveForBattler(enum BattlerId battler);
 static bool8 AllAtActionConfirmed(void);
 static void TryChangeTurnOrder(void);
 static void TryChangingTurnOrderEffects(struct BattleCalcValues *calcValues, u32 *quickClawRandom, u32 *quickDrawRandom);
@@ -4066,8 +4068,64 @@ enum
     STATE_WAIT_ACTION_CONFIRMED,
     STATE_SELECTION_SCRIPT,
     STATE_WAIT_SET_BEFORE_ACTION,
-    STATE_SELECTION_SCRIPT_MAY_RUN
+    STATE_SELECTION_SCRIPT_MAY_RUN,
+    // Kept last: the vanilla action flow advances several states with ++.
+    STATE_WAIT_RESERVE_ATTACKER_CHOSEN,
 };
+
+static bool32 ShouldChooseReserveAttacker(enum BattlerId battler)
+{
+    const u32 unsupportedBattleTypes = BATTLE_TYPE_LINK
+                                     | BATTLE_TYPE_FIRST_BATTLE
+                                     | BATTLE_TYPE_SAFARI
+                                     | BATTLE_TYPE_CATCH_TUTORIAL
+                                     | BATTLE_TYPE_ROAMER
+                                     | BATTLE_TYPE_EREADER_TRAINER
+                                     | BATTLE_TYPE_RAID
+                                     | BATTLE_TYPE_TWO_OPPONENTS
+                                     | BATTLE_TYPE_FRONTIER
+                                     | BATTLE_TYPE_INGAME_PARTNER
+                                     | BATTLE_TYPE_RECORDED
+                                     | BATTLE_TYPE_RECORDED_LINK
+                                     | BATTLE_TYPE_TRAINER_HILL
+                                     | BATTLE_TYPE_SECRET_BASE
+                                     | BATTLE_TYPE_GHOST
+                                     | BATTLE_TYPE_POKEDUDE;
+
+    return IsOnPlayerSide(battler)
+        && !IsDoubleBattle()
+        && !(gBattleTypeFlags & unsupportedBattleTypes);
+}
+
+static void EmitChooseMoveForBattler(enum BattlerId battler)
+{
+    struct ChooseMoveStruct moveInfo;
+    struct Pokemon *mon = GetBattlerMon(battler);
+    u8 ppBonuses;
+
+    if (ShouldChooseReserveAttacker(battler))
+        mon = &gParties[B_TRAINER_PLAYER][gBattleStruct->actingPartyIndexes[battler]];
+
+    moveInfo.zmove = gBattleStruct->zmove;
+    moveInfo.species = GetMonData(mon, MON_DATA_SPECIES);
+    moveInfo.monTypes[0] = GetSpeciesType(moveInfo.species, 0);
+    moveInfo.monTypes[1] = GetSpeciesType(moveInfo.species, 1);
+    moveInfo.monTypes[2] = GetSpeciesType(moveInfo.species, 2);
+    ppBonuses = GetMonData(mon, MON_DATA_PP_BONUSES);
+
+    for (u32 i = 0; i < MAX_MON_MOVES; i++)
+    {
+        moveInfo.moves[i] = GetMonData(mon, MON_DATA_MOVE1 + i);
+        moveInfo.currentPp[i] = GetMonData(mon, MON_DATA_PP1 + i);
+        moveInfo.maxPp[i] = CalculatePPWithBonus(
+                                        moveInfo.moves[i],
+                                        ppBonuses,
+                                        i);
+    }
+
+    BtlController_EmitChooseMove(battler, B_COMM_TO_CONTROLLER, IsDoubleBattle() != 0, FALSE, &moveInfo);
+    MarkBattlerForControllerExec(battler);
+}
 
 static void HandleTurnActionSelectionState(void)
 {
@@ -4083,6 +4141,8 @@ static void HandleTurnActionSelectionState(void)
         switch (gBattleCommunication[battler])
         {
         case STATE_TURN_START_RECORD: // Recorded battle related action on start of every turn.
+            // Default to the active Pokémon. The reserve-attacker picker will replace this for the player.
+            gBattleStruct->actingPartyIndexes[battler] = gBattlerPartyIndexes[battler];
             RecordedBattle_CopyBattlerMoves(battler);
             gBattleCommunication[battler] = STATE_BEFORE_ACTION_CHOSEN;
             bool32 isAiBattler = (gBattleTypeFlags & BATTLE_TYPE_HAS_AI || IsWildMonSmart()) && (BattlerHasAi(battler) && !(gBattleTypeFlags & BATTLE_TYPE_PALACE));
@@ -4175,26 +4235,26 @@ static void HandleTurnActionSelectionState(void)
                     }
                     else
                     {
-                        struct ChooseMoveStruct moveInfo;
-
-                        moveInfo.zmove = gBattleStruct->zmove;
-                        moveInfo.species = gBattleMons[battler].species;
-                        moveInfo.monTypes[0] = gBattleMons[battler].types[0];
-                        moveInfo.monTypes[1] = gBattleMons[battler].types[1];
-                        moveInfo.monTypes[2] = gBattleMons[battler].types[2];
-
-                        for (i = 0; i < MAX_MON_MOVES; i++)
+                        if (ShouldChooseReserveAttacker(battler))
                         {
-                            moveInfo.moves[i] = gBattleMons[battler].moves[i];
-                            moveInfo.currentPp[i] = gBattleMons[battler].pp[i];
-                            moveInfo.maxPp[i] = CalculatePPWithBonus(
-                                                            gBattleMons[battler].moves[i],
-                                                            gBattleMons[battler].ppBonuses,
-                                                            i);
+                            if (gBattleStruct->reserveAttackerSelectionReady & (1u << battler))
+                            {
+                                gBattleStruct->reserveAttackerSelectionReady &= ~(1u << battler);
+                                EmitChooseMoveForBattler(battler);
+                            }
+                            else
+                            {
+                                // Fallback used only when a non-player controller requests a reserve attacker.
+                                BtlController_EmitChoosePokemon(battler, B_COMM_TO_CONTROLLER, PARTY_ACTION_CHOOSE_ATTACKER, PARTY_SIZE, ABILITY_NONE, 0, gBattleStruct->battlerPartyOrders[battler]);
+                                MarkBattlerForControllerExec(battler);
+                                gBattleCommunication[battler] = STATE_WAIT_RESERVE_ATTACKER_CHOSEN;
+                                return;
+                            }
                         }
-
-                        BtlController_EmitChooseMove(battler, B_COMM_TO_CONTROLLER, IsDoubleBattle() != 0, FALSE, &moveInfo);
-                        MarkBattlerForControllerExec(battler);
+                        else
+                        {
+                            EmitChooseMoveForBattler(battler);
+                        }
                     }
                     break;
                 case B_ACTION_USE_ITEM:
@@ -4357,6 +4417,24 @@ static void HandleTurnActionSelectionState(void)
                 }
             }
             break;
+        case STATE_WAIT_RESERVE_ATTACKER_CHOSEN:
+            if (!IsBattleControllerActiveOrPendingSyncAnywhere(battler))
+            {
+                if (gBattleResources->bufferB[battler][1] == PARTY_SIZE)
+                {
+                    // Cancel returns to the standard action menu without changing the active Pokémon.
+                    gBattleCommunication[battler] = STATE_BEFORE_ACTION_CHOSEN;
+                    RecordedBattle_ClearBattlerAction(battler, 1);
+                }
+                else
+                {
+                    // The move resolver temporarily uses this party member, then restores the active battler.
+                    gBattleStruct->actingPartyIndexes[battler] = gBattleResources->bufferB[battler][1];
+                    EmitChooseMoveForBattler(battler);
+                    gBattleCommunication[battler] = STATE_WAIT_ACTION_CASE_CHOSEN;
+                }
+            }
+            break;
         case STATE_WAIT_ACTION_CASE_CHOSEN:
             if (!IsBattleControllerActiveOrPendingSyncAnywhere(battler))
             {
@@ -4382,6 +4460,9 @@ static void HandleTurnActionSelectionState(void)
                         RecordedBattle_CheckMovesetChanges(B_RECORD_MODE_PLAYBACK);
                         if ((gBattleResources->bufferB[battler][2] | (gBattleResources->bufferB[battler][3] << 8)) == 0xFFFF)
                         {
+                            // Cancelling the move screen also cancels the pending reserve attacker.
+                            gBattleStruct->actingPartyIndexes[battler] = gBattlerPartyIndexes[battler];
+                            gBattleStruct->reserveAttackerSelectionReady &= ~(1u << battler);
                             gBattleCommunication[battler] = STATE_BEFORE_ACTION_CHOSEN;
                             RecordedBattle_ClearBattlerAction(battler, 1);
                         }
@@ -4404,9 +4485,22 @@ static void HandleTurnActionSelectionState(void)
 
                             // Get the chosen move position (and thus the chosen move) and target from the returned buffer.
                             gBattleStruct->chosenMovePositions[battler] = gBattleResources->bufferB[battler][2] & ~RET_GIMMICK;
-                            gChosenMoveByBattler[battler] = GetBattlerChosenMove(battler);
+                            if (ShouldChooseReserveAttacker(battler)
+                             && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler])
+                            {
+                                gChosenMoveByBattler[battler] = GetMonData(
+                                    &gParties[B_TRAINER_PLAYER][gBattleStruct->actingPartyIndexes[battler]],
+                                    MON_DATA_MOVE1 + gBattleStruct->chosenMovePositions[battler]);
+                            }
+                            else
+                            {
+                                gChosenMoveByBattler[battler] = GetBattlerChosenMove(battler);
+                            }
                             gBattleStruct->moveTarget[battler] = gBattleResources->bufferB[battler][3];
-                            if (IsBattleMoveStatus(gChosenMoveByBattler[battler]) && GetBattlerAbility(battler) == ABILITY_MYCELIUM_MIGHT)
+                            if (IsBattleMoveStatus(gChosenMoveByBattler[battler])
+                             && !(ShouldChooseReserveAttacker(battler)
+                                  && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler])
+                             && GetBattlerAbility(battler) == ABILITY_MYCELIUM_MIGHT)
                                 gProtectStructs[battler].myceliumMight = TRUE;
                             if (GetBattlerHoldEffect(battler) == HOLD_EFFECT_LAGGING_TAIL)
                                 gProtectStructs[battler].laggingTail = TRUE;

@@ -2695,6 +2695,14 @@ void BtlController_HandleHealthBarUpdate(enum BattlerId battler)
     s16 hpVal;
     struct Pokemon *mon = GetBattlerMon(battler);
 
+    // A reserve attacker is off-field. Its recoil or self-damage must not be
+    // drawn through the active Pokémon's health box.
+    if (IsOnPlayerSide(battler) && (gBattleStruct->reserveAttackerActive & (1u << battler)))
+    {
+        BtlController_Complete(battler);
+        return;
+    }
+
     LoadBattleBarGfx(0);
     hpVal = gBattleResources->bufferA[battler][2] | (gBattleResources->bufferA[battler][3] << 8);
     maxHP = GetMonData(mon, MON_DATA_MAX_HP);

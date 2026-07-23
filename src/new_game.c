@@ -2,6 +2,7 @@
 #include "clock.h"
 #include "new_game.h"
 #include "random.h"
+#include "randomizer.h"
 #include "pokemon.h"
 #include "roamer.h"
 #include "pokemon_size_record.h"
@@ -180,10 +181,19 @@ void NewGameInitData(void)
     ClearAllMail();
     gSaveBlock2Ptr->specialSaveWarpFlags = 0;
     gSaveBlock2Ptr->gcnLinkFlags = 0;
+SeedRng(
+        gMain.vblankCounter2
+        ^ (gMain.vblankCounter1 << 16)
+        ^ ((u32)REG_TM1CNT_L << 1)
+        ^ ((u32)REG_TM2CNT_L << 17)
+        ^ REG_VCOUNT
+    );
+
     InitPlayerTrainerId();
     PlayTimeCounter_Reset();
     ClearPokedexFlags();
     InitEventData();
+    Randomizer_InitNewGameSeed();
     ClearTVShowData();
     ResetGabbyAndTy();
     ClearSecretBases();

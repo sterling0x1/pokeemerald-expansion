@@ -51,6 +51,7 @@
 #include "palette.h"
 #include "play_time.h"
 #include "random.h"
+#include "randomizer_menu.h"
 #include "roamer.h"
 #include "rotating_gate.h"
 #include "rtc.h"
@@ -1924,12 +1925,8 @@ static bool8 RunFieldCallback(void)
     return TRUE;
 }
 
-void CB2_NewGame(void)
+static void CB2_ContinueNewGame(void)
 {
-    FieldClearVBlankHBlankCallbacks();
-    StopMapMusic();
-    ResetSafariZoneFlag_();
-    NewGameInitData();
     ResetInitialPlayerAvatarState();
     PlayTimeCounter_Start();
     ScriptContext_Init();
@@ -1947,6 +1944,15 @@ void CB2_NewGame(void)
     // Wall clock now track local time so we set it to 10AM to match initial wall clock time
     RtcCalcLocalTimeOffset(0, 10, 0, 0);
 #endif
+}
+
+void CB2_NewGame(void)
+{
+    FieldClearVBlankHBlankCallbacks();
+    StopMapMusic();
+    ResetSafariZoneFlag_();
+    NewGameInitData();
+    StartRandomizerSetupMenu(CB2_ContinueNewGame);
 }
 
 void CB2_WhiteOut(void)

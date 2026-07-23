@@ -1607,6 +1607,30 @@ static void HandleChooseMonSelection(u8 taskId, s8 *slotPtr)
             }
             break;
         }
+        case PARTY_ACTION_CHOOSE_ATTACKER:
+        {
+            u8 partyId = GetPartyIdFromBattleSlot((u8)*slotPtr);
+            struct Pokemon *party = NULL;
+            s8 partySlot = 0;
+
+            GetPartyAndSlotFromPartyMenuId(*slotPtr, &party, &partySlot);
+            if (GetMonData(&party[partySlot], MON_DATA_HP) == 0
+             || GetMonData(&party[partySlot], MON_DATA_SPECIES_OR_EGG) == SPECIES_EGG
+             || ((gBattleTypeFlags & BATTLE_TYPE_MULTI) && partyId >= (PARTY_SIZE / 2)))
+            {
+                // Reserve attackers must be an alive, non-Egg Pokémon from the player's party.
+                PlaySE(SE_FAILURE);
+            }
+            else
+            {
+                // Unlike PARTY_ACTION_SEND_OUT, this intentionally does not reorder or switch the party.
+                PlaySE(SE_SELECT);
+                gSelectedMonPartyId = CombinedToIndividualPartyId(partyId);
+                gPartyMenuUseExitCallback = TRUE;
+                Task_ClosePartyMenu(taskId);
+            }
+            break;
+        }
         case PARTY_ACTION_SEND_MON_TO_BOX:
         {
             u8 partyId = (u8)*slotPtr;

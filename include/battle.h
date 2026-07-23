@@ -593,6 +593,13 @@ struct BattleStruct
     u8 savedTurnActionNumber;
     u8 scriptPartyIdx; // for printing the nickname
     u8 battlerPartyIndexes[MAX_BATTLERS_COUNT];
+    // Party slot that will perform this battler's chosen move this turn.
+    // Defaults to battlerPartyIndexes; the reserve-attacker picker will override the player's value.
+    u8 actingPartyIndexes[MAX_BATTLERS_COUNT];
+    u8 reserveAttackerActive; // Bitfield: a battler is temporarily using its selected reserve attacker.
+    u8 reserveAttackerSelectionReady; // Bitfield: the in-battle attacker grid has already selected a party slot.
+    u8 reserveAttackerSavedPartyIndexes[MAX_BATTLERS_COUNT];
+    struct BattlePokemon reserveAttackerSavedBattleMons[MAX_BATTLERS_COUNT];
     u8 monToSwitchIntoId[MAX_BATTLERS_COUNT];
     u8 battlerPartyOrders[MAX_BATTLERS_COUNT][PARTY_SIZE / 2];
     u8 runTries;

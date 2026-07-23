@@ -64,6 +64,9 @@ static bool32 IsOpposingSideEmpty(enum BattlerId battler);
 static void ResetParadoxWeatherStat(enum BattlerId battler);
 static void ResetParadoxTerrainStat(enum BattlerId battler);
 static bool32 CanBattlerFormChange(enum BattlerId battler, enum FormChanges method);
+static bool32 IsUsingReserveAttacker(enum BattlerId battler);
+static void BeginReserveAttackerAction(enum BattlerId battler);
+static void RestoreReserveAttackerAction(enum BattlerId battler);
 const u8 *AbsorbedByDrainHpAbility(enum BattlerId battlerDef);
 const u8 *AbsorbedByStatIncreaseAbility(struct DamageContext *ctx, enum Stat statId, u32 statAmount);
 const u8 *AbsorbedByFlashFire(struct DamageContext *ctx);
@@ -367,6 +370,61 @@ static bool32 IsUnnerveAbilityOnOpposingSide(enum BattlerId battler)
 }
 
 // Functions
+static bool32 IsUsingReserveAttacker(enum BattlerId battler)
+{
+    return IsOnPlayerSide(battler)
+        && !IsDoubleBattle()
+        && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler];
+}
+
+static void BeginReserveAttackerAction(enum BattlerId battler)
+{
+    u8 partyIndex = gBattleStruct->actingPartyIndexes[battler];
+
+    gBattleStruct->reserveAttackerSavedBattleMons[battler] = gBattleMons[battler];
+    gBattleStruct->reserveAttackerSavedPartyIndexes[battler] = gBattlerPartyIndexes[battler];
+    gBattleStruct->reserveAttackerActive |= 1u << battler;
+
+    // The move engine sees the reserve Pokémon's battle data, but its sprite is never switched in.
+    gBattlerPartyIndexes[battler] = partyIndex;
+    PokemonToBattleMon(&gParties[B_TRAINER_PLAYER][partyIndex], &gBattleMons[battler]);
+    gBattleMons[battler].ability = ABILITY_NONE;
+}
+
+static void RestoreReserveAttackerAction(enum BattlerId battler)
+{
+    if (gBattleStruct->reserveAttackerActive & (1u << battler))
+    {
+        gBattleMons[battler] = gBattleStruct->reserveAttackerSavedBattleMons[battler];
+        gBattlerPartyIndexes[battler] = gBattleStruct->reserveAttackerSavedPartyIndexes[battler];
+        gBattleStruct->reserveAttackerActive &= ~(1u << battler);
+
+        // The move used the reserve Pokémon's temporary battle data. Refresh the
+        // on-screen HP box immediately after restoring the actual active Pokémon.
+        BtlController_EmitHealthBarUpdate(battler, B_COMM_TO_CONTROLLER, 0);
+        MarkBattlerForControllerExec(battler);
+    }
+}
+
+bool32 HandleReserveAttackerFaint(enum BattlerId battler)
+{
+    u16 hp = 0;
+
+    if (!(gBattleStruct->reserveAttackerActive & (1u << battler)))
+        return FALSE;
+
+    // The selected party Pokémon has fainted off-field. Keep that faint on the
+    // party data, but restore the real battler before vanilla code can animate
+    // the on-screen Pokémon fainting or request a conventional switch.
+    SetMonData(&gParties[B_TRAINER_PLAYER][gBattleStruct->actingPartyIndexes[battler]], MON_DATA_HP, &hp);
+    gBattleMons[battler] = gBattleStruct->reserveAttackerSavedBattleMons[battler];
+    gBattlerPartyIndexes[battler] = gBattleStruct->reserveAttackerSavedPartyIndexes[battler];
+    gBattleStruct->reserveAttackerActive &= ~(1u << battler);
+    BtlController_EmitHealthBarUpdate(battler, B_COMM_TO_CONTROLLER, 0);
+    MarkBattlerForControllerExec(battler);
+    return TRUE;
+}
+
 void HandleAction_UseMove(void)
 {
     gBattlerAttacker = gBattlerByTurnOrder[gCurrentTurnActionNumber];
@@ -377,6 +435,9 @@ void HandleAction_UseMove(void)
         gCurrentActionFuncId = B_ACTION_FINISHED;
         return;
     }
+
+    if (IsUsingReserveAttacker(gBattlerAttacker))
+        BeginReserveAttackerAction(gBattlerAttacker);
 
     gCurrMovePos = gChosenMovePos = gBattleStruct->chosenMovePositions[gBattlerAttacker];
 
@@ -884,6 +945,17 @@ void HandleAction_WallyBallThrow(void)
 
 void HandleAction_TryFinish(void)
 {
+    enum BattlerId battler = gBattlerByTurnOrder[gCurrentTurnActionNumber];
+
+    // A reserve attacker may have fainted during its own move. Restore the real
+    // on-screen battler before vanilla faint handling can treat that temporary
+    // battle copy as the active Pokémon and open a normal switch sequence.
+    if (gBattleStruct->reserveAttackerActive & (1u << battler))
+    {
+        RestoreReserveAttackerAction(battler);
+        return;
+    }
+
     if (!HandleFaintedMonActions())
     {
         gBattleStruct->eventState.faintedAction = 0;
@@ -900,6 +972,8 @@ void HandleAction_NothingIsFainted(void)
 void HandleAction_ActionFinished(void)
 {
     u32 i, j;
+    enum BattlerId finishedBattler = gBattlerByTurnOrder[gCurrentTurnActionNumber];
+    RestoreReserveAttackerAction(finishedBattler);
     bool32 afterYouActive = gSpecialStatuses[gBattlerByTurnOrder[gCurrentTurnActionNumber + 1]].afterYou;
     gBattleStruct->monToSwitchIntoId[gBattlerByTurnOrder[gCurrentTurnActionNumber]] = gSelectedMonPartyId = PARTY_SIZE;
     gCurrentTurnActionNumber++;
