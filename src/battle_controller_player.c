@@ -1,5 +1,4 @@
 #include "global.h"
-#include "extended_options.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_arena.h"
@@ -60,6 +59,7 @@ static bool8 sUsingCompactMoveList;
 static bool8 sUsingModernActionMenu;
 static u8 sCompactAttackerCursor[MAX_BATTLERS_COUNT];
 static u8 sCompactAttackerNames[PARTY_SIZE][POKEMON_NAME_BUFFER_SIZE];
+static bool8 sBlockCompactAUntilReleased[MAX_BATTLERS_COUNT];
 
 // Ordered so double-battle comparisons can keep the strongest visible result.
 enum
@@ -343,14 +343,10 @@ static void HandleInputChooseAction(enum BattlerId battler)
 
         switch (gActionSelectionCursor[battler])
         {
-        case 0: // Top left
-            if (ExtendedOptions_Get(EXT_OPT_BENCH_ATTACKER))
-            {
-                OpenCompactAttackerPicker(battler);
-                return;
-            }
-            BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_MOVE, 0);
-            break;
+case 0: // Top left
+    sBlockCompactAUntilReleased[battler] = TRUE;
+    OpenCompactAttackerPicker(battler);
+    return;
         case 1: // Top right
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_ITEM, 0);
             break;
@@ -489,41 +485,90 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
 {
     u8 *cursor = &sCompactAttackerCursor[battler];
 
-    if (JOY_NEW(A_BUTTON))
+    if (sBlockCompactAUntilReleased[battler])
     {
+        if (JOY_HELD(A_BUTTON))
+            return;
+
+        sBlockCompactAUntilReleased[battler] = FALSE;
+    }
+
+    if (JOY_NEW(A_BUTTON))    {
         struct Pokemon *mon = &gParties[B_TRAINER_PLAYER][*cursor];
 
-        if (GetMonData(mon, MON_DATA_HP) == 0 || GetMonData(mon, MON_DATA_SPECIES_OR_EGG) == SPECIES_EGG)
+        if (GetMonData(mon, MON_DATA_HP) == 0
+         || GetMonData(mon, MON_DATA_SPECIES_OR_EGG) == SPECIES_EGG)
         {
             PlaySE(SE_FAILURE);
             return;
         }
 
         PlaySE(SE_SELECT);
+
         gBattleStruct->actingPartyIndexes[battler] = *cursor;
         gBattleStruct->reserveAttackerSelectionReady |= 1u << battler;
 
+        gMoveSelectionCursor[battler] = 0;
+        gMultiUsePlayerCursor = GetOpposingSideBattler(battler);
+
         if (sUsingCompactMoveList)
         {
-            // We are returning from the move screen. Refresh it with this
-            // party member's moves instead of sending a second action command.
+            // We returned here from the move selector.
+            // The engine is already waiting for the selected move, so do not
+            // send B_ACTION_USE_MOVE again. Reload the chosen attacker's moves
+            // and reopen the existing move-selection command locally.
             LoadCompactMoveInfoForAttacker(battler, mon);
-            gMoveSelectionCursor[battler] = 0;
+            sBlockCompactAUntilReleased[battler] = TRUE;
             PlayerHandleChooseMove(battler);
             return;
         }
 
-        BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_MOVE, 0);
+        // We entered from the main action menu. Tell the engine that the
+        // player selected the Battle action so it can request a move.
+        BtlController_EmitTwoReturnValues(
+            battler,
+            B_COMM_TO_ENGINE,
+            B_ACTION_USE_MOVE,
+            0
+        );
         BtlController_Complete(battler);
     }
     else if (JOY_NEW(B_BUTTON))
     {
         PlaySE(SE_SELECT);
-        gBattleStruct->actingPartyIndexes[battler] = gBattlerPartyIndexes[battler];
-        gBattleStruct->reserveAttackerSelectionReady &= ~(1u << battler);
-        PlayerHandleChooseAction(battler);
-    }
-    else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1))
+
+        gBattleStruct->actingPartyIndexes[battler] =
+            gBattlerPartyIndexes[battler];
+
+        gBattleStruct->reserveAttackerSelectionReady &=
+            ~(1u << battler);
+
+        gMoveSelectionCursor[battler] = 0;
+        gMultiUsePlayerCursor = GetOpposingSideBattler(battler);
+
+        if (sUsingCompactMoveList)
+        {
+            // We arrived from the move selector. Properly cancel the engine's
+            // pending choose-move command.
+            sUsingCompactMoveList = FALSE;
+
+            BtlController_EmitTwoReturnValues(
+                battler,
+                B_COMM_TO_ENGINE,
+                B_ACTION_EXEC_SCRIPT,
+                0xFFFF
+            );
+
+            BtlController_Complete(battler);
+        }
+        else
+        {
+            // We arrived directly from the main action menu. No engine command
+            // needs cancelling; simply redraw that menu.
+            PlayerHandleChooseAction(battler);
+        }
+    }   
+     else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1))
     {
         PlaySE(SE_SELECT);
         *cursor ^= 1;
@@ -693,11 +738,6 @@ static void DrawModernActionMenu(enum BattlerId battler)
     }
 
     FillWindowPixelBuffer(B_WIN_ACTION_PROMPT, PIXEL_FILL(0xE));
-    if (!ExtendedOptions_Get(EXT_OPT_OPPONENT_INFO))
-    {
-        goto finish;
-    }
-
     AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 0, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, sEnemyInfo);
 
@@ -752,7 +792,6 @@ static void DrawModernActionMenu(enum BattlerId battler)
     AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 20, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
 
-finish:
     ScrollWindow(B_WIN_ACTION_MENU, 0, 2, PIXEL_FILL(0xE));
     ScrollWindow(B_WIN_ACTION_PROMPT, 0, 2, PIXEL_FILL(0xE));
     PutWindowTilemap(B_WIN_ACTION_MENU);
@@ -808,8 +847,22 @@ void HandleInputChooseTarget(enum BattlerId battler)
         B_POSITION_OPPONENT_RIGHT,
         B_POSITION_OPPONENT_LEFT,
     };
-    enum Move move = GetMonData(GetBattlerMon(battler), MON_DATA_MOVE1 + gMoveSelectionCursor[battler]);
-    enum MoveTarget moveTarget = GetBattlerMoveTargetType(battler, move);
+enum Move move;
+
+if (gBattleStruct->reserveAttackerSelectionReady & (1u << battler))
+{
+    struct ChooseMoveStruct *moveInfo =
+        (struct ChooseMoveStruct *)&gBattleResources->bufferA[battler][4];
+
+    move = moveInfo->moves[gMoveSelectionCursor[battler]];
+}
+else
+{
+    move = GetMonData(
+        GetBattlerMon(battler),
+        MON_DATA_MOVE1 + gMoveSelectionCursor[battler]
+    );
+}    enum MoveTarget moveTarget = GetBattlerMoveTargetType(battler, move);
 
     DoBounceEffect(gMultiUsePlayerCursor, BOUNCE_HEALTHBOX, 15, 1);
     for (i = 0; i < gBattlersCount; i++)
@@ -1082,6 +1135,14 @@ void HandleInputChooseMove(enum BattlerId battler)
     u32 canSelectTarget = 0;
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
 
+    if (sBlockCompactAUntilReleased[battler])
+    {
+        if (JOY_HELD(A_BUTTON))
+            return;
+
+        sBlockCompactAUntilReleased[battler] = FALSE;
+    }
+
     if (JOY_HELD(DPAD_ANY) && gSaveBlock2Ptr->optionsButtonMode == OPTIONS_BUTTON_MODE_L_EQUALS_A)
         gPlayerDpadHoldFrames++;
     else
@@ -1189,16 +1250,19 @@ void HandleInputChooseMove(enum BattlerId battler)
     {
         PlaySE(SE_SELECT);
         gBattleStruct->gimmick.playerSelect = FALSE;
-        if (sUsingCompactMoveList)
-        {
-            // In the custom flow, back out to the attacker picker first.
-            // Pressing B there returns to the ordinary battle action menu.
-            gBattleStruct->zmove.viewing = FALSE;
-            HideGimmickTriggerSprite();
-            TryToHideMoveInfoWindow();
-            OpenCompactAttackerPicker(battler);
-            return;
-        }
+if (sUsingCompactMoveList)
+{
+    gBattleStruct->zmove.viewing = FALSE;
+
+    gMoveSelectionCursor[battler] = 0;
+    gMultiUsePlayerCursor = GetOpposingSideBattler(battler);
+    sBlockCompactAUntilReleased[battler] = TRUE;
+
+    HideGimmickTriggerSprite();
+    TryToHideMoveInfoWindow();
+    OpenCompactAttackerPicker(battler);
+    return;
+}
 
         if (gBattleStruct->zmove.viewing)
         {
@@ -2321,14 +2385,14 @@ static void DrawCompactMoveInfo(enum BattlerId battler)
 
     type = GetMoveType(move);
     foeEffectiveness = EFFECTIVENESS_CANNOT_VIEW;
-    if (ExtendedOptions_Get(EXT_OPT_EFFECTIVENESS_HINTS) && !IsBattleMoveStatus(move))
+    if (!IsBattleMoveStatus(move))
         foeEffectiveness = CheckCompactTargetTypeEffectiveness(battler);
 
     FillWindowPixelBuffer(B_WIN_MOVE_DESCRIPTION, PIXEL_FILL(0xE));
 
     // Keep the description to two rows with a 2px gap between their glyphs.
     description = GetMoveDescription(move);
-    for (line = 0; ExtendedOptions_Get(EXT_OPT_MOVE_INFO) && line < 2 && *description != EOS; line++)
+    for (line = 0; line < 2 && *description != EOS; line++)
     {
         description = BuildCompactDescriptionLine(description, gDisplayedStringBattle,
                                                    WindowWidthPx(B_WIN_MOVE_DESCRIPTION));
@@ -2660,7 +2724,7 @@ void InitMoveSelectionsVarsAndStrings(enum BattlerId battler)
     LoadTypeIcons(battler);
     sUsingCompactMoveList = TRUE;
     DrawCompactMoveList(battler);
-    gMultiUsePlayerCursor = 0xFF;
+gMultiUsePlayerCursor = GetOpposingSideBattler(battler);
     MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
     TryMoveSelectionDisplayMoveDescription(battler);
 }
