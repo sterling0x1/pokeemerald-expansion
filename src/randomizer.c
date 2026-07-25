@@ -6,6 +6,7 @@
 #include "randomizer.h"
 #include "config/randomizer.h"
 #include "constants/pokedex.h"
+#include "constants/characters.h"
 
 u32 Randomizer_GetSeed(void)
 {
@@ -21,8 +22,15 @@ u32 Randomizer_GetSeed(void)
 void Randomizer_InitNewGameSeed(void)
 {
     Randomizer_RerollSeed();
+
     Randomizer_SetWildEnabled(RANDOMIZER_WILD_POKEMON);
     Randomizer_SetStarterEnabled(RANDOMIZER_STARTERS);
+
+    // Use the expansion's existing National Dex enable routine here.
+    // Replace EnableNationalPokedex() with the correct helper if the project
+    // uses a different function name.
+    EnableNationalPokedex();
+
     VarSet(VAR_RANDOMIZER_SETTINGS_INITIALIZED, TRUE);
 }
 
@@ -76,14 +84,16 @@ static u32 RandomizerHash(u32 value)
     value ^= value >> 16;
     return value;
 }
-
 static bool32 IsRandomizerEligibleSpecies(enum Species species)
 {
-    const struct SpeciesInfo *info = &gSpeciesInfo[species];
+    const struct SpeciesInfo *info;
 
-    return species != SPECIES_NONE
-        && species < NUM_SPECIES
-        && info->speciesName[0] != 0
+    if (species == SPECIES_NONE || species >= NUM_SPECIES)
+        return FALSE;
+
+    info = &gSpeciesInfo[species];
+
+    return info->speciesName[0] != EOS
         && !info->isTotem
         && !info->isMegaEvolution
         && !info->isPrimalReversion
