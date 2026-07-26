@@ -600,6 +600,10 @@ struct BattleStruct
     u8 reserveAttackerSelectionReady; // Bitfield: the in-battle attacker grid has already selected a party slot.
     u8 reserveAttackerSavedPartyIndexes[MAX_BATTLERS_COUNT];
     struct BattlePokemon reserveAttackerSavedBattleMons[MAX_BATTLERS_COUNT];
+    // Persistent runtime state for off-field reserve attackers.
+    struct BattlePokemon reserveAttackerRuntimeMons[PARTY_SIZE];
+    u8 reserveAttackerRuntimeValid;
+    u16 reserveAttackerLockedMoves[PARTY_SIZE];
     u8 monToSwitchIntoId[MAX_BATTLERS_COUNT];
     u8 battlerPartyOrders[MAX_BATTLERS_COUNT][PARTY_SIZE / 2];
     u8 runTries;
