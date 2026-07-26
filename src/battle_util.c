@@ -378,17 +378,47 @@ static bool32 IsUsingReserveAttacker(enum BattlerId battler)
         && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler];
 }
 
-static void BeginReserveAttackerAction(enum BattlerId battler)
+sstatic void BeginReserveAttackerAction(enum BattlerId battler)
 {
     u8 partyIndex = gBattleStruct->actingPartyIndexes[battler];
+    struct Pokemon *reserveMon = &gParties[B_TRAINER_PLAYER][partyIndex];
+    struct BattlePokemon freshBattleMon;
 
     gBattleStruct->reserveAttackerSavedBattleMons[battler] = gBattleMons[battler];
     gBattleStruct->reserveAttackerSavedPartyIndexes[battler] = gBattlerPartyIndexes[battler];
     gBattleStruct->reserveAttackerActive |= 1u << battler;
 
-    // The move engine sees the reserve Pokémon's battle data, but its sprite is never switched in.
     gBattlerPartyIndexes[battler] = partyIndex;
-    PokemonToBattleMon(&gParties[B_TRAINER_PLAYER][partyIndex], &gBattleMons[battler]);
+    PokemonToBattleMon(reserveMon, &freshBattleMon);
+
+    freshBattleMon.metLevel = GetMonData(reserveMon, MON_DATA_MET_LEVEL);
+
+    if (gBattleStruct->reserveAttackerRuntimeValid & (1u << partyIndex))
+    {
+        gBattleMons[battler] =
+            gBattleStruct->reserveAttackerRuntimeMons[partyIndex];
+
+        gBattleMons[battler].hp = freshBattleMon.hp;
+        gBattleMons[battler].maxHP = freshBattleMon.maxHP;
+        gBattleMons[battler].status1 = freshBattleMon.status1;
+        gBattleMons[battler].level = freshBattleMon.level;
+        gBattleMons[battler].metLevel = freshBattleMon.metLevel;
+
+        for (u32 i = 0; i < MAX_MON_MOVES; i++)
+        {
+            gBattleMons[battler].moves[i] = freshBattleMon.moves[i];
+            gBattleMons[battler].pp[i] = freshBattleMon.pp[i];
+        }
+
+        gLockedMoves[battler] =
+            gBattleStruct->reserveAttackerLockedMoves[partyIndex];
+    }
+    else
+    {
+        gBattleMons[battler] = freshBattleMon;
+        gLockedMoves[battler] = MOVE_NONE;
+    }
+
     gBattleMons[battler].ability = ABILITY_NONE;
 }
 
@@ -396,12 +426,25 @@ static void RestoreReserveAttackerAction(enum BattlerId battler)
 {
     if (gBattleStruct->reserveAttackerActive & (1u << battler))
     {
-        gBattleMons[battler] = gBattleStruct->reserveAttackerSavedBattleMons[battler];
-        gBattlerPartyIndexes[battler] = gBattleStruct->reserveAttackerSavedPartyIndexes[battler];
+        u8 partyIndex = gBattlerPartyIndexes[battler];
+
+        gBattleStruct->reserveAttackerRuntimeMons[partyIndex] =
+            gBattleMons[battler];
+
+        gBattleStruct->reserveAttackerLockedMoves[partyIndex] =
+            gLockedMoves[battler];
+
+        gBattleStruct->reserveAttackerRuntimeValid |=
+            1u << partyIndex;
+
+        gBattleMons[battler] =
+            gBattleStruct->reserveAttackerSavedBattleMons[battler];
+
+        gBattlerPartyIndexes[battler] =
+            gBattleStruct->reserveAttackerSavedPartyIndexes[battler];
+
         gBattleStruct->reserveAttackerActive &= ~(1u << battler);
 
-        // The move used the reserve Pokémon's temporary battle data. Refresh the
-        // on-screen HP box immediately after restoring the actual active Pokémon.
         BtlController_EmitHealthBarUpdate(battler, B_COMM_TO_CONTROLLER, 0);
         MarkBattlerForControllerExec(battler);
     }
@@ -1366,7 +1409,23 @@ u32 TrySetCantSelectMoveBattleScript(enum BattlerId battler)
 {
     u32 limitations = 0;
     u8 moveId = gBattleResources->bufferB[battler][2] & ~RET_GIMMICK;
-    enum Move move = gBattleMons[battler].moves[moveId];
+    bool32 isReserveAttackerSelection = IsUsingReserveAttacker(battler);
+    enum Move move;
+    u8 currentPp;
+
+    if (isReserveAttackerSelection)
+    {
+        u8 partyIndex = gBattleStruct->actingPartyIndexes[battler];
+        struct Pokemon *mon = &gPlayerParty[partyIndex];
+
+        move = GetMonData(mon, MON_DATA_MOVE1 + moveId);
+        currentPp = GetMonData(mon, MON_DATA_PP1 + moveId);
+    }
+    else
+    {
+        move = gBattleMons[battler].moves[moveId];
+        currentPp = gBattleMons[battler].pp[moveId];
+    }
     enum HoldEffect holdEffect = GetBattlerHoldEffect(battler);
     u16 *choicedMove = &gBattleStruct->choicedMove[battler];
     enum BattleMoveEffects moveEffect = GetMoveEffect(move);
@@ -1598,7 +1657,7 @@ u32 TrySetCantSelectMoveBattleScript(enum BattlerId battler)
         }
     }
 
-    if (gBattleMons[battler].pp[moveId] == 0)
+if (currentPp == 0)
     {
         if (gBattleTypeFlags & BATTLE_TYPE_PALACE)
         {

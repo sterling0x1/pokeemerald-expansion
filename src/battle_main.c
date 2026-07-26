@@ -4142,6 +4142,49 @@ static void EmitChooseMoveForBattler(enum BattlerId battler)
     MarkBattlerForControllerExec(battler);
 }
 
+static bool32 TrySelectLockedReserveAttacker(enum BattlerId battler)
+{
+    u8 activePartyIndex;
+
+    // Reserve attackers are currently supported only for the player in singles.
+    if (!IsOnPlayerSide(battler) || IsDoubleBattle())
+        return FALSE;
+
+    activePartyIndex = gBattlerPartyIndexes[battler];
+
+    for (u8 partyIndex = 0; partyIndex < PARTY_SIZE; partyIndex++)
+    {
+        struct BattlePokemon *runtimeMon;
+
+        // Do not treat the currently active Pokémon as a reserve attacker.
+        if (partyIndex == activePartyIndex)
+            continue;
+
+        if (!(gBattleStruct->reserveAttackerRuntimeValid & (1u << partyIndex)))
+            continue;
+
+        runtimeMon =
+            &gBattleStruct->reserveAttackerRuntimeMons[partyIndex];
+
+        if (runtimeMon->volatiles.multipleTurns
+            || runtimeMon->volatiles.rechargeTimer > 0)
+        {
+            /*
+             * Make the saved reserve Pokémon the acting party member for
+             * this turn and restore its locked move before action ordering.
+             */
+            gBattleStruct->actingPartyIndexes[battler] = partyIndex;
+
+            gLockedMoves[battler] =
+                gBattleStruct->reserveAttackerLockedMoves[partyIndex];
+
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
 static void HandleTurnActionSelectionState(void)
 {
     s32 i;
@@ -4183,12 +4226,13 @@ static void HandleTurnActionSelectionState(void)
                 }
                 else
                 {
-                    if (gBattleMons[battler].volatiles.multipleTurns
-                        || gBattleMons[battler].volatiles.rechargeTimer > 0)
-                    {
-                        gChosenActionByBattler[battler] = B_ACTION_USE_MOVE;
-                        gBattleCommunication[battler] = STATE_WAIT_ACTION_CONFIRMED_STANDBY;
-                    }
+if (gBattleMons[battler].volatiles.multipleTurns
+    || gBattleMons[battler].volatiles.rechargeTimer > 0
+    || TrySelectLockedReserveAttacker(battler))
+{
+    gChosenActionByBattler[battler] = B_ACTION_USE_MOVE;
+    gBattleCommunication[battler] = STATE_WAIT_ACTION_CONFIRMED_STANDBY;
+}
                     else if (WILD_DOUBLE_BATTLE
                              && position == B_POSITION_PLAYER_RIGHT
                              && (gBattleStruct->throwingPokeBall || gChosenActionByBattler[GetBattlerAtPosition(B_POSITION_PLAYER_LEFT)] == B_ACTION_RUN)
