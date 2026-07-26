@@ -1657,7 +1657,7 @@ u32 TrySetCantSelectMoveBattleScript(enum BattlerId battler)
         }
     }
 
-if (currentPp == 0)
+    if (currentPp == 0)
     {
         if (gBattleTypeFlags & BATTLE_TYPE_PALACE)
         {

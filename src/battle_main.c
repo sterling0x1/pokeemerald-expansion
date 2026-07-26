@@ -4163,8 +4163,7 @@ static bool32 TrySelectLockedReserveAttacker(enum BattlerId battler)
         if (!(gBattleStruct->reserveAttackerRuntimeValid & (1u << partyIndex)))
             continue;
 
-        runtimeMon =
-            &gBattleStruct->reserveAttackerRuntimeMons[partyIndex];
+        runtimeMon = &gBattleStruct->reserveAttackerRuntimeMons[partyIndex];
 
         if (runtimeMon->volatiles.multipleTurns
             || runtimeMon->volatiles.rechargeTimer > 0)
@@ -4175,8 +4174,7 @@ static bool32 TrySelectLockedReserveAttacker(enum BattlerId battler)
              */
             gBattleStruct->actingPartyIndexes[battler] = partyIndex;
 
-            gLockedMoves[battler] =
-                gBattleStruct->reserveAttackerLockedMoves[partyIndex];
+            gLockedMoves[battler] = gBattleStruct->reserveAttackerLockedMoves[partyIndex];
 
             return TRUE;
         }
@@ -4226,13 +4224,13 @@ static void HandleTurnActionSelectionState(void)
                 }
                 else
                 {
-if (gBattleMons[battler].volatiles.multipleTurns
-    || gBattleMons[battler].volatiles.rechargeTimer > 0
-    || TrySelectLockedReserveAttacker(battler))
-{
-    gChosenActionByBattler[battler] = B_ACTION_USE_MOVE;
-    gBattleCommunication[battler] = STATE_WAIT_ACTION_CONFIRMED_STANDBY;
-}
+                    if (gBattleMons[battler].volatiles.multipleTurns
+                        || gBattleMons[battler].volatiles.rechargeTimer > 0
+                        || TrySelectLockedReserveAttacker(battler))
+                    {
+                        gChosenActionByBattler[battler] = B_ACTION_USE_MOVE;
+                        gBattleCommunication[battler] = STATE_WAIT_ACTION_CONFIRMED_STANDBY;
+                    }
                     else if (WILD_DOUBLE_BATTLE
                              && position == B_POSITION_PLAYER_RIGHT
                              && (gBattleStruct->throwingPokeBall || gChosenActionByBattler[GetBattlerAtPosition(B_POSITION_PLAYER_LEFT)] == B_ACTION_RUN)
