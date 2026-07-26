@@ -378,7 +378,7 @@ static bool32 IsUsingReserveAttacker(enum BattlerId battler)
         && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler];
 }
 
-sstatic void BeginReserveAttackerAction(enum BattlerId battler)
+static void BeginReserveAttackerAction(enum BattlerId battler)
 {
     u8 partyIndex = gBattleStruct->actingPartyIndexes[battler];
     struct Pokemon *reserveMon = &gParties[B_TRAINER_PLAYER][partyIndex];
