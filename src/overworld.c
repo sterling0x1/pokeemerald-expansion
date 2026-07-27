@@ -3,6 +3,7 @@
 #include "battle_pyramid.h"
 #include "battle_setup.h"
 #include "battle_util.h"
+#include "extended_options.h"
 #include "berry.h"
 #include "bg.h"
 #include "cable_club.h"
@@ -10,7 +11,6 @@
 #include "clock.h"
 #include "dexnav.h"
 #include "event_data.h"
-#include "extended_options.h"
 #include "event_object_movement.h"
 #include "event_scripts.h"
 #include "fake_rtc.h"
@@ -2124,6 +2124,8 @@ void CB2_ContinueSavedGame(void)
     ResetSafariZoneFlag_();
     if (gSaveFileStatus == SAVE_STATUS_ERROR)
         ResetWinStreaks();
+
+    ExtendedOptions_MigrateSave();
 
     LoadSaveblockMapHeader();
     ClearDiveAndHoleWarps();

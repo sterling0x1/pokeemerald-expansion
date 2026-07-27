@@ -391,7 +391,6 @@ void CB2_InitOptionMenu(void)
     {
         u8 taskId;
 
-        ExtendedOptions_Init();
         taskId = CreateTask(Task_OptionMenuFadeIn, 0);
         gTasks[taskId].tSelection = 0;
         gTasks[taskId].tScrollTop = 0;

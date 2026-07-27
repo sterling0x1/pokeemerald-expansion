@@ -194,7 +194,7 @@ SeedRng(
     PlayTimeCounter_Reset();
     ClearPokedexFlags();
     InitEventData();
-    ExtendedOptions_Init();
+    ExtendedOptions_InitNewSave();
     Randomizer_InitNewGameSeed();
     ClearTVShowData();
     ResetGabbyAndTy();

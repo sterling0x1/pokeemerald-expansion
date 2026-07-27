@@ -117,11 +117,8 @@ void ExtendedOptions_Set(enum ExtendedOption option, u8 value)
     SetWord(bits->word, word);
 }
 
-void ExtendedOptions_Init(void)
+static void SetExtendedOptionsDefaults(void)
 {
-    if (VarGet(VAR_EXTENDED_OPTIONS_INITIALIZED) == EXTENDED_OPTIONS_MAGIC)
-        return;
-
     VarSet(VAR_EXTENDED_OPTIONS_1, 0);
     VarSet(VAR_EXTENDED_OPTIONS_2, 0);
     VarSet(VAR_EXTENDED_OPTIONS_3, 0);
@@ -137,6 +134,19 @@ void ExtendedOptions_Init(void)
     ExtendedOptions_Set(EXT_OPT_ENCOUNTER_STYLE, ENCOUNTER_STYLE_VISIBLE);
     ExtendedOptions_Set(EXT_OPT_SHINY_ODDS, SHINY_ODDS_8192);
     ExtendedOptions_Set(EXT_OPT_DIFFICULTY, DIFFICULTY_NORMAL);
+}
 
+void ExtendedOptions_InitNewSave(void)
+{
+    SetExtendedOptionsDefaults();
+    VarSet(VAR_EXTENDED_OPTIONS_INITIALIZED, EXTENDED_OPTIONS_MAGIC);
+}
+
+void ExtendedOptions_MigrateSave(void)
+{
+    if (VarGet(VAR_EXTENDED_OPTIONS_INITIALIZED) == EXTENDED_OPTIONS_MAGIC)
+        return;
+
+    SetExtendedOptionsDefaults();
     VarSet(VAR_EXTENDED_OPTIONS_INITIALIZED, EXTENDED_OPTIONS_MAGIC);
 }

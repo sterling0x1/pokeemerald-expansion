@@ -73,7 +73,8 @@ enum
     LEVEL_CAPS_HARD,
 };
 
-void ExtendedOptions_Init(void);
+void ExtendedOptions_InitNewSave(void);
+void ExtendedOptions_MigrateSave(void);
 u8 ExtendedOptions_Get(enum ExtendedOption option);
 void ExtendedOptions_Set(enum ExtendedOption option, u8 value);
 u8 ExtendedOptions_GetMax(enum ExtendedOption option);
