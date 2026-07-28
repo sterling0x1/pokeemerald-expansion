@@ -1749,13 +1749,106 @@ static void CB2_HandleStartMultiBattle(void)
     }
 }
 
+static u8 NativeBattleSpeed_GetTickBudget(void)
+{
+    switch (ExtendedOptions_Get(EXT_OPT_BATTLE_SPEED))
+    {
+    case BATTLE_SPEED_FAST:
+        return 2;
+    case BATTLE_SPEED_INSTANT:
+        return 4;
+    case BATTLE_SPEED_NORMAL:
+    default:
+        return 1;
+    }
+}
+
+static bool32 NativeBattleSpeed_CanRunExtraTick(void)
+{
+    if (gTestRunnerEnabled)
+        return FALSE;
+
+    // Link and recorded battles must remain deterministic between peers/playback.
+    if (gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED | BATTLE_TYPE_RECORDED_LINK))
+        return FALSE;
+
+    // Stop immediately if the battle callbacks have changed during this frame.
+    if (gMain.callback1 != BattleMainCB1 || gMain.callback2 != BattleMainCB2)
+        return FALSE;
+
+    if (gBattleMainFunc == NULL || gBattleMainFunc == HandleTurnActionSelectionState)
+        return FALSE;
+
+    // Palette blending is hardware-facing and should advance once per displayed frame.
+    if (gPaletteFade.active)
+        return FALSE;
+
+    // Never process the same edge/repeat input in more than one simulation tick.
+    if (gMain.newKeysRaw != 0 || gMain.newKeys != 0 || gMain.newAndRepeatedKeys != 0)
+        return FALSE;
+
+    return TRUE;
+}
+
+static void NativeBattleSpeed_RunExtraTick(void)
+{
+    u16 savedHeldKeysRaw = gMain.heldKeysRaw;
+    u16 savedHeldKeys = gMain.heldKeys;
+    u16 savedNewKeysRaw = gMain.newKeysRaw;
+    u16 savedNewKeys = gMain.newKeys;
+    u16 savedNewAndRepeatedKeys = gMain.newAndRepeatedKeys;
+    u16 savedWatchedKeysPressed = gMain.watchedKeysPressed;
+
+    // Input is sampled once per displayed frame. Extra simulation ticks must
+    // not reuse held, newly pressed, repeated, or watched-key input.
+    gMain.heldKeysRaw = 0;
+    gMain.heldKeys = 0;
+    gMain.newKeysRaw = 0;
+    gMain.newKeys = 0;
+    gMain.newAndRepeatedKeys = 0;
+    gMain.watchedKeysPressed = FALSE;
+
+    BattleMainCB1();
+    AnimateSprites();
+    RunTextPrinters();
+    RunTasks();
+
+    gMain.heldKeysRaw = savedHeldKeysRaw;
+    gMain.heldKeys = savedHeldKeys;
+    gMain.newKeysRaw = savedNewKeysRaw;
+    gMain.newKeys = savedNewKeys;
+    gMain.newAndRepeatedKeys = savedNewAndRepeatedKeys;
+    gMain.watchedKeysPressed = savedWatchedKeysPressed;
+}
+
 void BattleMainCB2(void)
 {
+    u8 tick;
+    u8 tickBudget = NativeBattleSpeed_GetTickBudget();
+    bool32 ranExtraTick = FALSE;
+
+    // Normal displayed-frame update. Keep the original order untouched.
     AnimateSprites();
     BuildOamBuffer();
     RunTextPrinters();
     UpdatePaletteFade();
     RunTasks();
+
+    // The main loop has already called BattleMainCB1 once for this displayed
+    // frame. Run only the additional coordinated simulation ticks here.
+    for (tick = 1; tick < tickBudget; tick++)
+    {
+        if (!NativeBattleSpeed_CanRunExtraTick())
+            break;
+
+        NativeBattleSpeed_RunExtraTick();
+        ranExtraTick = TRUE;
+    }
+
+    // Extra sprite updates happened after the normal OAM build, so rebuild once
+    // with the final positions that should be rendered this displayed frame.
+    if (ranExtraTick)
+        BuildOamBuffer();
 
     if (JOY_HELD(B_BUTTON) && gBattleTypeFlags & BATTLE_TYPE_RECORDED && RecordedBattle_CanStopPlayback())
     {
