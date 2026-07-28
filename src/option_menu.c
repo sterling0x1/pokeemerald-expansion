@@ -169,10 +169,6 @@ static const enum OptionId sBattleOptions[] =
     OPT_FAST_INTRO,
     OPT_FAST_HP,
     OPT_FAST_EXP,
-    OPT_MOVE_INFO,
-    OPT_EFFECTIVENESS,
-    OPT_OPPONENT_INFO,
-    OPT_BENCH_ATTACKER,
 };
 
 static const enum OptionId sGameplayOptions[] =
@@ -186,8 +182,6 @@ static const enum OptionId sGameplayOptions[] =
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
     OPT_SHINY_ODDS,
-    OPT_LEVEL_CAPS,
-    OPT_NUZLOCKE,
 };
 
 static const enum OptionId sRandomizerOptions[] =
