@@ -4,6 +4,8 @@ This repository is a customised `pokeemerald-expansion` fork containing the proj
 
 Milestone 2.7 is a stable development checkpoint, **not a finished 3.0 release**. The current build contains substantial working functionality, but the full options system and battle engine still require broad regression testing and further bug fixing before the core can be considered complete.
 
+This fork is currently based on [RHH's pokeemerald-expansion 1.16.3](https://github.com/rh-hideout/pokeemerald-expansion/).
+
 ## Included Systems and Patches
 
 The current project state includes:
