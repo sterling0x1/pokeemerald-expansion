@@ -1476,6 +1476,17 @@ void Task_HandleChooseMonInput(u8 taskId)
     {
         s8 *slotPtr = GetCurrentPartySlotPtr();
 
+        if (JOY_NEW(R_BUTTON)
+         && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
+         && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
+         && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON)
+        {
+            PlaySE(SE_SELECT);
+            sPartyMenuInternal->exitCallback = OpenPokemonStorageFromPartyMenu;
+            Task_ClosePartyMenu(taskId);
+            return;
+        }
+
         switch (PartyMenuButtonHandler(slotPtr))
         {
         case A_BUTTON: // Selected mon
@@ -2806,7 +2817,12 @@ static void PartyMenuRemoveWindow(u8 *ptr)
 
 void DisplayPartyMenuStdMessage(u32 stringId)
 {
+    static const u8 sText_BoxShortcut[] = _("{R_BUTTON} BOX");
     u8 *windowPtr = &sPartyMenuInternal->windowId[1];
+    bool32 showBoxShortcut = stringId == PARTY_MSG_CHOOSE_MON
+                          && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
+                          && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
+                          && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON;
 
     if (*windowPtr != WINDOW_NONE)
         PartyMenuRemoveWindow(windowPtr);
@@ -2852,6 +2868,12 @@ void DisplayPartyMenuStdMessage(u32 stringId)
         DrawStdFrameWithCustomTileAndPalette(*windowPtr, FALSE, 0x4F, 13);
         StringExpandPlaceholders(gStringVar4, sActionStringTable[stringId]);
         AddTextPrinterParameterized(*windowPtr, FONT_NORMAL, gStringVar4, 0, 1, 0, 0);
+        if (showBoxShortcut)
+        {
+            AddTextPrinterParameterized(*windowPtr, FONT_NORMAL, sText_BoxShortcut,
+                                        GetStringRightAlignXOffset(FONT_NORMAL, sText_BoxShortcut, WindowWidthPx(*windowPtr) - 2),
+                                        1, 0, 0);
+        }
         ScheduleBgCopyTilemapToVram(2);
     }
 }

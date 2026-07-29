@@ -540,6 +540,7 @@ struct PokemonStorageSystemData
 static u32 sItemIconGfxBuffer[98];
 
 EWRAM_DATA static u8 sPreviousBoxOption = 0;
+EWRAM_DATA static bool8 sOpenedFromPartyMenu = FALSE;
 EWRAM_DATA static struct ChooseBoxMenu *sChooseBoxMenu = NULL;
 EWRAM_DATA static struct PokemonStorageSystemData *sStorage = NULL;
 EWRAM_DATA static bool8 sInPartyMenu = 0;
@@ -1627,6 +1628,13 @@ void ShowPokemonStorageSystemPC(void)
     LockPlayerFieldControls();
 }
 
+void OpenPokemonStorageFromPartyMenu(void)
+{
+    CleanupOverworldWindowsAndTilemaps();
+    sOpenedFromPartyMenu = TRUE;
+    EnterPokeStorage(OPTION_MOVE_MONS);
+}
+
 static void FieldTask_ReturnToPcMenu(void)
 {
     u8 taskId;
@@ -1663,6 +1671,14 @@ static void CreateMainMenu(u8 whichMenu, s16 *windowIdPtr)
 static void CB2_ExitPokeStorage(void)
 {
     sPreviousBoxOption = GetCurrentBoxOption();
+
+    if (sOpenedFromPartyMenu)
+    {
+        sOpenedFromPartyMenu = FALSE;
+        SetMainCallback2(CB2_ReturnToFieldWithOpenMenu);
+        return;
+    }
+
     gFieldCallback = FieldTask_ReturnToPcMenu;
     SetMainCallback2(CB2_ReturnToField);
 }
