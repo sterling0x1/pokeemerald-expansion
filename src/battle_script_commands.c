@@ -35,6 +35,7 @@
 #include "m4a.h"
 #include "mail.h"
 #include "event_data.h"
+#include "extended_options.h"
 #include "pokemon_storage_system.h"
 #include "task.h"
 #include "naming_screen.h"
@@ -11225,6 +11226,8 @@ void ApplyExperienceMultipliers(s32 *expAmount, u8 expGetterMonId, u8 faintedBat
 
         *expAmount = value + 1;
     }
+
+    *expAmount *= ExtendedOptions_Get(EXT_OPT_EXP_MULTIPLIER) + 1;
 }
 
 void BS_ItemRestoreHP(void)

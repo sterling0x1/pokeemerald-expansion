@@ -34,7 +34,8 @@ static const struct OptionBits sOptionBits[EXT_OPT_COUNT] =
     [EXT_OPT_DIFFICULTY]           = {1,  3, 0x3},
     [EXT_OPT_ENCOUNTER_STYLE]      = {1,  5, 0x1},
     [EXT_OPT_FOLLOWER]             = {1,  6, 0x1},
-    [EXT_OPT_SHINY_ODDS] = {2, 0, 0xF},
+    [EXT_OPT_SHINY_ODDS]           = {2,  0, 0xF},
+    [EXT_OPT_EXP_MULTIPLIER]       = {2,  4, 0x3},
     [EXT_OPT_LEVEL_CAPS]           = {1, 10, 0x3},
     [EXT_OPT_NUZLOCKE]             = {1, 12, 0x1},
     [EXT_OPT_RANDOM_TRAINERS]      = {1, 13, 0x1},
@@ -81,6 +82,8 @@ u8 ExtendedOptions_GetMax(enum ExtendedOption option)
         return 2;
     case EXT_OPT_DIFFICULTY:
         return 2;
+    case EXT_OPT_EXP_MULTIPLIER:
+        return EXP_MULTIPLIER_4X;
     case EXT_OPT_SHINY_ODDS:
         return 8;
     default:

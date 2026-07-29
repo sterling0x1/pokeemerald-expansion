@@ -71,6 +71,7 @@ enum OptionId
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
     OPT_SHINY_ODDS,
+    OPT_EXP_MULTIPLIER,
     OPT_LEVEL_CAPS,
     OPT_NUZLOCKE,
     OPT_RANDOM_TRAINERS,
@@ -128,6 +129,7 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
     [OPT_ENCOUNTER_STYLE]     = COMPOUND_STRING("ENCOUNTER STYLE"),
     [OPT_FOLLOWER]            = COMPOUND_STRING("FOLLOWER POKéMON"),
     [OPT_SHINY_ODDS]          = COMPOUND_STRING("SHINY ODDS"),
+    [OPT_EXP_MULTIPLIER]      = COMPOUND_STRING("EXP MULTIPLIER"),
     [OPT_LEVEL_CAPS]          = COMPOUND_STRING("LEVEL CAPS"),
     [OPT_NUZLOCKE]            = COMPOUND_STRING("NUZLOCKE MODE"),
     [OPT_RANDOM_TRAINERS]     = COMPOUND_STRING("RANDOM TRAINERS"),
@@ -182,6 +184,7 @@ static const enum OptionId sGameplayOptions[] =
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
     OPT_SHINY_ODDS,
+    OPT_EXP_MULTIPLIER,
 };
 
 static const enum OptionId sRandomizerOptions[] =
@@ -286,6 +289,10 @@ static const u8 sTextOdds512[]     = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/512")
 static const u8 sTextOdds256[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/256");
 static const u8 sTextOdds128[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/128");
 static const u8 sTextOdds64[]  = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/64");
+static const u8 sTextExp1x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1x");
+static const u8 sTextExp2x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}2x");
+static const u8 sTextExp3x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}3x");
+static const u8 sTextExp4x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}4x");
 //static const u8 sTextAlways[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}ALWAYS");
 
 static const u16 sOptionMenuTextPal[] = INCGFX_U16("graphics/interface/option_menu_text.pal", ".gbapal");
@@ -441,6 +448,11 @@ case EXT_OPT_SHINY_ODDS:
     
     case EXT_OPT_LEVEL_CAPS:
         return value == LEVEL_CAPS_OFF ? sTextOff : value == LEVEL_CAPS_NORMAL ? sTextNormal : sTextHard;
+    case EXT_OPT_EXP_MULTIPLIER:
+        return value == EXP_MULTIPLIER_1X ? sTextExp1x
+             : value == EXP_MULTIPLIER_2X ? sTextExp2x
+             : value == EXP_MULTIPLIER_3X ? sTextExp3x
+             : sTextExp4x;
     default:
         return value ? sTextOn : sTextOff;
     }
@@ -471,6 +483,7 @@ static enum ExtendedOption OptionIdToExtended(enum OptionId option)
         [OPT_ENCOUNTER_STYLE]     = EXT_OPT_ENCOUNTER_STYLE,
         [OPT_FOLLOWER]            = EXT_OPT_FOLLOWER,
         [OPT_SHINY_ODDS]          = EXT_OPT_SHINY_ODDS,
+        [OPT_EXP_MULTIPLIER]      = EXT_OPT_EXP_MULTIPLIER,
         [OPT_LEVEL_CAPS]          = EXT_OPT_LEVEL_CAPS,
         [OPT_NUZLOCKE]            = EXT_OPT_NUZLOCKE,
         [OPT_RANDOM_TRAINERS]     = EXT_OPT_RANDOM_TRAINERS,
