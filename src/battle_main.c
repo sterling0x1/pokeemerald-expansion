@@ -540,7 +540,7 @@ static void CB2_InitBattleInternal(void)
     {
         gBattle_WIN0V = WIN_RANGE(DISPLAY_HEIGHT / 2, DISPLAY_HEIGHT / 2 + 1);
         ScanlineEffect_Clear();
-        if (!ExtendedOptions_Get(EXT_OPT_FAST_BATTLE_INTRO) && !gTestRunnerHeadless)
+        if (!gTestRunnerHeadless)
         {
             for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
             {
@@ -579,7 +579,7 @@ static void CB2_InitBattleInternal(void)
     LoadBattleTextboxAndBackground();
     ResetSpriteData();
     ResetTasks();
-    if (!ExtendedOptions_Get(EXT_OPT_FAST_BATTLE_INTRO) && !gTestRunnerHeadless)
+    if (!gTestRunnerHeadless)
         DrawBattleEntryBackground();
     FreeAllSpritePalettes();
     gReservedSpritePaletteCount = MAX_BATTLERS_COUNT;
