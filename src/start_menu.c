@@ -70,7 +70,9 @@ enum
     MENU_ACTION_PYRAMID_BAG,
     MENU_ACTION_DEBUG,
     MENU_ACTION_DEXNAV,
+#if MODULE_CHEATS_ENABLED
     MENU_ACTION_CHEATS,
+#endif
 };
 
 // Save status
@@ -106,7 +108,9 @@ static bool8 StartMenuPokeNavCallback(void);
 static bool8 StartMenuPlayerNameCallback(void);
 static bool8 StartMenuSaveCallback(void);
 static bool8 StartMenuOptionCallback(void);
+#if MODULE_CHEATS_ENABLED
 static bool8 StartMenuCheatsCallback(void);
+#endif
 static bool8 StartMenuExitCallback(void);
 static bool8 StartMenuSafariZoneRetireCallback(void);
 static bool8 StartMenuLinkModePlayerNameCallback(void);
@@ -191,7 +195,9 @@ static const struct WindowTemplate sWindowTemplate_PyramidPeak = {
 };
 
 static const u8 sText_MenuDebug[] = _("DEBUG");
+#if MODULE_CHEATS_ENABLED
 static const u8 sText_MenuCheats[] = _("CHEATS");
+#endif
 
 static const struct MenuAction sStartMenuItems[] =
 {
@@ -210,7 +216,9 @@ static const struct MenuAction sStartMenuItems[] =
     [MENU_ACTION_PYRAMID_BAG]     = {gText_MenuBag,     {.u8_void = StartMenuBattlePyramidBagCallback}},
     [MENU_ACTION_DEBUG]           = {sText_MenuDebug,   {.u8_void = StartMenuDebugCallback}},
     [MENU_ACTION_DEXNAV]          = {gText_MenuDexNav,  {.u8_void = StartMenuDexNavCallback}},
+#if MODULE_CHEATS_ENABLED
     [MENU_ACTION_CHEATS]          = {sText_MenuCheats,  {.u8_void = StartMenuCheatsCallback}},
+#endif
 };
 
 static const struct BgTemplate sBgTemplates_LinkBattleSave[] =
@@ -352,7 +360,9 @@ static void BuildNormalStartMenu(void)
 
     AddStartMenuAction(MENU_ACTION_PLAYER);
     AddStartMenuAction(MENU_ACTION_SAVE);
+#if MODULE_CHEATS_ENABLED
     AddStartMenuAction(MENU_ACTION_CHEATS);
+#endif
     AddStartMenuAction(MENU_ACTION_OPTION);
 }
 
@@ -368,7 +378,9 @@ static void BuildDebugStartMenu(void)
         AddStartMenuAction(MENU_ACTION_POKENAV);
     AddStartMenuAction(MENU_ACTION_PLAYER);
     AddStartMenuAction(MENU_ACTION_SAVE);
+#if MODULE_CHEATS_ENABLED
     AddStartMenuAction(MENU_ACTION_CHEATS);
+#endif
     AddStartMenuAction(MENU_ACTION_OPTION);
 }
 
@@ -795,6 +807,7 @@ static bool8 StartMenuOptionCallback(void)
     return FALSE;
 }
 
+#if MODULE_CHEATS_ENABLED
 static bool8 StartMenuCheatsCallback(void)
 {
     if (!gPaletteFade.active)
@@ -809,6 +822,7 @@ static bool8 StartMenuCheatsCallback(void)
     }
     return FALSE;
 }
+#endif // MODULE_CHEATS_ENABLED
 
 static bool8 StartMenuExitCallback(void)
 {

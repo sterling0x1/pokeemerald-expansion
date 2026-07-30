@@ -2,6 +2,7 @@
 #include "cheats.h"
 #include "extended_options.h"
 
+#if MODULE_CHEATS_ENABLED
 #define CHEAT_SAVE_MAGIC 0x43485431
 
 void Cheats_Init(void)
@@ -106,3 +107,4 @@ u32 Cheats_ApplyMartPrice(u32 price)
     }
 }
 bool32 Cheats_InfiniteRepelEnabled(void) { return Cheats_Get(CHEAT_INFINITE_REPEL); }
+#endif // MODULE_CHEATS_ENABLED

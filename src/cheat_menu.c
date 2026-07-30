@@ -18,6 +18,7 @@
 #include "constants/rgb.h"
 #include "constants/songs.h"
 
+#if MODULE_CHEATS_ENABLED
 #define tSelection data[0]
 #define tScroll data[1]
 #define VISIBLE_ROWS 4
@@ -68,7 +69,7 @@ static const u8 sDescriptions[CHEAT_COUNT + 1][80] =
     [CHEAT_HATCH_SPEED]      = _("Reduces Egg cycles while walking.\nINSTANT hatches on the next check."),
     [CHEAT_EV_GAIN]          = _("Disables or multiplies EVs awarded\nafter defeating Pokémon."),
     [CHEAT_MART_PRICES]      = _("Changes displayed and charged prices\nin standard Poké Marts."),
-    [CHEAT_INFINITE_REPEL]   = _("Repel steps stop decreasing after a\nRepel has been activated."),
+    [CHEAT_INFINITE_REPEL]   = _("Use a Repel first. Its active effect\nwill then remain until this is OFF."),
     [CHEAT_COUNT]            = _("Restore every cheat modifier to its\ndefault value. History remains marked."),
 };
 
@@ -275,3 +276,4 @@ static void Frame(u8 top, u8 height)
     FillBgTilemapBufferRect(1, BL, 1, top + height + 1, 1, 1, 7); FillBgTilemapBufferRect(1, BE, 2, top + height + 1, 26, 1, 7); FillBgTilemapBufferRect(1, BR, 28, top + height + 1, 1, 1, 7);
 }
 static void DrawBgWindowFrames(void) { Frame(0, 2); Frame(4, 8); Frame(14, 4); CopyBgTilemapBufferToVram(1); }
+#endif // MODULE_CHEATS_ENABLED
