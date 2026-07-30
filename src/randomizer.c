@@ -1,6 +1,7 @@
 #include "global.h"
 #include "event_data.h"
 #include "extended_options.h"
+#include "module_save.h"
 #include "nuzlocke.h"
 #include "pokemon.h"
 #include "random.h"
@@ -9,19 +10,102 @@
 #include "constants/pokedex.h"
 #include "constants/characters.h"
 
+#if MODULE_RANDOMIZER_ENABLED
+
+#define RANDOMIZER_SAVE_MAGIC   0x524E4431
+#define RANDOMIZER_SAVE_VERSION 1
+
+struct RandomizerSaveData
+{
+    u32 magic;
+    u32 seed;
+    u16 version;
+    u8 wildEnabled:1;
+    u8 startersEnabled:1;
+    u8 trainersEnabled:1;
+    u8 giftsStaticEnabled:1;
+    u8 allDataEnabled:1;
+    u8 unused:3;
+    u8 padding;
+};
+
+STATIC_ASSERT(sizeof(struct RandomizerSaveData) == 12, RandomizerSaveDataSize);
+
+static struct RandomizerSaveData *GetSaveData(void)
+{
+    u16 version;
+    u16 size;
+    struct RandomizerSaveData *data = ModuleSave_GetChunk(MODULE_ID_RANDOMIZER, &version, &size);
+
+    if (data == NULL || version != RANDOMIZER_SAVE_VERSION || size != sizeof(*data))
+        return NULL;
+    return data;
+}
+
+bool32 Randomizer_IsInitialized(void)
+{
+    return GetSaveData() != NULL;
+}
+
+void Randomizer_LoadSave(void)
+{
+    struct RandomizerSaveData legacy;
+    struct RandomizerSaveData *data;
+    u32 legacySeed;
+
+    data = GetSaveData();
+    if (data != NULL)
+        return;
+
+    memcpy(&legacy, gSaveBlock3Ptr->moduleLegacyData, sizeof(legacy));
+    legacySeed = VarGet(VAR_RANDOMIZER_SEED_LOW)
+               | ((u32)VarGet(VAR_RANDOMIZER_SEED_HIGH) << 16);
+    data = ModuleSave_RecreateChunk(MODULE_ID_RANDOMIZER, RANDOMIZER_SAVE_VERSION, sizeof(*data));
+    if (data == NULL)
+        return;
+    data->magic = RANDOMIZER_SAVE_MAGIC;
+    data->version = RANDOMIZER_SAVE_VERSION;
+
+    if (legacy.magic == RANDOMIZER_SAVE_MAGIC && legacy.version == RANDOMIZER_SAVE_VERSION)
+    {
+        *data = legacy;
+    }
+    else if (VarGet(VAR_RANDOMIZER_SETTINGS_INITIALIZED) == TRUE)
+    {
+        data->seed = legacySeed != 0 ? legacySeed : RANDOMIZER_FALLBACK_SEED;
+        data->wildEnabled = VarGet(VAR_RANDOMIZER_WILD_ENABLED) != FALSE;
+        data->startersEnabled = VarGet(VAR_RANDOMIZER_STARTERS_ENABLED) != FALSE;
+        data->trainersEnabled = ExtendedOptions_Get(EXT_OPT_RANDOM_TRAINERS);
+        data->giftsStaticEnabled = ExtendedOptions_Get(EXT_OPT_RANDOM_GIFTS_STATIC);
+        data->allDataEnabled = ExtendedOptions_Get(EXT_OPT_RANDOM_ALL_DATA);
+    }
+    else
+    {
+        // Saves created before the Randomizer existed remain non-randomized.
+        data->seed = RANDOMIZER_FALLBACK_SEED;
+    }
+}
+
 u32 Randomizer_GetSeed(void)
 {
-    u32 seed = VarGet(VAR_RANDOMIZER_SEED_LOW)
-             | ((u32)VarGet(VAR_RANDOMIZER_SEED_HIGH) << 16);
+    struct RandomizerSaveData *data;
 
-    if (seed == 0)
-        seed = RANDOMIZER_FALLBACK_SEED;
+    Randomizer_LoadSave();
+    data = GetSaveData();
 
-    return seed;
+    return data != NULL && data->seed != 0
+         ? data->seed
+         : RANDOMIZER_FALLBACK_SEED;
 }
 
 void Randomizer_InitNewGameSeed(void)
 {
+    struct RandomizerSaveData *data = ModuleSave_RecreateChunk(MODULE_ID_RANDOMIZER, RANDOMIZER_SAVE_VERSION, sizeof(*data));
+
+    if (data == NULL)
+        return;
+    data->magic = RANDOMIZER_SAVE_MAGIC;
+    data->version = RANDOMIZER_SAVE_VERSION;
     Randomizer_RerollSeed();
 
     Randomizer_SetWildEnabled(RANDOMIZER_WILD_POKEMON);
@@ -32,11 +116,11 @@ void Randomizer_InitNewGameSeed(void)
     // uses a different function name.
     EnableNationalPokedex();
 
-    VarSet(VAR_RANDOMIZER_SETTINGS_INITIALIZED, TRUE);
 }
 
 void Randomizer_RerollSeed(void)
 {
+    struct RandomizerSaveData *data;
     u32 oldSeed = Randomizer_GetSeed();
     u32 seed;
 
@@ -45,34 +129,104 @@ void Randomizer_RerollSeed(void)
         seed = Random32();
     } while (seed == 0 || seed == oldSeed);
 
-    VarSet(VAR_RANDOMIZER_SEED_LOW, seed);
-    VarSet(VAR_RANDOMIZER_SEED_HIGH, seed >> 16);
+    data = GetSaveData();
+    if (data != NULL)
+        data->seed = seed;
 }
 
 bool32 Randomizer_IsWildEnabled(void)
 {
-    if (VarGet(VAR_RANDOMIZER_SETTINGS_INITIALIZED) != TRUE)
-        return FALSE;
+    struct RandomizerSaveData *data;
 
-    return VarGet(VAR_RANDOMIZER_WILD_ENABLED) != FALSE;
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && data->wildEnabled;
 }
 
 bool32 Randomizer_IsStarterEnabled(void)
 {
-    if (VarGet(VAR_RANDOMIZER_SETTINGS_INITIALIZED) != TRUE)
-        return FALSE;
+    struct RandomizerSaveData *data;
 
-    return VarGet(VAR_RANDOMIZER_STARTERS_ENABLED) != FALSE;
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && data->startersEnabled;
+}
+
+bool32 Randomizer_IsTrainerEnabled(void)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && data->trainersEnabled;
+}
+
+bool32 Randomizer_IsGiftStaticEnabled(void)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && data->giftsStaticEnabled;
+}
+
+bool32 Randomizer_IsAllDataEnabled(void)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && data->allDataEnabled;
 }
 
 void Randomizer_SetWildEnabled(bool32 enabled)
 {
-    VarSet(VAR_RANDOMIZER_WILD_ENABLED, enabled);
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->wildEnabled = enabled;
 }
 
 void Randomizer_SetStarterEnabled(bool32 enabled)
 {
-    VarSet(VAR_RANDOMIZER_STARTERS_ENABLED, enabled);
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->startersEnabled = enabled;
+}
+
+void Randomizer_SetTrainerEnabled(bool32 enabled)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->trainersEnabled = enabled;
+}
+
+void Randomizer_SetGiftStaticEnabled(bool32 enabled)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->giftsStaticEnabled = enabled;
+}
+
+void Randomizer_SetAllDataEnabled(bool32 enabled)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->allDataEnabled = enabled;
 }
 
 // Returns a stable pseudo-random value without consuming the battle/overworld RNG.
@@ -170,7 +324,7 @@ enum Species Randomizer_GetStarterSpecies(enum Species originalSpecies, u8 start
 
 enum Species Randomizer_GetTrainerSpecies(enum Species originalSpecies, u32 key)
 {
-    if (!ExtendedOptions_Get(EXT_OPT_RANDOM_TRAINERS))
+    if (!Randomizer_IsTrainerEnabled())
         return originalSpecies;
 
     return PickRandomizerSpecies(originalSpecies, Randomizer_GetSeed() ^ 0x54524149 ^ key);
@@ -178,8 +332,10 @@ enum Species Randomizer_GetTrainerSpecies(enum Species originalSpecies, u32 key)
 
 enum Species Randomizer_GetGiftStaticSpecies(enum Species originalSpecies, u32 key)
 {
-    if (!ExtendedOptions_Get(EXT_OPT_RANDOM_GIFTS_STATIC))
+    if (!Randomizer_IsGiftStaticEnabled())
         return originalSpecies;
 
     return PickRandomizerSpecies(originalSpecies, Randomizer_GetSeed() ^ 0x47494654 ^ key);
 }
+
+#endif // MODULE_RANDOMIZER_ENABLED

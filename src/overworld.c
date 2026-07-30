@@ -48,6 +48,7 @@
 #include "metatile_behavior.h"
 #include "mirage_tower.h"
 #include "money.h"
+#include "module_manager.h"
 #include "new_game.h"
 #include "nuzlocke.h"
 #include "oras_dowse.h"
@@ -1959,7 +1960,10 @@ void CB2_NewGame(void)
     StopMapMusic();
     ResetSafariZoneFlag_();
     NewGameInitData();
-    StartRandomizerSetupMenu(CB2_ContinueNewGame);
+    if (ModuleManager_IsEnabled(MODULE_ID_RANDOMIZER))
+        StartRandomizerSetupMenu(CB2_ContinueNewGame);
+    else
+        CB2_ContinueNewGame();
 }
 
 static void CB2_StartNuzlockeRandomizerSetup(void);
@@ -1977,7 +1981,10 @@ static void CB2_ReturnToNuzlockeSetup(void)
 
 static void CB2_StartNuzlockeRandomizerSetup(void)
 {
-    StartRandomizerSetupMenuWithBack(CB2_ContinueNewGame, CB2_ReturnToNuzlockeSetup);
+    if (ModuleManager_IsEnabled(MODULE_ID_RANDOMIZER))
+        StartRandomizerSetupMenuWithBack(CB2_ContinueNewGame, CB2_ReturnToNuzlockeSetup);
+    else
+        CB2_ContinueNewGame();
 }
 
 void CB2_NewNuzlockeGame(void)
@@ -2176,6 +2183,7 @@ void CB2_ContinueSavedGame(void)
         ResetWinStreaks();
 
     ExtendedOptions_MigrateSave();
+    ModuleManager_LoadSave();
 
     LoadSaveblockMapHeader();
     ClearDiveAndHoleWarps();

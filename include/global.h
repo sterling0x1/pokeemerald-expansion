@@ -280,6 +280,28 @@ struct CheatSaveData
     u16 unused:4;
 };
 
+#define MODULE_SAVE_MAX_CHUNKS 8
+#define MODULE_SAVE_DATA_CAPACITY 512
+#define MODULE_LEGACY_DATA_SIZE 12
+
+struct ModuleSaveEntry
+{
+    u16 id;
+    u16 version;
+    u16 offset;
+    u16 size;
+};
+
+struct ModuleSaveStore
+{
+    u32 magic;
+    u16 formatVersion;
+    u8 entryCount;
+    u8 unused;
+    struct ModuleSaveEntry entries[MODULE_SAVE_MAX_CHUNKS];
+    u8 data[MODULE_SAVE_DATA_CAPACITY];
+};
+
 struct SaveBlock3
 {
 #if OW_USE_FAKE_RTC
@@ -300,6 +322,10 @@ struct SaveBlock3
 #endif
     struct NuzlockeSaveData nuzlocke;
     struct CheatSaveData cheats;
+    // The first modular build stored Randomizer data directly at this offset.
+    // Preserve these bytes until its migration window is retired.
+    u8 moduleLegacyData[MODULE_LEGACY_DATA_SIZE];
+    struct ModuleSaveStore moduleSave;
 }; /* max size 1624 bytes */
 
 extern struct SaveBlock3 *gSaveBlock3Ptr;

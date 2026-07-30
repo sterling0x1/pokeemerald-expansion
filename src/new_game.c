@@ -2,7 +2,7 @@
 #include "clock.h"
 #include "new_game.h"
 #include "random.h"
-#include "randomizer.h"
+#include "module_manager.h"
 #include "pokemon.h"
 #include "roamer.h"
 #include "pokemon_size_record.h"
@@ -195,7 +195,7 @@ SeedRng(
     ClearPokedexFlags();
     InitEventData();
     ExtendedOptions_InitNewSave();
-    Randomizer_InitNewGameSeed();
+    ModuleManager_InitNewSave();
     ClearTVShowData();
     ResetGabbyAndTy();
     ClearSecretBases();

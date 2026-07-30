@@ -17,6 +17,7 @@
 #include "text_window.h"
 #include "window.h"
 #include "gba/m4a_internal.h"
+#include "config/modules.h"
 #include "constants/difficulty.h"
 #include "constants/rgb.h"
 
@@ -85,7 +86,9 @@ enum OptionSection
     SECTION_GENERAL,
     SECTION_BATTLE,
     SECTION_GAMEPLAY,
+#if MODULE_RANDOMIZER_ENABLED
     SECTION_RANDOMIZER,
+#endif
     SECTION_COUNT,
 };
 
@@ -141,14 +144,18 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
 static const u8 sSectionGeneral[]    = _("GENERAL");
 static const u8 sSectionBattle[]     = _("BATTLE");
 static const u8 sSectionGameplay[]   = _("GAMEPLAY");
+#if MODULE_RANDOMIZER_ENABLED
 static const u8 sSectionRandomizer[] = _("RANDOMIZER");
+#endif
 
 static const u8 *const sSectionNames[SECTION_COUNT] =
 {
     [SECTION_GENERAL]    = sSectionGeneral,
     [SECTION_BATTLE]     = sSectionBattle,
     [SECTION_GAMEPLAY]   = sSectionGameplay,
+#if MODULE_RANDOMIZER_ENABLED
     [SECTION_RANDOMIZER] = sSectionRandomizer,
+#endif
 };
 
 static const enum OptionId sGeneralOptions[] =
@@ -187,6 +194,7 @@ static const enum OptionId sGameplayOptions[] =
     OPT_EXP_MULTIPLIER,
 };
 
+#if MODULE_RANDOMIZER_ENABLED
 static const enum OptionId sRandomizerOptions[] =
 {
     OPT_RANDOM_WILD,
@@ -197,6 +205,7 @@ static const enum OptionId sRandomizerOptions[] =
     OPT_RANDOM_GIFTS_STATIC,
     OPT_RANDOM_ALL_DATA,
 };
+#endif
 
 static const enum OptionId *GetSectionOptions(enum OptionSection section, u8 *count)
 {
@@ -211,10 +220,17 @@ static const enum OptionId *GetSectionOptions(enum OptionSection section, u8 *co
     case SECTION_GAMEPLAY:
         *count = ARRAY_COUNT(sGameplayOptions);
         return sGameplayOptions;
+#if MODULE_RANDOMIZER_ENABLED
     case SECTION_RANDOMIZER:
+#endif
     default:
+#if MODULE_RANDOMIZER_ENABLED
         *count = ARRAY_COUNT(sRandomizerOptions);
         return sRandomizerOptions;
+#else
+        *count = ARRAY_COUNT(sGeneralOptions);
+        return sGeneralOptions;
+#endif
     }
 }
 
@@ -413,7 +429,7 @@ void CB2_InitOptionMenu(void)
 
 static bool32 RandomizerUnlocked(void)
 {
-    return VarGet(VAR_RANDOMIZER_SETTINGS_INITIALIZED) == TRUE;
+    return Randomizer_IsInitialized();
 }
 
 static const u8 *GetExtendedValueText(enum ExtendedOption option)
@@ -523,6 +539,12 @@ static const u8 *GetOptionValueText(u8 taskId, enum OptionId option)
         return RandomizerUnlocked() ? (Randomizer_IsWildEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_STARTERS:
         return RandomizerUnlocked() ? (Randomizer_IsStarterEnabled() ? sTextOn : sTextOff) : sTextLocked;
+    case OPT_RANDOM_TRAINERS:
+        return RandomizerUnlocked() ? (Randomizer_IsTrainerEnabled() ? sTextOn : sTextOff) : sTextLocked;
+    case OPT_RANDOM_GIFTS_STATIC:
+        return RandomizerUnlocked() ? (Randomizer_IsGiftStaticEnabled() ? sTextOn : sTextOff) : sTextLocked;
+    case OPT_RANDOM_ALL_DATA:
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_REROLL:
         return RandomizerUnlocked() ? sTextOn : sTextLocked;
     default:
@@ -708,6 +730,18 @@ case OPT_TEXT_SPEED:
     case OPT_RANDOM_STARTERS:
         if (RandomizerUnlocked())
             Randomizer_SetStarterEnabled(!Randomizer_IsStarterEnabled());
+        break;
+    case OPT_RANDOM_TRAINERS:
+        if (RandomizerUnlocked())
+            Randomizer_SetTrainerEnabled(!Randomizer_IsTrainerEnabled());
+        break;
+    case OPT_RANDOM_GIFTS_STATIC:
+        if (RandomizerUnlocked())
+            Randomizer_SetGiftStaticEnabled(!Randomizer_IsGiftStaticEnabled());
+        break;
+    case OPT_RANDOM_ALL_DATA:
+        if (RandomizerUnlocked())
+            Randomizer_SetAllDataEnabled(!Randomizer_IsAllDataEnabled());
         break;
     case OPT_RANDOM_SEED:
     case OPT_RANDOM_REROLL:
