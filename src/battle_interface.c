@@ -193,7 +193,7 @@ static void SpriteCB_StatusSummaryBalls_Exit(struct Sprite *);
 static void SpriteCB_StatusSummaryBalls_OnSwitchout(struct Sprite *);
 
 static u8 GetStatusIconForBattlerId(u8, enum BattlerId);
-static s32 CalcNewBarValue(s32, s32, s32, s32 *, u8, u16);
+static s32 CalcNewBarValue(s32, s32, s32, s32 *, u8, u16, u16);
 static u8 GetScaledExpFraction(s32, s32, s32, u8);
 static void MoveBattleBarGraphically(enum BattlerId, u8);
 static u8 CalcBarFilledPixels(s32, s32, s32, s32 *, u8 *, u8);
@@ -2063,7 +2063,7 @@ s32 MoveBattleBar(enum BattlerId battler, u8 healthboxSpriteId, u8 whichBar, u8 
                     gBattleSpritesDataPtr->battleBars[battler].oldValue,
                     gBattleSpritesDataPtr->battleBars[battler].receivedValue,
                     &gBattleSpritesDataPtr->battleBars[battler].currValue,
-                    B_HEALTHBAR_PIXELS / 8, hpFraction);
+                    B_HEALTHBAR_PIXELS / 8, hpFraction, hpFraction);
     }
     else // exp bar
     {
@@ -2078,7 +2078,8 @@ s32 MoveBattleBar(enum BattlerId battler, u8 healthboxSpriteId, u8 whichBar, u8 
                     gBattleSpritesDataPtr->battleBars[battler].oldValue,
                     gBattleSpritesDataPtr->battleBars[battler].receivedValue,
                     &gBattleSpritesDataPtr->battleBars[battler].currValue,
-                    B_EXPBAR_PIXELS / 8, expFraction);
+                    B_EXPBAR_PIXELS / 8, expFraction,
+                    ExtendedOptions_Get(EXT_OPT_FAST_EXP_BARS) ? 4 : 1);
     }
 
     if (whichBar == EXP_BAR || (whichBar == HEALTH_BAR && !gBattleSpritesDataPtr->battlerData[battler].hpNumbersNoBars))
@@ -2179,7 +2180,7 @@ static void MoveBattleBarGraphically(enum BattlerId battler, u8 whichBar)
     }
 }
 
-static s32 CalcNewBarValue(s32 maxValue, s32 oldValue, s32 receivedValue, s32 *currValue, u8 scale, u16 toAdd)
+static s32 CalcNewBarValue(s32 maxValue, s32 oldValue, s32 receivedValue, s32 *currValue, u8 scale, u16 toAdd, u16 fixedPointMultiplier)
 {
     s32 ret, newValue;
     scale *= 8;
@@ -2206,7 +2207,12 @@ static s32 CalcNewBarValue(s32 maxValue, s32 oldValue, s32 receivedValue, s32 *c
 
     if (maxValue < scale) // handle cases of max var having less pixels than the whole bar
     {
-        s32 fixedPointStep = (Q_24_8(maxValue) / scale) * toAdd;
+        s32 fixedPointStep = Q_24_8(maxValue) / scale;
+
+        // Low-level bars use fixed-point values. Apply an explicit bounded
+        // speed multiplier here instead of reusing the calculated EXP step,
+        // which can prevent the post-KO EXP animation from completing.
+        fixedPointStep *= fixedPointMultiplier;
 
         if (receivedValue < 0) // fill bar right
         {
