@@ -32,6 +32,7 @@
 #include "string_util.h"
 #include "pokemon_icon.h"
 #include "caps.h"
+#include "cheats.h"
 #include "m4a.h"
 #include "mail.h"
 #include "event_data.h"
@@ -41,6 +42,7 @@
 #include "naming_screen.h"
 #include "battle_setup.h"
 #include "overworld.h"
+#include "nuzlocke.h"
 #include "wild_encounter.h"
 #include "rtc.h"
 #include "party_menu.h"
@@ -4021,7 +4023,7 @@ static void Cmd_getexp(void)
 
                     ApplyExperienceMultipliers(&gBattleStruct->battlerExpReward, *expMonId, gBattlerFainted);
 
-                    if (B_EXP_CAP_TYPE == EXP_CAP_HARD && gBattleStruct->battlerExpReward != 0)
+                    if (IsHardLevelCapEnabled() && gBattleStruct->battlerExpReward != 0)
                     {
                         enum GrowthRate growthRate = gSpeciesInfo[GetMonData(&gParties[B_TRAINER_PLAYER][*expMonId], MON_DATA_SPECIES)].growthRate;
                         u32 currentExp = GetMonData(&gParties[B_TRAINER_PLAYER][*expMonId], MON_DATA_EXP);
@@ -5861,7 +5863,7 @@ static u32 GetTrainerMoneyToGive(u16 trainerId)
             moneyReward = 4 * lastMonLevel * gBattleStruct->moneyMultiplier * trainerMoney;
     }
 
-    return moneyReward;
+    return Cheats_ApplyMoneyMultiplier(moneyReward);
 }
 
 static void Cmd_getmoneyreward(void)
@@ -9990,7 +9992,7 @@ static u32 ComputeCaptureOdds(u32 wildMonBattler, u32 playerBattler)
     if (battleMon->status1 & STATUS1_CAN_MOVE)
         odds = odds * 15 / 10;
 
-    return odds;
+    return Cheats_ApplyCatchRate(odds);
 }
 
 static bool32 CriticalCapture(u32 odds)
@@ -10067,6 +10069,12 @@ static void Cmd_handleballthrow(void)
         BtlController_EmitBallThrowAnim(gBattlerAttacker, B_COMM_TO_CONTROLLER, BALL_3_SHAKES_SUCCESS);
         MarkBattlerForControllerExec(gBattlerAttacker);
         gBattlescriptCurrInstr = BattleScript_WallyBallThrow;
+    }
+    else if (!Nuzlocke_CanCatchCurrentEncounter(gBattlerTarget))
+    {
+        BtlController_EmitBallThrowAnim(gBattlerAttacker, B_COMM_TO_CONTROLLER, BALL_TRAINER_BLOCK);
+        MarkBattlerForControllerExec(gBattlerAttacker);
+        gBattlescriptCurrInstr = BattleScript_NuzlockeBallBlock;
     }
     else
     {
@@ -10254,6 +10262,7 @@ static void Cmd_givecaughtmon(void)
                 break;
         }
 
+        Nuzlocke_CommitCaughtMon(GetCatchingBattler());
         if (GiveCapturedMonToPlayer(caughtMon) != MON_GIVEN_TO_PARTY
          && gBattleCommunication[MULTISTRING_CHOOSER] != B_MSG_SWAPPED_INTO_PARTY)
         {

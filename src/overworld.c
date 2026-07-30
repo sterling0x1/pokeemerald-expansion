@@ -38,6 +38,7 @@
 #include "link_rfu.h"
 #include "load_save.h"
 #include "main.h"
+#include "main_menu.h"
 #include "malloc.h"
 #include "m4a.h"
 #include "map_name_popup.h"
@@ -48,11 +49,13 @@
 #include "mirage_tower.h"
 #include "money.h"
 #include "new_game.h"
+#include "nuzlocke.h"
 #include "oras_dowse.h"
 #include "palette.h"
 #include "play_time.h"
 #include "random.h"
 #include "randomizer_menu.h"
+#include "nuzlocke_menu.h"
 #include "roamer.h"
 #include "rotating_gate.h"
 #include "rtc.h"
@@ -1928,6 +1931,9 @@ static bool8 RunFieldCallback(void)
 
 static void CB2_ContinueNewGame(void)
 {
+    if (ExtendedOptions_Get(EXT_OPT_NUZLOCKE))
+        Nuzlocke_LockSettings();
+
     ResetInitialPlayerAvatarState();
     PlayTimeCounter_Start();
     ScriptContext_Init();
@@ -1956,12 +1962,56 @@ void CB2_NewGame(void)
     StartRandomizerSetupMenu(CB2_ContinueNewGame);
 }
 
+static void CB2_StartNuzlockeRandomizerSetup(void);
+
+static void CB2_CancelNewNuzlockeGame(void)
+{
+    LoadGameSave(SAVE_NORMAL);
+    SetMainCallback2(CB2_InitMainMenu);
+}
+
+static void CB2_ReturnToNuzlockeSetup(void)
+{
+    StartNuzlockeSetupMenuWithBack(CB2_StartNuzlockeRandomizerSetup, CB2_CancelNewNuzlockeGame);
+}
+
+static void CB2_StartNuzlockeRandomizerSetup(void)
+{
+    StartRandomizerSetupMenuWithBack(CB2_ContinueNewGame, CB2_ReturnToNuzlockeSetup);
+}
+
+void CB2_NewNuzlockeGame(void)
+{
+    FieldClearVBlankHBlankCallbacks();
+    StopMapMusic();
+    ResetSafariZoneFlag_();
+    NewGameInitData();
+    ExtendedOptions_Set(EXT_OPT_NUZLOCKE, TRUE);
+    Nuzlocke_InitRunData();
+    Nuzlocke_ApplyPreset(NUZLOCKE_PRESET_STANDARD);
+    StartNuzlockeSetupMenuWithBack(CB2_StartNuzlockeRandomizerSetup, CB2_CancelNewNuzlockeGame);
+}
+
 void CB2_WhiteOut(void)
 {
     u8 state;
 
     if (++gMain.state >= 120)
     {
+        if (Nuzlocke_IsActive()
+         && (ExtendedOptions_Get(EXT_OPT_NUZLOCKE_WHITEOUT) == NUZLOCKE_WHITEOUT_GAME_OVER
+          || !Nuzlocke_TryRestoreUsablePartyFromPC()))
+        {
+            // A failed run must never replace the player's last valid save.
+            // Discard the in-memory battle state and restore the save from flash
+            // before returning to the main menu.
+            LoadGameSave(SAVE_NORMAL);
+            FieldClearVBlankHBlankCallbacks();
+            StopMapMusic();
+            SetMainCallback2(CB2_InitMainMenu);
+            return;
+        }
+
         FieldClearVBlankHBlankCallbacks();
         StopMapMusic();
         ResetSafariZoneFlag_();

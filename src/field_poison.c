@@ -1,4 +1,5 @@
 #include "global.h"
+#include "nuzlocke.h"
 #include "battle.h"
 #include "battle_pike.h"
 #include "battle_pyramid.h"
@@ -90,6 +91,7 @@ static void Task_TryFieldPoisonWhiteOut(u8 taskId)
             tState--;
         break;
     case 2:
+        Nuzlocke_ProcessFieldFaints();
         if (AllMonsFainted())
         {
             // Battle facilities have their own white out script to handle the challenge loss

@@ -21,6 +21,7 @@
 #include "menu.h"
 #include "mon_markings.h"
 #include "naming_screen.h"
+#include "nuzlocke.h"
 #include "overworld.h"
 #include "palette.h"
 #include "pc_screen_effect.h"
@@ -109,6 +110,7 @@ enum {
     MSG_ITEM_IS_HELD,
     MSG_CHANGED_TO_ITEM,
     MSG_CANT_STORE_MAIL,
+    MSG_NUZLOCKE_UNUSABLE,
 };
 
 // IDs for how to resolve variables in the above messages
@@ -1080,6 +1082,7 @@ static const struct StorageMessage sMessages[] =
     [MSG_ITEM_IS_HELD]         = {COMPOUND_STRING("{DYNAMIC 0} is now held."),   MSG_VAR_ITEM_NAME},
     [MSG_CHANGED_TO_ITEM]      = {COMPOUND_STRING("Changed to {DYNAMIC 0}."),    MSG_VAR_ITEM_NAME},
     [MSG_CANT_STORE_MAIL]      = {COMPOUND_STRING("MAIL can't be stored!"),      MSG_VAR_NONE},
+    [MSG_NUZLOCKE_UNUSABLE]    = {COMPOUND_STRING("This POKéMON cannot rejoin\nthe active Nuzlocke party."), MSG_VAR_NONE},
 };
 
 static const struct WindowTemplate sYesNoWindowTemplate =
@@ -2771,8 +2774,16 @@ static void Task_PlaceMon(u8 taskId)
     switch (sStorage->state)
     {
     case 0:
-        InitMonPlaceChange(CHANGE_PLACE);
-        sStorage->state++;
+        if (sCursorArea == CURSOR_AREA_IN_PARTY && !Nuzlocke_IsMonUsable(&sStorage->movingMon))
+        {
+            PrintMessage(MSG_NUZLOCKE_UNUSABLE);
+            sStorage->state = 2;
+        }
+        else
+        {
+            InitMonPlaceChange(CHANGE_PLACE);
+            sStorage->state++;
+        }
         break;
     case 1:
         if (!DoMonPlaceChange())
@@ -2783,6 +2794,13 @@ static void Task_PlaceMon(u8 taskId)
                 SetPokeStorageTask(Task_PokeStorageMain);
         }
         break;
+    case 2:
+        if (JOY_NEW(A_BUTTON | B_BUTTON | DPAD_ANY))
+        {
+            ClearBottomWindow();
+            SetPokeStorageTask(Task_PokeStorageMain);
+        }
+        break;
     }
 }
 
@@ -2791,13 +2809,28 @@ static void Task_ShiftMon(u8 taskId)
     switch (sStorage->state)
     {
     case 0:
-        InitMonPlaceChange(CHANGE_SHIFT);
-        sStorage->state++;
+        if (sCursorArea == CURSOR_AREA_IN_PARTY && !Nuzlocke_IsMonUsable(&sStorage->movingMon))
+        {
+            PrintMessage(MSG_NUZLOCKE_UNUSABLE);
+            sStorage->state = 2;
+        }
+        else
+        {
+            InitMonPlaceChange(CHANGE_SHIFT);
+            sStorage->state++;
+        }
         break;
     case 1:
         if (!DoMonPlaceChange())
         {
             StartDisplayMonMosaicEffect();
+            SetPokeStorageTask(Task_PokeStorageMain);
+        }
+        break;
+    case 2:
+        if (JOY_NEW(A_BUTTON | B_BUTTON | DPAD_ANY))
+        {
+            ClearBottomWindow();
             SetPokeStorageTask(Task_PokeStorageMain);
         }
         break;
@@ -2809,7 +2842,12 @@ static void Task_WithdrawMon(u8 taskId)
     switch (sStorage->state)
     {
     case 0:
-        if (CalculatePlayerPartyCount() == PARTY_SIZE)
+        if (!Nuzlocke_IsBoxMonUsable(GetBoxedMonPtr(StorageGetCurrentBox(), sCursorPosition)))
+        {
+            PrintMessage(MSG_NUZLOCKE_UNUSABLE);
+            sStorage->state = 1;
+        }
+        else if (CalculatePlayerPartyCount() == PARTY_SIZE)
         {
             PrintMessage(MSG_PARTY_FULL);
             sStorage->state = 1;

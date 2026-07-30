@@ -1,6 +1,7 @@
 #include "global.h"
 #include "event_data.h"
 #include "extended_options.h"
+#include "nuzlocke.h"
 #include "constants/difficulty.h"
 
 #define EXTENDED_OPTIONS_MAGIC 0x2E36
@@ -36,6 +37,14 @@ static const struct OptionBits sOptionBits[EXT_OPT_COUNT] =
     [EXT_OPT_FOLLOWER]             = {1,  6, 0x1},
     [EXT_OPT_SHINY_ODDS]           = {2,  0, 0xF},
     [EXT_OPT_EXP_MULTIPLIER]       = {2,  4, 0x3},
+    [EXT_OPT_NUZLOCKE_PRESET]      = {2,  6, 0x3},
+    [EXT_OPT_NUZLOCKE_PERMADEATH]  = {1,  7, 0x1},
+    [EXT_OPT_NUZLOCKE_ENCOUNTERS]  = {1,  8, 0x1},
+    [EXT_OPT_NUZLOCKE_WHITEOUT]    = {1,  9, 0x1},
+    [EXT_OPT_NUZLOCKE_DUPES]       = {2,  8, 0x3},
+    [EXT_OPT_NUZLOCKE_SHINY_CLAUSE]= {2, 10, 0x3},
+    [EXT_OPT_NUZLOCKE_GIFTS]       = {2, 12, 0x3},
+    [EXT_OPT_NUZLOCKE_BATTLE_ITEMS]= {2, 14, 0x3},
     [EXT_OPT_LEVEL_CAPS]           = {1, 10, 0x3},
     [EXT_OPT_NUZLOCKE]             = {1, 12, 0x1},
     [EXT_OPT_RANDOM_TRAINERS]      = {1, 13, 0x1},
@@ -84,6 +93,16 @@ u8 ExtendedOptions_GetMax(enum ExtendedOption option)
         return 2;
     case EXT_OPT_EXP_MULTIPLIER:
         return EXP_MULTIPLIER_4X;
+    case EXT_OPT_NUZLOCKE_PRESET:
+        return NUZLOCKE_PRESET_CUSTOM;
+    case EXT_OPT_NUZLOCKE_DUPES:
+        return NUZLOCKE_DUPES_OFF;
+    case EXT_OPT_NUZLOCKE_SHINY_CLAUSE:
+        return NUZLOCKE_SHINY_OFF;
+    case EXT_OPT_NUZLOCKE_GIFTS:
+        return NUZLOCKE_GIFTS_FREE;
+    case EXT_OPT_NUZLOCKE_BATTLE_ITEMS:
+        return NUZLOCKE_BATTLE_ITEMS_BANNED;
     case EXT_OPT_SHINY_ODDS:
         return 8;
     default:
@@ -109,6 +128,25 @@ void ExtendedOptions_Set(enum ExtendedOption option, u8 value)
 
     if (option >= EXT_OPT_COUNT)
         return;
+
+    if (Nuzlocke_IsActive() && Nuzlocke_AreSettingsLocked())
+    {
+        switch (option)
+        {
+        case EXT_OPT_NUZLOCKE_PRESET:
+        case EXT_OPT_NUZLOCKE_PERMADEATH:
+        case EXT_OPT_NUZLOCKE_ENCOUNTERS:
+        case EXT_OPT_NUZLOCKE_DUPES:
+        case EXT_OPT_NUZLOCKE_SHINY_CLAUSE:
+        case EXT_OPT_NUZLOCKE_GIFTS:
+        case EXT_OPT_NUZLOCKE_WHITEOUT:
+        case EXT_OPT_NUZLOCKE_BATTLE_ITEMS:
+        case EXT_OPT_LEVEL_CAPS:
+            return;
+        default:
+            break;
+        }
+    }
 
     if (value > ExtendedOptions_GetMax(option))
         value = ExtendedOptions_GetMax(option);

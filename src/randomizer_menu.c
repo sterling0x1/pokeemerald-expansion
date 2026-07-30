@@ -20,6 +20,8 @@
 
 #define tMenuSelection data[0]
 
+static EWRAM_DATA MainCallback sBackCallback = NULL;
+
 enum
 {
     MENUITEM_WILD,
@@ -111,6 +113,15 @@ static const u16 sTextPalette[] = INCGFX_U16("graphics/interface/option_menu_tex
 
 void StartRandomizerSetupMenu(MainCallback returnCallback)
 {
+    sBackCallback = NULL;
+    gMain.savedCallback = returnCallback;
+    gMain.state = 0;
+    SetMainCallback2(CB2_InitRandomizerSetupMenu);
+}
+
+void StartRandomizerSetupMenuWithBack(MainCallback returnCallback, MainCallback backCallback)
+{
+    sBackCallback = backCallback;
     gMain.savedCallback = returnCallback;
     gMain.state = 0;
     SetMainCallback2(CB2_InitRandomizerSetupMenu);
@@ -268,6 +279,13 @@ static void Task_ProcessInput(u8 taskId)
             PlaySE(SE_SELECT);
             break;
         }
+    }
+    else if (JOY_NEW(B_BUTTON) && sBackCallback != NULL)
+    {
+        gMain.savedCallback = sBackCallback;
+        BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+        gTasks[taskId].func = Task_FadeOut;
+        PlaySE(SE_SELECT);
     }
 }
 

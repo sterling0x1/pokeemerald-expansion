@@ -20,6 +20,8 @@
 
 u32 GetCurrentLevelCap(void);
 u32 GetSoftLevelCapExpValue(u32 level, u32 expValue);
+bool32 IsHardLevelCapEnabled(void);
+bool32 IsNuzlockeHardLevelCapEnabled(void);
 u32 GetCurrentEVCap(void);
 
 #endif /* GUARD_CAPS_H */

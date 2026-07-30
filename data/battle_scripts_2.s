@@ -239,6 +239,12 @@ BattleScript_TrainerBallBlock::
 	waitmessage B_WAIT_TIME_LONG
 	finishaction
 
+BattleScript_NuzlockeBallBlock::
+	waitmessage B_WAIT_TIME_LONG
+	printstring STRINGID_NUZLOCKEENCOUNTERUSED
+	waitmessage B_WAIT_TIME_LONG
+	finishaction
+
 BattleScript_RunByUsingItem::
 	playse SE_FLEE
 	setbyte gBattleOutcome, B_OUTCOME_RAN

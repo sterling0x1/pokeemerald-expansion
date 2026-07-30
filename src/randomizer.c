@@ -1,6 +1,7 @@
 #include "global.h"
 #include "event_data.h"
 #include "extended_options.h"
+#include "nuzlocke.h"
 #include "pokemon.h"
 #include "random.h"
 #include "randomizer.h"
@@ -127,6 +128,23 @@ static enum Species PickRandomizerSpecies(enum Species originalSpecies, u32 key)
     return SPECIES_MEW;
 }
 
+static enum Species PickMonotypeSpecies(enum Species originalSpecies, u32 key)
+{
+    u32 i;
+
+    for (i = 0; i < NATIONAL_DEX_COUNT; i++)
+    {
+        enum Species species;
+
+        key = RandomizerHash(key + i + 1);
+        species = NationalPokedexNumToSpecies(1 + (key % NATIONAL_DEX_COUNT));
+        if (IsRandomizerEligibleSpecies(species) && Nuzlocke_IsSpeciesAllowed(species))
+            return species;
+    }
+
+    return originalSpecies;
+}
+
 enum Species Randomizer_GetWildSpecies(enum Species species)
 {
     u32 mapKey = ((u32)(u8)gSaveBlock1Ptr->location.mapGroup << 24)
@@ -140,6 +158,10 @@ enum Species Randomizer_GetWildSpecies(enum Species species)
 
 enum Species Randomizer_GetStarterSpecies(enum Species originalSpecies, u8 starterId)
 {
+    if (Nuzlocke_IsActive()
+     && ExtendedOptions_Get(EXT_OPT_NUZLOCKE_PRESET) == NUZLOCKE_PRESET_MONOTYPE)
+        return PickMonotypeSpecies(originalSpecies, Randomizer_GetSeed() ^ 0x4D4F4E4F ^ starterId);
+
     if (!Randomizer_IsStarterEnabled())
         return originalSpecies;
 

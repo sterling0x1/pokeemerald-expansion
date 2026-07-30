@@ -1,5 +1,6 @@
 #include "global.h"
 #include "malloc.h"
+#include "nuzlocke.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_controllers.h"
@@ -1627,6 +1628,7 @@ static void HandleChooseMonSelection(u8 taskId, s8 *slotPtr)
             GetPartyAndSlotFromPartyMenuId(*slotPtr, &party, &partySlot);
             if (GetMonData(&party[partySlot], MON_DATA_HP) == 0
              || GetMonData(&party[partySlot], MON_DATA_SPECIES_OR_EGG) == SPECIES_EGG
+             || !Nuzlocke_IsMonUsable(&party[partySlot])
              || ((gBattleTypeFlags & BATTLE_TYPE_MULTI) && partyId >= (PARTY_SIZE / 2)))
             {
                 // Reserve attackers must be an alive, non-Egg Pokémon from the player's party.
@@ -5872,7 +5874,9 @@ void ItemUseCB_RareCandy(u8 taskId, TaskFunc task)
     u8 holdEffectParam = GetItemHoldEffectParam(*itemPtr);
 
     sInitialLevel = GetMonData(mon, MON_DATA_LEVEL);
-    if (!(B_RARE_CANDY_CAP && sInitialLevel >= GetCurrentLevelCap()))
+    if (!(((B_RARE_CANDY_CAP && B_EXP_CAP_TYPE == EXP_CAP_HARD)
+        || IsNuzlockeHardLevelCapEnabled())
+       && sInitialLevel >= GetCurrentLevelCap()))
     {
         BufferMonStatsToTaskData(mon, arrayPtr);
         cannotUseEffect = ExecuteTableBasedItemEffect(mon, *itemPtr, gPartyMenu.slotId, 0);
@@ -7588,6 +7592,12 @@ static bool8 TrySwitchInPokemon(void)
         return FALSE;
     }
     if (GetMonData(&party[partySlot], MON_DATA_HP) == 0)
+    {
+        GetMonNickname(&party[partySlot], gStringVar1);
+        StringExpandPlaceholders(gStringVar4, gText_PkmnHasNoEnergy);
+        return FALSE;
+    }
+    if (!Nuzlocke_IsMonUsable(&party[partySlot]))
     {
         GetMonNickname(&party[partySlot], gStringVar1);
         StringExpandPlaceholders(gStringVar4, gText_PkmnHasNoEnergy);

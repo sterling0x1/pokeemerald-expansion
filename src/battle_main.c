@@ -1,5 +1,6 @@
 #include "global.h"
 #include "extended_options.h"
+#include "nuzlocke.h"
 #include "randomizer.h"
 #include "battle.h"
 #include "battle_anim.h"
@@ -3096,6 +3097,8 @@ static void ClearSetBScriptingStruct(void)
 
     gBattleScripting.windowsType = temp;
     gBattleScripting.battleStyle = gSaveBlock2Ptr->optionsBattleStyle;
+    if (Nuzlocke_IsActive() && (gBattleTypeFlags & BATTLE_TYPE_TRAINER))
+        gBattleScripting.battleStyle = Nuzlocke_GetBattleStyle();
     #if TESTING
     gBattleScripting.battleStyle = OPTIONS_BATTLE_STYLE_SET;
     #endif

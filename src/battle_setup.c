@@ -5,6 +5,7 @@
 #include "battle_tower.h"
 #include "battle_transition.h"
 #include "main.h"
+#include "nuzlocke.h"
 #include "task.h"
 #include "safari_zone.h"
 #include "script.h"
@@ -271,6 +272,7 @@ static void CreateBattleStartTask(enum BattleTransition transition, u16 song)
 {
     u8 taskId = CreateTask(Task_BattleStart, 1);
 
+    Nuzlocke_BeginWildEncounter();
     gTasks[taskId].tTransition = transition;
     PlayMapChosenOrBattleBGM(song);
 }
@@ -488,6 +490,7 @@ void BattleSetup_StartScriptedWildBattle(void)
     LockPlayerFieldControls();
     gMain.savedCallback = CB2_EndScriptedWildBattle;
     gBattleTypeFlags = 0;
+    Nuzlocke_SetNextEncounterStatic();
     CreateBattleStartTask(GetWildBattleTransition(), 0);
     IncrementGameStat(GAME_STAT_TOTAL_BATTLES);
     IncrementGameStat(GAME_STAT_WILD_BATTLES);
@@ -500,6 +503,7 @@ void BattleSetup_StartScriptedDoubleWildBattle(void)
     LockPlayerFieldControls();
     gMain.savedCallback = CB2_EndScriptedWildBattle;
     gBattleTypeFlags = BATTLE_TYPE_DOUBLE;
+    Nuzlocke_SetNextEncounterStatic();
     CreateBattleStartTask(GetWildBattleTransition(), 0);
     IncrementGameStat(GAME_STAT_TOTAL_BATTLES);
     IncrementGameStat(GAME_STAT_WILD_BATTLES);
@@ -657,6 +661,8 @@ static void CB2_EndWildBattle(void)
             HealPlayerParty();
     }
 
+    Nuzlocke_ProcessFaintedParty();
+
     if (IsPlayerDefeated(gBattleOutcome) == TRUE && CurrentBattlePyramidLocation() == PYRAMID_LOCATION_NONE && !InBattlePike())
     {
         SetMainCallback2(CB2_WhiteOut);
@@ -673,6 +679,7 @@ static void CB2_EndScriptedWildBattle(void)
 {
     CpuFill16(0, (void *)(BG_PLTT), BG_PLTT_SIZE);
     ResetOamRange(0, 128);
+    Nuzlocke_ProcessFaintedParty();
 
     if (IsPlayerDefeated(gBattleOutcome) == TRUE)
     {
@@ -692,6 +699,7 @@ static void CB2_EndMarowakBattle(void)
 {
     CpuFill16(0, (void *)BG_PLTT, BG_PLTT_SIZE);
     ResetOamRange(0, 128);
+    Nuzlocke_ProcessFaintedParty();
 
     if (IsPlayerDefeated(gBattleOutcome))
     {
@@ -1445,6 +1453,8 @@ static void CB2_EndTrainerBattle(void)
             HealPlayerParty();
     }
 
+    Nuzlocke_ProcessFaintedParty();
+
     if (GetTrainerBattleMode() == TRAINER_BATTLE_EARLY_RIVAL)
     {
         if (IsPlayerDefeated(gBattleOutcome) == TRUE)
@@ -1501,6 +1511,8 @@ static void CB2_EndTrainerBattle(void)
 
 static void CB2_EndRematchBattle(void)
 {
+    Nuzlocke_ProcessFaintedParty();
+
     if (TRAINER_BATTLE_PARAM.opponentA == TRAINER_SECRET_BASE)
     {
         DowngradeBadPoison();

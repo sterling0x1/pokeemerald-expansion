@@ -14,6 +14,7 @@
 #include "link_rfu.h"
 #include "main.h"
 #include "menu.h"
+#include "nuzlocke.h"
 #include "overworld.h"
 #include "ow_abilities.h"
 #include "palette.h"
@@ -69,12 +70,16 @@ u8 ScriptGiveEgg(enum Species species)
 {
     struct Pokemon mon;
     u8 isEgg;
+    u8 result;
 
     CreateEgg(&mon, species, TRUE);
     isEgg = TRUE;
     SetMonData(&mon, MON_DATA_IS_EGG, &isEgg);
+    Nuzlocke_PrepareGiftMon(&mon);
 
-    return GiveCapturedMonToPlayer(&mon);
+    result = GiveCapturedMonToPlayer(&mon);
+    Nuzlocke_CommitGiftMon(result != MON_CANT_GIVE);
+    return result;
 }
 
 void HasEnoughMonsForDoubleBattle(void)
@@ -478,7 +483,14 @@ static u32 ScriptGiveMonParameterized(u8 side, u8 slot, enum Species species, u8
     TryFormChange(&mon, FORM_CHANGE_ITEM_HOLD, B_TRAINER_PLAYER);
 
     if (side == B_SIDE_PLAYER)
-        return GiveScriptedMonToPlayer(&mon, slot);
+    {
+        u32 result;
+
+        Nuzlocke_PrepareGiftMon(&mon);
+        result = GiveScriptedMonToPlayer(&mon, slot);
+        Nuzlocke_CommitGiftMon(result != MON_CANT_GIVE);
+        return result;
+    }
 
     assertf(slot < PARTY_SIZE, "invalid slot: %d", slot)
     {
@@ -494,6 +506,7 @@ u32 ScriptGiveMon(enum Species species, u8 level, enum Item item)
                                                        ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
                                                        ^ species);
     struct Pokemon mon;
+    u32 result;
     u8 heldItem[2];
 
     CreateRandomMon(&mon, species, level);
@@ -504,7 +517,11 @@ u32 ScriptGiveMon(enum Species species, u8 level, enum Item item)
         SetMonData(&mon, MON_DATA_HELD_ITEM, heldItem);
     }
 
-    return GiveScriptedMonToPlayer(&mon, PARTY_SIZE);
+    Nuzlocke_PrepareGiftMon(&mon);
+
+    result = GiveScriptedMonToPlayer(&mon, PARTY_SIZE);
+    Nuzlocke_CommitGiftMon(result != MON_CANT_GIVE);
+    return result;
 }
 
 #define PARSE_FLAG(n, default_) (flags & (1 << (n))) ? VarGet(ScriptReadHalfword(ctx)) : (default_)

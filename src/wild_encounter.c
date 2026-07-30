@@ -1,5 +1,6 @@
 #include "global.h"
 #include "battle_setup.h"
+#include "cheats.h"
 #include "battle_pike.h"
 #include "battle_pyramid.h"
 #include "event_data.h"
@@ -1024,6 +1025,9 @@ bool8 UpdateRepelCounter(void)
 
     if (steps != 0)
     {
+        if (!isLure && Cheats_InfiniteRepelEnabled())
+            return FALSE;
+
         steps--;
         if (!isLure)
         {

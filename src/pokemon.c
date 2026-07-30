@@ -1,6 +1,8 @@
 #include "global.h"
 #include "extended_options.h"
+#include "cheats.h"
 #include "malloc.h"
+#include "nuzlocke.h"
 #include "apprentice.h"
 #include "battle.h"
 #include "battle_ai_util.h"
@@ -2341,6 +2343,12 @@ u32 GetBoxMonData3(struct BoxPokemon *boxMon, s32 field, u8 *data)
         case MON_DATA_MODERN_FATEFUL_ENCOUNTER:
             retVal = GetSubstruct3(boxMon)->modernFatefulEncounter;
             break;
+        case MON_DATA_NUZLOCKE_DEAD:
+            retVal = boxMon->nuzlockeDead;
+            break;
+        case MON_DATA_NUZLOCKE_RESTRICTED:
+            retVal = boxMon->nuzlockeRestricted;
+            break;
         case MON_DATA_SPECIES_OR_EGG:
             retVal = GetSubstruct0(boxMon)->species;
             if (retVal && IsEggOrBadEgg(boxMon))
@@ -2857,6 +2865,12 @@ void SetBoxMonData(struct BoxPokemon *boxMon, s32 field, const void *dataArg)
         case MON_DATA_MODERN_FATEFUL_ENCOUNTER:
             SET8(GetSubstruct3(boxMon)->modernFatefulEncounter);
             break;
+        case MON_DATA_NUZLOCKE_DEAD:
+            SET8(boxMon->nuzlockeDead);
+            break;
+        case MON_DATA_NUZLOCKE_RESTRICTED:
+            SET8(boxMon->nuzlockeRestricted);
+            break;
         case MON_DATA_IVS:
         {
             u32 ivs;
@@ -3098,7 +3112,8 @@ u8 GetMonsStateToDoubles(void)
     {
         if (GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_SPECIES_OR_EGG) != SPECIES_EGG
          && GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_HP) != 0
-         && GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE)
+         && GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE
+         && Nuzlocke_IsMonUsable(&gParties[B_TRAINER_PLAYER][i]))
             aliveCount++;
     }
 
@@ -3118,7 +3133,8 @@ u8 GetMonsStateToDoubles_2(void)
     {
         enum Species species = GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_SPECIES_OR_EGG);
         if (species != SPECIES_EGG && species != SPECIES_NONE
-         && GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_HP) != 0)
+         && GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_HP) != 0
+         && Nuzlocke_IsMonUsable(&gParties[B_TRAINER_PLAYER][i]))
             aliveCount++;
     }
 
@@ -3574,7 +3590,8 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, enum Item item, u8 partyIndex, 
                     enum Species species = GetMonData(mon, MON_DATA_SPECIES);
                     dataUnsigned = sExpCandyExperienceTable[param - 1] + GetMonData(mon, MON_DATA_EXP);
 
-                    if (B_RARE_CANDY_CAP && B_EXP_CAP_TYPE == EXP_CAP_HARD)
+                    if ((B_RARE_CANDY_CAP && B_EXP_CAP_TYPE == EXP_CAP_HARD)
+                     || IsNuzlockeHardLevelCapEnabled())
                     {
                         u32 currentLevelCap = GetCurrentLevelCap();
                         if (dataUnsigned > gExperienceTables[gSpeciesInfo[species].growthRate][currentLevelCap])
@@ -5147,6 +5164,8 @@ void MonGainEVs(struct Pokemon *mon, enum Species defeatedSpecies)
 
         if (holdEffect == HOLD_EFFECT_MACHO_BRACE)
             evIncrease *= 2;
+
+        evIncrease = Cheats_ApplyEVMultiplier(evIncrease);
 
         if (totalEVs + (s16)evIncrease > currentEVCap)
             evIncrease = ((s16)evIncrease + currentEVCap) - (totalEVs + evIncrease);

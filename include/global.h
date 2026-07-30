@@ -253,6 +253,33 @@ struct NPCFollower
 #include "constants/items.h"
 #define ITEM_FLAGS_COUNT ((ITEMS_COUNT / 8) + ((ITEMS_COUNT % 8) ? 1 : 0))
 
+#define NUZLOCKE_LOCATION_FLAGS_COUNT 32
+
+struct NuzlockeSaveData
+{
+    u32 magic;
+    u8 wildEncounterLocations[NUZLOCKE_LOCATION_FLAGS_COUNT];
+    u8 staticEncounterLocations[NUZLOCKE_LOCATION_FLAGS_COUNT];
+    u8 monotype;
+    u8 settingsLocked:1;
+    u8 runEnded:1;
+    u8 battleStyle:1;
+    u8 unused:5;
+};
+
+struct CheatSaveData
+{
+    u32 magic;
+    u16 moneyMultiplier:2;
+    u16 catchRate:2;
+    u16 hatchSpeed:2;
+    u16 evGain:2;
+    u16 martPrices:2;
+    u16 infiniteRepel:1;
+    u16 cheatsUsed:1;
+    u16 unused:4;
+};
+
 struct SaveBlock3
 {
 #if OW_USE_FAKE_RTC
@@ -271,6 +298,8 @@ struct SaveBlock3
 #if APRICORN_TREE_COUNT > 0
     u8 apricornTrees[NUM_APRICORN_TREE_BYTES];
 #endif
+    struct NuzlockeSaveData nuzlocke;
+    struct CheatSaveData cheats;
 }; /* max size 1624 bytes */
 
 extern struct SaveBlock3 *gSaveBlock3Ptr;

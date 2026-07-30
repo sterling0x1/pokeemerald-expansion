@@ -14,10 +14,12 @@
 #include "battle_gimmick.h"
 #include "bg.h"
 #include "data.h"
+#include "extended_options.h"
 #include "item.h"
 #include "item_menu.h"
 #include "link.h"
 #include "main.h"
+#include "nuzlocke.h"
 #include "m4a.h"
 #include "palette.h"
 #include "party_menu.h"
@@ -107,6 +109,7 @@ static void TryMoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void MoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void DrawModernMoveSelectionPanels(void);
 static void OpenCompactAttackerPicker(enum BattlerId battler);
+static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex);
 static void HandleInputCompactAttackerPicker(enum BattlerId battler);
 static void DrawCompactAttackerPicker(enum BattlerId battler);
 static void DrawCompactAttackerSummary(enum BattlerId battler);
@@ -348,6 +351,16 @@ case 0: // Top left
     OpenCompactAttackerPicker(battler);
     return;
         case 1: // Top right
+            if (ExtendedOptions_Get(EXT_OPT_NUZLOCKE)
+             && (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
+             && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK))
+             && (ExtendedOptions_Get(EXT_OPT_NUZLOCKE_BATTLE_ITEMS) == NUZLOCKE_BATTLE_ITEMS_BANNED
+              || (ExtendedOptions_Get(EXT_OPT_NUZLOCKE_BATTLE_ITEMS) == NUZLOCKE_BATTLE_ITEMS_ONE
+               && gBattleResults.playerItemsUsed != 0)))
+            {
+                PlaySE(SE_BOO);
+                return;
+            }
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_ITEM, 0);
             break;
         case 2: // Bottom left
@@ -481,6 +494,13 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
     gBattlerControllerFuncs[battler] = HandleInputCompactAttackerPicker;
 }
 
+static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex)
+{
+    return partyIndex < PARTY_SIZE
+        && GetMonData(&gParties[B_TRAINER_PLAYER][partyIndex], MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE
+        && Nuzlocke_IsMonUsable(&gParties[B_TRAINER_PLAYER][partyIndex]);
+}
+
 static void HandleInputCompactAttackerPicker(enum BattlerId battler)
 {
     u8 *cursor = &sCompactAttackerCursor[battler];
@@ -493,10 +513,12 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
         sBlockCompactAUntilReleased[battler] = FALSE;
     }
 
-    if (JOY_NEW(A_BUTTON))    {
+    if (JOY_NEW(A_BUTTON))
+    {
         struct Pokemon *mon = &gParties[B_TRAINER_PLAYER][*cursor];
 
-        if (GetMonData(mon, MON_DATA_HP) == 0
+        if (!IsCompactAttackerSlotOccupied(*cursor)
+         || GetMonData(mon, MON_DATA_HP) == 0
          || GetMonData(mon, MON_DATA_SPECIES_OR_EGG) == SPECIES_EGG)
         {
             PlaySE(SE_FAILURE);
@@ -567,26 +589,26 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
             // needs cancelling; simply redraw that menu.
             PlayerHandleChooseAction(battler);
         }
-    }   
-     else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1))
+    }
+    else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1) && IsCompactAttackerSlotOccupied(*cursor - 1))
     {
         PlaySE(SE_SELECT);
-        *cursor ^= 1;
+        (*cursor)--;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_RIGHT) && !(*cursor & 1))
+    else if (JOY_NEW(DPAD_RIGHT) && !(*cursor & 1) && IsCompactAttackerSlotOccupied(*cursor + 1))
     {
         PlaySE(SE_SELECT);
-        *cursor ^= 1;
+        (*cursor)++;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_UP) && *cursor >= 2)
+    else if (JOY_NEW(DPAD_UP) && *cursor >= 2 && IsCompactAttackerSlotOccupied(*cursor - 2))
     {
         PlaySE(SE_SELECT);
         *cursor -= 2;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_DOWN) && *cursor < 4)
+    else if (JOY_NEW(DPAD_DOWN) && *cursor < 4 && IsCompactAttackerSlotOccupied(*cursor + 2))
     {
         PlaySE(SE_SELECT);
         *cursor += 2;

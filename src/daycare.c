@@ -4,6 +4,7 @@
 #include "daycare.h"
 #include "string_util.h"
 #include "caps.h"
+#include "cheats.h"
 #include "mail.h"
 #include "pokemon_storage_system.h"
 #include "event_data.h"
@@ -1181,7 +1182,11 @@ static bool8 TryProduceOrHatchEgg(struct DayCare *daycare)
      || (P_EGG_CYCLE_LENGTH >= GEN_8 && daycare->stepCounter >= 128))
     {
         u32 eggCycles;
-        u8 toSub = GetEggCyclesToSubtract();
+        u16 toSub = GetEggCyclesToSubtract();
+        u8 hatchMultiplier = Cheats_GetHatchStepMultiplier();
+
+        if (hatchMultiplier != 0xFF)
+            toSub *= hatchMultiplier;
 
         daycare->stepCounter = 0;
 
@@ -1193,12 +1198,19 @@ static bool8 TryProduceOrHatchEgg(struct DayCare *daycare)
                 continue;
 
             eggCycles = GetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_FRIENDSHIP);
+            if (hatchMultiplier == 0xFF)
+            {
+                eggCycles = 0;
+                SetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_FRIENDSHIP, &eggCycles);
+                gSpecialVar_0x8004 = i;
+                return TRUE;
+            }
             if (eggCycles != 0)
             {
-                if (eggCycles >= toSub)
+                if (eggCycles > toSub)
                     eggCycles -= toSub;
                 else
-                    eggCycles -= 1;
+                    eggCycles = 0;
 
                 SetMonData(&gParties[B_TRAINER_PLAYER][i], MON_DATA_FRIENDSHIP, &eggCycles);
             }
