@@ -1,14 +1,19 @@
 #include "global.h"
 #include "event_data.h"
 #include "extended_options.h"
+#include "item.h"
 #include "module_save.h"
+#include "move.h"
 #include "nuzlocke.h"
 #include "pokemon.h"
 #include "random.h"
 #include "randomizer.h"
 #include "config/randomizer.h"
 #include "constants/pokedex.h"
+#include "constants/abilities.h"
 #include "constants/characters.h"
+#include "constants/items.h"
+#include "constants/moves.h"
 
 #if MODULE_RANDOMIZER_ENABLED
 
@@ -25,8 +30,11 @@ struct RandomizerSaveData
     u8 trainersEnabled:1;
     u8 giftsStaticEnabled:1;
     u8 allDataEnabled:1;
-    u8 unused:3;
-    u8 padding;
+    u8 movesEnabled:1;
+    u8 abilitiesEnabled:1;
+    u8 evolutionsEnabled:1;
+    u8 itemsEnabled:1;
+    u8 unused:7;
 };
 
 STATIC_ASSERT(sizeof(struct RandomizerSaveData) == 12, RandomizerSaveDataSize);
@@ -140,7 +148,7 @@ bool32 Randomizer_IsWildEnabled(void)
 
     Randomizer_LoadSave();
     data = GetSaveData();
-    return data != NULL && data->wildEnabled;
+    return data != NULL && (data->allDataEnabled || data->wildEnabled);
 }
 
 bool32 Randomizer_IsStarterEnabled(void)
@@ -149,7 +157,7 @@ bool32 Randomizer_IsStarterEnabled(void)
 
     Randomizer_LoadSave();
     data = GetSaveData();
-    return data != NULL && data->startersEnabled;
+    return data != NULL && (data->allDataEnabled || data->startersEnabled);
 }
 
 bool32 Randomizer_IsTrainerEnabled(void)
@@ -158,7 +166,7 @@ bool32 Randomizer_IsTrainerEnabled(void)
 
     Randomizer_LoadSave();
     data = GetSaveData();
-    return data != NULL && data->trainersEnabled;
+    return data != NULL && (data->allDataEnabled || data->trainersEnabled);
 }
 
 bool32 Randomizer_IsGiftStaticEnabled(void)
@@ -167,7 +175,43 @@ bool32 Randomizer_IsGiftStaticEnabled(void)
 
     Randomizer_LoadSave();
     data = GetSaveData();
-    return data != NULL && data->giftsStaticEnabled;
+    return data != NULL && (data->allDataEnabled || data->giftsStaticEnabled);
+}
+
+bool32 Randomizer_AreMovesEnabled(void)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && (data->allDataEnabled || data->movesEnabled);
+}
+
+bool32 Randomizer_AreAbilitiesEnabled(void)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && (data->allDataEnabled || data->abilitiesEnabled);
+}
+
+bool32 Randomizer_AreEvolutionsEnabled(void)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && (data->allDataEnabled || data->evolutionsEnabled);
+}
+
+bool32 Randomizer_AreItemsEnabled(void)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    return data != NULL && (data->allDataEnabled || data->itemsEnabled);
 }
 
 bool32 Randomizer_IsAllDataEnabled(void)
@@ -219,6 +263,46 @@ void Randomizer_SetGiftStaticEnabled(bool32 enabled)
         data->giftsStaticEnabled = enabled;
 }
 
+void Randomizer_SetMovesEnabled(bool32 enabled)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->movesEnabled = enabled;
+}
+
+void Randomizer_SetAbilitiesEnabled(bool32 enabled)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->abilitiesEnabled = enabled;
+}
+
+void Randomizer_SetEvolutionsEnabled(bool32 enabled)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->evolutionsEnabled = enabled;
+}
+
+void Randomizer_SetItemsEnabled(bool32 enabled)
+{
+    struct RandomizerSaveData *data;
+
+    Randomizer_LoadSave();
+    data = GetSaveData();
+    if (data != NULL)
+        data->itemsEnabled = enabled;
+}
+
 void Randomizer_SetAllDataEnabled(bool32 enabled)
 {
     struct RandomizerSaveData *data;
@@ -226,7 +310,20 @@ void Randomizer_SetAllDataEnabled(bool32 enabled)
     Randomizer_LoadSave();
     data = GetSaveData();
     if (data != NULL)
+    {
         data->allDataEnabled = enabled;
+        if (enabled)
+        {
+            data->wildEnabled = TRUE;
+            data->startersEnabled = TRUE;
+            data->trainersEnabled = TRUE;
+            data->giftsStaticEnabled = TRUE;
+            data->movesEnabled = TRUE;
+            data->abilitiesEnabled = TRUE;
+            data->evolutionsEnabled = TRUE;
+            data->itemsEnabled = TRUE;
+        }
+    }
 }
 
 // Returns a stable pseudo-random value without consuming the battle/overworld RNG.
@@ -297,6 +394,89 @@ static enum Species PickMonotypeSpecies(enum Species originalSpecies, u32 key)
     }
 
     return originalSpecies;
+}
+
+enum Move Randomizer_GetMove(enum Move originalMove, u32 key)
+{
+    u32 i;
+
+    if (!Randomizer_AreMovesEnabled()
+     || originalMove == MOVE_NONE
+     || originalMove == MOVE_STRUGGLE
+     || originalMove >= MOVES_COUNT)
+        return originalMove;
+
+    key ^= Randomizer_GetSeed() ^ 0x4D4F5645 ^ originalMove;
+    for (i = 0; i < MOVES_COUNT; i++)
+    {
+        enum Move move;
+
+        key = RandomizerHash(key + i + 1);
+        move = 1 + (key % (MOVES_COUNT - 1));
+        if (move != MOVE_STRUGGLE
+         && gMovesInfo[move].name != NULL
+         && gMovesInfo[move].name[0] != EOS
+         && gMovesInfo[move].pp != 0
+         && gMovesInfo[move].effect != EFFECT_PLACEHOLDER)
+            return move;
+    }
+    return originalMove;
+}
+
+enum Ability Randomizer_GetAbility(enum Ability originalAbility, u32 key)
+{
+    u32 i;
+
+    if (!Randomizer_AreAbilitiesEnabled() || originalAbility == ABILITY_NONE)
+        return originalAbility;
+
+    key ^= Randomizer_GetSeed() ^ 0x4142494C ^ originalAbility;
+    for (i = 0; i < ABILITIES_COUNT; i++)
+    {
+        enum Ability ability;
+
+        key = RandomizerHash(key + i + 1);
+        ability = 1 + (key % (ABILITIES_COUNT - 1));
+        if (gAbilitiesInfo[ability].name[0] != EOS)
+            return ability;
+    }
+    return originalAbility;
+}
+
+enum Species Randomizer_GetEvolutionSpecies(enum Species originalSpecies, u32 key)
+{
+    if (!Randomizer_AreEvolutionsEnabled() || originalSpecies == SPECIES_NONE)
+        return originalSpecies;
+
+    return PickRandomizerSpecies(originalSpecies, Randomizer_GetSeed() ^ 0x45564F4C ^ key);
+}
+
+enum Item Randomizer_GetItem(enum Item originalItem, u32 key)
+{
+    u32 i;
+    enum Pocket pocket;
+
+    if (!Randomizer_AreItemsEnabled()
+     || originalItem == ITEM_NONE
+     || originalItem >= ITEMS_COUNT
+     || gItemsInfo[originalItem].importance)
+        return originalItem;
+
+    pocket = gItemsInfo[originalItem].pocket;
+    key ^= Randomizer_GetSeed() ^ 0x4954454D ^ originalItem;
+    for (i = 0; i < ITEMS_COUNT; i++)
+    {
+        enum Item item;
+
+        key = RandomizerHash(key + i + 1);
+        item = 1 + (key % (ITEMS_COUNT - 1));
+        if (gItemsInfo[item].name != NULL
+         && gItemsInfo[item].name[0] != EOS
+         && !gItemsInfo[item].importance
+         && gItemsInfo[item].pocket == pocket)
+            return item;
+    }
+    return originalItem;
 }
 
 enum Species Randomizer_GetWildSpecies(enum Species species)

@@ -18,6 +18,8 @@
 #include "constants/rgb.h"
 #include "constants/songs.h"
 
+#if MODULE_RANDOMIZER_ENABLED
+
 #define tMenuSelection data[0]
 
 static EWRAM_DATA MainCallback sBackCallback = NULL;
@@ -385,3 +387,5 @@ static void DrawBgWindowFrames(void)
     FillBgTilemapBufferRect(1, TILE_BOT_CORNER_R, 28, 15,  1,  1,  7);
     CopyBgTilemapBufferToVram(1);
 }
+
+#endif // MODULE_RANDOMIZER_ENABLED

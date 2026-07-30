@@ -9,6 +9,10 @@ enum Species Randomizer_GetWildSpecies(enum Species species);
 enum Species Randomizer_GetStarterSpecies(enum Species originalSpecies, u8 starterId);
 enum Species Randomizer_GetTrainerSpecies(enum Species originalSpecies, u32 key);
 enum Species Randomizer_GetGiftStaticSpecies(enum Species originalSpecies, u32 key);
+enum Move Randomizer_GetMove(enum Move originalMove, u32 key);
+enum Ability Randomizer_GetAbility(enum Ability originalAbility, u32 key);
+enum Species Randomizer_GetEvolutionSpecies(enum Species originalSpecies, u32 key);
+enum Item Randomizer_GetItem(enum Item originalItem, u32 key);
 void Randomizer_InitNewGameSeed(void);
 void Randomizer_LoadSave(void);
 void Randomizer_RerollSeed(void);
@@ -18,17 +22,29 @@ bool32 Randomizer_IsWildEnabled(void);
 bool32 Randomizer_IsStarterEnabled(void);
 bool32 Randomizer_IsTrainerEnabled(void);
 bool32 Randomizer_IsGiftStaticEnabled(void);
+bool32 Randomizer_AreMovesEnabled(void);
+bool32 Randomizer_AreAbilitiesEnabled(void);
+bool32 Randomizer_AreEvolutionsEnabled(void);
+bool32 Randomizer_AreItemsEnabled(void);
 bool32 Randomizer_IsAllDataEnabled(void);
 void Randomizer_SetWildEnabled(bool32 enabled);
 void Randomizer_SetStarterEnabled(bool32 enabled);
 void Randomizer_SetTrainerEnabled(bool32 enabled);
 void Randomizer_SetGiftStaticEnabled(bool32 enabled);
+void Randomizer_SetMovesEnabled(bool32 enabled);
+void Randomizer_SetAbilitiesEnabled(bool32 enabled);
+void Randomizer_SetEvolutionsEnabled(bool32 enabled);
+void Randomizer_SetItemsEnabled(bool32 enabled);
 void Randomizer_SetAllDataEnabled(bool32 enabled);
 #else
 static inline enum Species Randomizer_GetWildSpecies(enum Species species) { return species; }
 static inline enum Species Randomizer_GetStarterSpecies(enum Species species, u8 starterId) { return species; }
 static inline enum Species Randomizer_GetTrainerSpecies(enum Species species, u32 key) { return species; }
 static inline enum Species Randomizer_GetGiftStaticSpecies(enum Species species, u32 key) { return species; }
+static inline enum Move Randomizer_GetMove(enum Move move, u32 key) { return move; }
+static inline enum Ability Randomizer_GetAbility(enum Ability ability, u32 key) { return ability; }
+static inline enum Species Randomizer_GetEvolutionSpecies(enum Species species, u32 key) { return species; }
+static inline enum Item Randomizer_GetItem(enum Item item, u32 key) { return item; }
 static inline void Randomizer_InitNewGameSeed(void) {}
 static inline void Randomizer_LoadSave(void) {}
 static inline void Randomizer_RerollSeed(void) {}
@@ -38,11 +54,19 @@ static inline bool32 Randomizer_IsWildEnabled(void) { return FALSE; }
 static inline bool32 Randomizer_IsStarterEnabled(void) { return FALSE; }
 static inline bool32 Randomizer_IsTrainerEnabled(void) { return FALSE; }
 static inline bool32 Randomizer_IsGiftStaticEnabled(void) { return FALSE; }
+static inline bool32 Randomizer_AreMovesEnabled(void) { return FALSE; }
+static inline bool32 Randomizer_AreAbilitiesEnabled(void) { return FALSE; }
+static inline bool32 Randomizer_AreEvolutionsEnabled(void) { return FALSE; }
+static inline bool32 Randomizer_AreItemsEnabled(void) { return FALSE; }
 static inline bool32 Randomizer_IsAllDataEnabled(void) { return FALSE; }
 static inline void Randomizer_SetWildEnabled(bool32 enabled) {}
 static inline void Randomizer_SetStarterEnabled(bool32 enabled) {}
 static inline void Randomizer_SetTrainerEnabled(bool32 enabled) {}
 static inline void Randomizer_SetGiftStaticEnabled(bool32 enabled) {}
+static inline void Randomizer_SetMovesEnabled(bool32 enabled) {}
+static inline void Randomizer_SetAbilitiesEnabled(bool32 enabled) {}
+static inline void Randomizer_SetEvolutionsEnabled(bool32 enabled) {}
+static inline void Randomizer_SetItemsEnabled(bool32 enabled) {}
 static inline void Randomizer_SetAllDataEnabled(bool32 enabled) {}
 #endif
 

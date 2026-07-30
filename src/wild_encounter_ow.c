@@ -14,6 +14,7 @@
 #include "metatile_behavior.h"
 #include "overworld.h"
 #include "random.h"
+#include "randomizer.h"
 #include "roamer.h"
 #include "script.h"
 #include "script_movement.h"
@@ -388,6 +389,16 @@ void StartWildBattleWithOWE(struct ScriptContext *ctx)
         return;
 
     enum Species speciesId = OW_SPECIES(owe);
+
+    if (GetOverworldWildEncounterType(owe) == OWE_MANUAL)
+    {
+        u32 encounterKey = ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                         ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                         ^ ((u32)localId << 8)
+                         ^ speciesId;
+
+        speciesId = Randomizer_GetGiftStaticSpecies(speciesId, encounterKey);
+    }
     bool32 shiny = OW_SHINY(owe) ? TRUE : FALSE;
     u32 gender = OW_FEMALE(owe) ? MON_FEMALE : MON_MALE;
     u32 level = owe->sOverworldEncounterLevel & ~OWE_NO_DESPAWN_FLAG;

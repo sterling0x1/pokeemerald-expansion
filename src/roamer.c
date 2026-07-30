@@ -3,6 +3,7 @@
 #include "ow_abilities.h"
 #include "pokemon.h"
 #include "random.h"
+#include "randomizer.h"
 #include "roamer.h"
 
 // Despite having a variable to track it, the roamer is
@@ -100,6 +101,7 @@ void MoveAllRoamers(void)
 
 static void CreateInitialRoamerMon(u8 index, enum Species species, u8 level)
 {
+    species = Randomizer_GetGiftStaticSpecies(species, 0x524F414D ^ index ^ species);
     ClearRoamerLocationHistory(index);
     u32 personality = GetMonPersonality(species,
         GetSynchronizedGender(ROAMER_ORIGIN, species),

@@ -72,6 +72,9 @@ u8 ScriptGiveEgg(enum Species species)
     u8 isEgg;
     u8 result;
 
+    species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                                                       ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                                                       ^ species ^ 0x454747);
     CreateEgg(&mon, species, TRUE);
     isEgg = TRUE;
     SetMonData(&mon, MON_DATA_IS_EGG, &isEgg);
@@ -443,7 +446,8 @@ static u32 ScriptGiveMonParameterized(u8 side, u8 slot, enum Species species, u8
                 break;
             if (moves[i] < MOVES_COUNT)
             {
-                SetMonMoveSlot(&mon, moves[i], i);
+                enum Move move = Randomizer_GetMove(moves[i], 0);
+                SetMonMoveSlot(&mon, move, i);
             }
             else if (moves[i] == MOVE_DEFAULT)
             {
@@ -500,11 +504,14 @@ static u32 ScriptGiveMonParameterized(u8 side, u8 slot, enum Species species, u8
     return MON_GIVEN_TO_PARTY;
 }
 
-u32 ScriptGiveMon(enum Species species, u8 level, enum Item item)
+static u32 ScriptGiveMonInternal(enum Species species, u8 level, enum Item item, bool32 applyRandomizer)
 {
-    species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
-                                                       ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
-                                                       ^ species);
+    if (applyRandomizer)
+    {
+        species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                                                           ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                                                           ^ species);
+    }
     struct Pokemon mon;
     u32 result;
     u8 heldItem[2];
@@ -522,6 +529,16 @@ u32 ScriptGiveMon(enum Species species, u8 level, enum Item item)
     result = GiveScriptedMonToPlayer(&mon, PARTY_SIZE);
     Nuzlocke_CommitGiftMon(result != MON_CANT_GIVE);
     return result;
+}
+
+u32 ScriptGiveMon(enum Species species, u8 level, enum Item item)
+{
+    return ScriptGiveMonInternal(species, level, item, TRUE);
+}
+
+u32 ScriptGiveMonWithoutRandomization(enum Species species, u8 level, enum Item item)
+{
+    return ScriptGiveMonInternal(species, level, item, FALSE);
 }
 
 #define PARSE_FLAG(n, default_) (flags & (1 << (n))) ? VarGet(ScriptReadHalfword(ctx)) : (default_)

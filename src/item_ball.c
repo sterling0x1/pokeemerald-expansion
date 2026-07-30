@@ -1,6 +1,7 @@
 #include "global.h"
 #include "item_ball.h"
 #include "event_data.h"
+#include "randomizer.h"
 #include "constants/event_objects.h"
 #include "constants/items.h"
 
@@ -21,7 +22,12 @@ static u32 GetItemBallIdFromTemplate(u32 itemBallId)
 {
     enum Item itemId = gMapHeader.events->objectEvents[itemBallId].trainerRange_berryTreeId;
 
-    return (itemId >= ITEMS_COUNT) ? (ITEM_NONE + 1) : itemId;
+    if (itemId >= ITEMS_COUNT)
+        return ITEM_NONE + 1;
+
+    return Randomizer_GetItem(itemId, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                                    ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                                    ^ itemBallId);
 }
 
 void GetItemBallIdAndAmountFromTemplate(void)

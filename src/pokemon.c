@@ -45,6 +45,7 @@
 #include "pokemon_storage_system.h"
 #include "pokerus.h"
 #include "random.h"
+#include "randomizer.h"
 #include "recorded_battle.h"
 #include "regions.h"
 #include "rtc.h"
@@ -1505,6 +1506,8 @@ u16 GiveMoveToMon(struct Pokemon *mon, enum Move move)
 u16 GiveMoveToBoxMon(struct BoxPokemon *boxMon, enum Move move)
 {
     s32 i;
+
+    move = Randomizer_GetMove(move, 0);
     for (i = 0; i < MAX_MON_MOVES; i++)
     {
         enum Move existingMove = GetBoxMonData(boxMon, MON_DATA_MOVE1 + i);
@@ -1585,6 +1588,7 @@ void GiveBoxMonInitialMoveset(struct BoxPokemon *boxMon) //Credit: AsparagusEdua
     {
         s32 j;
         bool32 alreadyKnown = FALSE;
+        enum Move move = Randomizer_GetMove(learnset[i].move, 0);
 
         if (learnset[i].level > level)
             break;
@@ -1593,7 +1597,7 @@ void GiveBoxMonInitialMoveset(struct BoxPokemon *boxMon) //Credit: AsparagusEdua
 
         for (j = 0; j < addedMoves; j++)
         {
-            if (moves[j] == learnset[i].move)
+            if (moves[j] == move)
             {
                 alreadyKnown = TRUE;
                 break;
@@ -1604,14 +1608,14 @@ void GiveBoxMonInitialMoveset(struct BoxPokemon *boxMon) //Credit: AsparagusEdua
         {
             if (addedMoves < MAX_MON_MOVES)
             {
-                moves[addedMoves] = learnset[i].move;
+                moves[addedMoves] = move;
                 addedMoves++;
             }
             else
             {
                 for (j = 0; j < MAX_MON_MOVES - 1; j++)
                     moves[j] = moves[j + 1];
-                moves[MAX_MON_MOVES - 1] = learnset[i].move;
+                moves[MAX_MON_MOVES - 1] = move;
             }
         }
     }
@@ -1638,6 +1642,7 @@ void GiveBoxMonDefaultMove(struct BoxPokemon *boxMon, u32 slot)
     {
         s32 j;
         bool32 alreadyKnown = FALSE;
+        enum Move candidateMove = Randomizer_GetMove(learnset[i].move, 0);
 
         if (learnset[i].level > level)
             break;
@@ -1646,14 +1651,14 @@ void GiveBoxMonDefaultMove(struct BoxPokemon *boxMon, u32 slot)
 
         for (j = 0; j < slot; j++)
         {
-            if (GetBoxMonData(boxMon, MON_DATA_MOVE1 + j) == learnset[i].move)
+            if (GetBoxMonData(boxMon, MON_DATA_MOVE1 + j) == candidateMove)
             {
                 alreadyKnown = TRUE;
                 break;
             }
         }
         if (!alreadyKnown)
-            move = learnset[i].move;
+            move = candidateMove;
     }
 
     SetBoxMonData(boxMon, MON_DATA_MOVE1 + slot, &move);
@@ -1707,6 +1712,8 @@ enum Move MonTryLearningNewMoveAtLevel(struct Pokemon *mon, bool32 firstMove, u3
         gMoveToLearn = learnset[sLearningMoveTableID].move;
         sLearningMoveTableID++;
         retVal = GiveMoveToMon(mon, gMoveToLearn);
+        if (retVal == MON_HAS_MAX_MOVES)
+            gMoveToLearn = Randomizer_GetMove(gMoveToLearn, 0);
     }
 
     return retVal;
@@ -3166,6 +3173,7 @@ enum Ability GetAbilityBySpecies(enum Species species, u8 abilityNum)
         gLastUsedAbility = GetSpeciesAbility(species, i);
     }
 
+    gLastUsedAbility = Randomizer_GetAbility(gLastUsedAbility, ((u32)species << 8) ^ abilityNum);
     return gLastUsedAbility;
 }
 
@@ -4742,6 +4750,9 @@ enum Species GetEvolutionTargetSpecies(struct Pokemon *mon, enum EvolutionMode m
         }
         break;
     }
+
+    if (targetSpecies != SPECIES_NONE)
+        targetSpecies = Randomizer_GetEvolutionSpecies(targetSpecies, ((u32)species << 16) ^ targetSpecies ^ mode);
 
     // Pikachu, Meowth, Eevee and Duraludon cannot evolve if they have the
     // Gigantamax Factor. We assume that is because their evolutions
@@ -6403,9 +6414,14 @@ u16 MonTryLearningNewMoveEvolution(struct Pokemon *mon, bool8 firstMove)
         while ((learnset[sLearningMoveTableID].level == 0 || learnset[sLearningMoveTableID].level == level)
              && !(P_EVOLUTION_LEVEL_1_LEARN >= GEN_8 && learnset[sLearningMoveTableID].level == 1))
         {
+            u16 result;
+
             gMoveToLearn = learnset[sLearningMoveTableID].move;
             sLearningMoveTableID++;
-            return GiveMoveToMon(mon, gMoveToLearn);
+            result = GiveMoveToMon(mon, gMoveToLearn);
+            if (result == MON_HAS_MAX_MOVES)
+                gMoveToLearn = Randomizer_GetMove(gMoveToLearn, 0);
+            return result;
         }
         sLearningMoveTableID++;
     }

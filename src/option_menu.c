@@ -77,6 +77,10 @@ enum OptionId
     OPT_NUZLOCKE,
     OPT_RANDOM_TRAINERS,
     OPT_RANDOM_GIFTS_STATIC,
+    OPT_RANDOM_MOVES,
+    OPT_RANDOM_ABILITIES,
+    OPT_RANDOM_EVOLUTIONS,
+    OPT_RANDOM_ITEMS,
     OPT_RANDOM_ALL_DATA,
     OPTION_COUNT,
 };
@@ -137,7 +141,11 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
     [OPT_NUZLOCKE]            = COMPOUND_STRING("NUZLOCKE MODE"),
     [OPT_RANDOM_TRAINERS]     = COMPOUND_STRING("RANDOM TRAINERS"),
     [OPT_RANDOM_GIFTS_STATIC] = COMPOUND_STRING("RANDOM GIFTS/STATIC"),
-    [OPT_RANDOM_ALL_DATA]     = COMPOUND_STRING("RANDOM GAME DATA"),
+    [OPT_RANDOM_MOVES]        = COMPOUND_STRING("RANDOM MOVES"),
+    [OPT_RANDOM_ABILITIES]    = COMPOUND_STRING("RANDOM ABILITIES"),
+    [OPT_RANDOM_EVOLUTIONS]   = COMPOUND_STRING("RANDOM EVOLUTIONS"),
+    [OPT_RANDOM_ITEMS]        = COMPOUND_STRING("RANDOM ITEMS"),
+    [OPT_RANDOM_ALL_DATA]     = COMPOUND_STRING("CARNAGE MODE"),
 };
 
 
@@ -203,6 +211,10 @@ static const enum OptionId sRandomizerOptions[] =
     OPT_RANDOM_REROLL,
     OPT_RANDOM_TRAINERS,
     OPT_RANDOM_GIFTS_STATIC,
+    OPT_RANDOM_MOVES,
+    OPT_RANDOM_ABILITIES,
+    OPT_RANDOM_EVOLUTIONS,
+    OPT_RANDOM_ITEMS,
     OPT_RANDOM_ALL_DATA,
 };
 #endif
@@ -536,13 +548,21 @@ static const u8 *GetOptionValueText(u8 taskId, enum OptionId option)
     case OPT_BATTLE_STYLE:
         return gTasks[taskId].tBattleStyle ? sTextSet : sTextShift;
     case OPT_RANDOM_WILD:
-        return RandomizerUnlocked() ? (Randomizer_IsWildEnabled() ? sTextOn : sTextOff) : sTextLocked;
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_IsWildEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_STARTERS:
-        return RandomizerUnlocked() ? (Randomizer_IsStarterEnabled() ? sTextOn : sTextOff) : sTextLocked;
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_IsStarterEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_TRAINERS:
-        return RandomizerUnlocked() ? (Randomizer_IsTrainerEnabled() ? sTextOn : sTextOff) : sTextLocked;
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_IsTrainerEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_GIFTS_STATIC:
-        return RandomizerUnlocked() ? (Randomizer_IsGiftStaticEnabled() ? sTextOn : sTextOff) : sTextLocked;
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_IsGiftStaticEnabled() ? sTextOn : sTextOff) : sTextLocked;
+    case OPT_RANDOM_MOVES:
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_AreMovesEnabled() ? sTextOn : sTextOff) : sTextLocked;
+    case OPT_RANDOM_ABILITIES:
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_AreAbilitiesEnabled() ? sTextOn : sTextOff) : sTextLocked;
+    case OPT_RANDOM_EVOLUTIONS:
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_AreEvolutionsEnabled() ? sTextOn : sTextOff) : sTextLocked;
+    case OPT_RANDOM_ITEMS:
+        return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_AreItemsEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_ALL_DATA:
         return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_REROLL:
@@ -724,20 +744,36 @@ case OPT_TEXT_SPEED:
         gTasks[taskId].tBattleStyle ^= 1;
         break;
     case OPT_RANDOM_WILD:
-        if (RandomizerUnlocked())
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
             Randomizer_SetWildEnabled(!Randomizer_IsWildEnabled());
         break;
     case OPT_RANDOM_STARTERS:
-        if (RandomizerUnlocked())
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
             Randomizer_SetStarterEnabled(!Randomizer_IsStarterEnabled());
         break;
     case OPT_RANDOM_TRAINERS:
-        if (RandomizerUnlocked())
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
             Randomizer_SetTrainerEnabled(!Randomizer_IsTrainerEnabled());
         break;
     case OPT_RANDOM_GIFTS_STATIC:
-        if (RandomizerUnlocked())
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
             Randomizer_SetGiftStaticEnabled(!Randomizer_IsGiftStaticEnabled());
+        break;
+    case OPT_RANDOM_MOVES:
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
+            Randomizer_SetMovesEnabled(!Randomizer_AreMovesEnabled());
+        break;
+    case OPT_RANDOM_ABILITIES:
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
+            Randomizer_SetAbilitiesEnabled(!Randomizer_AreAbilitiesEnabled());
+        break;
+    case OPT_RANDOM_EVOLUTIONS:
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
+            Randomizer_SetEvolutionsEnabled(!Randomizer_AreEvolutionsEnabled());
+        break;
+    case OPT_RANDOM_ITEMS:
+        if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
+            Randomizer_SetItemsEnabled(!Randomizer_AreItemsEnabled());
         break;
     case OPT_RANDOM_ALL_DATA:
         if (RandomizerUnlocked())
