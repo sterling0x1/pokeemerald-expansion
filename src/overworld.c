@@ -1966,6 +1966,7 @@ void CB2_NewGame(void)
         CB2_ContinueNewGame();
 }
 
+#if MODULE_NUZLOCKE_ENABLED
 static void CB2_StartNuzlockeRandomizerSetup(void);
 
 static void CB2_CancelNewNuzlockeGame(void)
@@ -1998,6 +1999,12 @@ void CB2_NewNuzlockeGame(void)
     Nuzlocke_ApplyPreset(NUZLOCKE_PRESET_STANDARD);
     StartNuzlockeSetupMenuWithBack(CB2_StartNuzlockeRandomizerSetup, CB2_CancelNewNuzlockeGame);
 }
+#else
+void CB2_NewNuzlockeGame(void)
+{
+    CB2_NewGame();
+}
+#endif // MODULE_NUZLOCKE_ENABLED
 
 void CB2_WhiteOut(void)
 {

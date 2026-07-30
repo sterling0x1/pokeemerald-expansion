@@ -10,6 +10,7 @@
 #include "constants/battle.h"
 #include "constants/pokemon.h"
 
+#if MODULE_NUZLOCKE_ENABLED
 #define NUZLOCKE_SAVE_MAGIC 0x4E555A31
 
 static EWRAM_DATA bool8 sCanCatchPartyMon[PARTY_SIZE];
@@ -452,3 +453,4 @@ bool32 Nuzlocke_TryRestoreUsablePartyFromPC(void)
 
     return FALSE;
 }
+#endif // MODULE_NUZLOCKE_ENABLED

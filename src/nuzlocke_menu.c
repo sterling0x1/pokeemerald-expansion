@@ -20,6 +20,7 @@
 #include "constants/pokemon.h"
 #include "constants/songs.h"
 
+#if MODULE_NUZLOCKE_ENABLED
 #define tMenuSelection data[0]
 #define tPage data[1]
 
@@ -816,3 +817,5 @@ static void DrawBgWindowFrames(void)
     FillBgTilemapBufferRect(1, TILE_BOT_CORNER_R, 28, 19,  1,  1,  7);
     CopyBgTilemapBufferToVram(1);
 }
+
+#endif // MODULE_NUZLOCKE_ENABLED
