@@ -12,6 +12,8 @@
 #include "graphics.h"
 #include "international_string_util.h"
 #include "link.h"
+#include "load_save.h"
+#include "m4a.h"
 #include "main.h"
 #include "main_menu.h"
 #include "menu.h"
@@ -19,6 +21,7 @@
 #include "mystery_event_menu.h"
 #include "naming_screen.h"
 #include "nuzlocke.h"
+#include "new_game.h"
 #include "oak_speech.h"
 #include "option_menu.h"
 #include "overworld.h"
@@ -189,8 +192,10 @@ static void ClearMainMenuWindowTilemap(const struct WindowTemplate *);
 static void Task_DisplayMainMenu(u8);
 static void Task_WaitForBatteryDryErrorWindow(u8);
 static void MainMenu_FormatSavegameText(void);
+static const u8 *GetSaveSlotMenuText(const u8 *text);
 static void HighlightSelectedMainMenuItem(enum PartyMenuType, u8, s16);
 static void Task_HandleMainMenuInput(u8);
+static void SwitchMainMenuSaveSlot(u8);
 static void Task_HandleMainMenuAPressed(u8);
 static void Task_HandleMainMenuBPressed(u8);
 static void Task_NewGameBirchSpeech_Init(u8);
@@ -264,10 +269,10 @@ static const u8 sText_NuzlockeRunEnded[] = _("This Nuzlocke run has ended.\nStar
 static const u8 gJPText_No1MSubCircuit[] = _("1Mサブきばんが ささっていません！");
 static const u8 gText_BatteryRunDry[] = _("The internal battery has run dry.\nThe game can be played.\pHowever, clock-based events will\nno longer occur.");
 
-static const u8 gText_MainMenuNewGame[] = _("NEW GAME");
-static const u8 gText_MainMenuNuzlocke[] = _("NUZLOCKE");
+static const u8 gText_MainMenuNewGame[] = _("NEW GAME   {DPAD_LEFTRIGHT} SLOT {STR_VAR_1}");
+static const u8 gText_MainMenuNuzlocke[] = _("NUZLOCKE   {DPAD_LEFTRIGHT} SLOT {STR_VAR_1}");
 static const u8 sText_ChooseCharacter[] = _("Choose your character.");
-static const u8 gText_MainMenuContinue[] = _("CONTINUE");
+static const u8 gText_MainMenuContinue[] = _("CONTINUE   {DPAD_LEFTRIGHT} SLOT {STR_VAR_1}");
 static const u8 gText_MainMenuOption[] = _("OPTION");
 static const u8 gText_MainMenuMysteryGift[] = _("MYSTERY GIFT");
 static const u8 gText_MainMenuMysteryGift2[] = _("MYSTERY GIFT");
@@ -280,6 +285,7 @@ static const u8 gText_ContinueMenuPlayer[] = _("PLAYER");
 static const u8 gText_ContinueMenuTime[] = _("TIME");
 static const u8 gText_ContinueMenuPokedex[] = _("POKéDEX");
 static const u8 gText_ContinueMenuBadges[] = _("BADGES");
+static const u8 sText_SaveSlotHelp[] = _("LEFT/RIGHT: CHANGE SAVE SLOT");
 
 #define MENU_LEFT 2
 #define MENU_TOP_WIN0 1
@@ -822,8 +828,8 @@ static void Task_DisplayMainMenu(u8 taskId)
             FillWindowPixelBuffer(0, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(1, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(3, PIXEL_FILL(0xA));
-            AddTextPrinterParameterized3(0, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNewGame);
-            AddTextPrinterParameterized3(1, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNuzlocke);
+            AddTextPrinterParameterized3(0, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
+            AddTextPrinterParameterized3(1, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
             AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
             PutWindowTilemap(0);
             PutWindowTilemap(1);
@@ -840,9 +846,9 @@ static void Task_DisplayMainMenu(u8 taskId)
             FillWindowPixelBuffer(3, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(4, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(5, PIXEL_FILL(0xA));
-            AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuContinue);
-            AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNewGame);
-            AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNuzlocke);
+            AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuContinue));
+            AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
+            AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
             AddTextPrinterParameterized3(5, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
             MainMenu_FormatSavegameText();
             PutWindowTilemap(2);
@@ -864,9 +870,9 @@ static void Task_DisplayMainMenu(u8 taskId)
             FillWindowPixelBuffer(4, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(5, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(6, PIXEL_FILL(0xA));
-            AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuContinue);
-            AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNewGame);
-            AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNuzlocke);
+            AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuContinue));
+            AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
+            AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
             AddTextPrinterParameterized3(5, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryGift);
             AddTextPrinterParameterized3(6, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
             MainMenu_FormatSavegameText();
@@ -902,9 +908,9 @@ static void Task_DisplayMainMenu(u8 taskId)
             FillWindowPixelBuffer(5, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(6, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(7, PIXEL_FILL(0xA));
-            AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuContinue);
-            AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNewGame);
-            AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuNuzlocke);
+            AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuContinue));
+            AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
+            AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
             AddTextPrinterParameterized3(5, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryGift2);
             AddTextPrinterParameterized3(6, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryEvents);
             AddTextPrinterParameterized3(7, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
@@ -942,6 +948,13 @@ static void Task_DisplayMainMenu(u8 taskId)
     }
 }
 
+static const u8 *GetSaveSlotMenuText(const u8 *text)
+{
+    ConvertIntToDecimalStringN(gStringVar1, gSelectedSaveSlot + 1, STR_CONV_MODE_LEFT_ALIGN, 1);
+    StringExpandPlaceholders(gStringVar4, text);
+    return gStringVar4;
+}
+
 static void Task_HighlightSelectedMainMenuItem(u8 taskId)
 {
     HighlightSelectedMainMenuItem(gTasks[taskId].tMenuType, gTasks[taskId].tCurrItem, gTasks[taskId].tIsScrolled);
@@ -952,7 +965,11 @@ static bool8 HandleMainMenuInput(u8 taskId)
 {
     s16 *data = gTasks[taskId].data;
 
-    if (JOY_NEW(A_BUTTON))
+    if (JOY_NEW(DPAD_LEFT | DPAD_RIGHT))
+    {
+        SwitchMainMenuSaveSlot(taskId);
+    }
+    else if (JOY_NEW(A_BUTTON))
     {
         PlaySE(SE_SELECT);
         IsWirelessAdapterConnected();   // why bother calling this here? debug? Task_HandleMainMenuAPressed will check too
@@ -994,6 +1011,23 @@ static bool8 HandleMainMenuInput(u8 taskId)
         return TRUE;
     }
     return FALSE;
+}
+
+static void SwitchMainMenuSaveSlot(u8 taskId)
+{
+    u8 slot = gSelectedSaveSlot == SAVE_SLOT_1 ? SAVE_SLOT_2 : SAVE_SLOT_1;
+
+    PlaySE(SE_SELECT);
+    SetSaveBlocksPointers(GetSaveBlocksPointersBaseOffsetForSlot(slot));
+    ResetMenuAndMonGlobals();
+    LoadGameSaveSlot(slot);
+    if (gSaveFileStatus == SAVE_STATUS_EMPTY || gSaveFileStatus == SAVE_STATUS_CORRUPT)
+        Sav2_ClearSetDefault();
+    SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);
+    sCurrItemAndOptionMenuCheck = 0;
+    FreeAllWindowBuffers();
+    DestroyTask(taskId);
+    SetMainCallback2(CB2_InitMainMenu);
 }
 
 static void Task_HandleMainMenuInput(u8 taskId)
@@ -2263,6 +2297,9 @@ static void CreateMainMenuErrorWindow(const u8 *str)
 
 static void MainMenu_FormatSavegameText(void)
 {
+    AddTextPrinterParameterized3(2, FONT_SMALL,
+                                 GetStringCenterAlignXOffset(FONT_SMALL, sText_SaveSlotHelp, 208),
+                                 13, sTextColor_MenuInfo, TEXT_SKIP_DRAW, sText_SaveSlotHelp);
     MainMenu_FormatSavegamePlayer();
     MainMenu_FormatSavegamePokedex();
     MainMenu_FormatSavegameTime();
@@ -2272,8 +2309,8 @@ static void MainMenu_FormatSavegameText(void)
 static void MainMenu_FormatSavegamePlayer(void)
 {
     StringExpandPlaceholders(gStringVar4, gText_ContinueMenuPlayer);
-    AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 17, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
-    AddTextPrinterParameterized3(2, FONT_NORMAL, GetStringRightAlignXOffset(FONT_NORMAL, gSaveBlock2Ptr->playerName, 100), 17, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gSaveBlock2Ptr->playerName);
+    AddTextPrinterParameterized3(2, FONT_SMALL, 0, 25, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
+    AddTextPrinterParameterized3(2, FONT_SMALL, GetStringRightAlignXOffset(FONT_SMALL, gSaveBlock2Ptr->playerName, 100), 25, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gSaveBlock2Ptr->playerName);
 }
 
 static void MainMenu_FormatSavegameTime(void)
@@ -2282,11 +2319,11 @@ static void MainMenu_FormatSavegameTime(void)
     u8 *ptr;
 
     StringExpandPlaceholders(gStringVar4, gText_ContinueMenuTime);
-    AddTextPrinterParameterized3(2, FONT_NORMAL, 0x6C, 17, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
+    AddTextPrinterParameterized3(2, FONT_SMALL, 0x6C, 25, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
     ptr = ConvertIntToDecimalStringN(str, gSaveBlock2Ptr->playTimeHours, STR_CONV_MODE_LEFT_ALIGN, 3);
     *ptr = 0xF0;
     ConvertIntToDecimalStringN(ptr + 1, gSaveBlock2Ptr->playTimeMinutes, STR_CONV_MODE_LEADING_ZEROS, 2);
-    AddTextPrinterParameterized3(2, FONT_NORMAL, GetStringRightAlignXOffset(FONT_NORMAL, str, 0xD0), 17, sTextColor_MenuInfo, TEXT_SKIP_DRAW, str);
+    AddTextPrinterParameterized3(2, FONT_SMALL, GetStringRightAlignXOffset(FONT_SMALL, str, 0xD0), 25, sTextColor_MenuInfo, TEXT_SKIP_DRAW, str);
 }
 
 static void MainMenu_FormatSavegamePokedex(void)
@@ -2301,9 +2338,9 @@ static void MainMenu_FormatSavegamePokedex(void)
         else
             dexCount = GetRegionalPokedexCount(FLAG_GET_CAUGHT);
         StringExpandPlaceholders(gStringVar4, gText_ContinueMenuPokedex);
-        AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 33, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
+        AddTextPrinterParameterized3(2, FONT_SMALL, 0, 37, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
         ConvertIntToDecimalStringN(str, dexCount, STR_CONV_MODE_LEFT_ALIGN, 4);
-        AddTextPrinterParameterized3(2, FONT_NORMAL, GetStringRightAlignXOffset(FONT_NORMAL, str, 100), 33, sTextColor_MenuInfo, TEXT_SKIP_DRAW, str);
+        AddTextPrinterParameterized3(2, FONT_SMALL, GetStringRightAlignXOffset(FONT_SMALL, str, 100), 37, sTextColor_MenuInfo, TEXT_SKIP_DRAW, str);
     }
 }
 
@@ -2319,9 +2356,9 @@ static void MainMenu_FormatSavegameBadges(void)
             badgeCount++;
     }
     StringExpandPlaceholders(gStringVar4, gText_ContinueMenuBadges);
-    AddTextPrinterParameterized3(2, FONT_NORMAL, 0x6C, 33, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
+    AddTextPrinterParameterized3(2, FONT_SMALL, 0x6C, 37, sTextColor_MenuInfo, TEXT_SKIP_DRAW, gStringVar4);
     ConvertIntToDecimalStringN(str, badgeCount, STR_CONV_MODE_LEADING_ZEROS, 1);
-    AddTextPrinterParameterized3(2, FONT_NORMAL, GetStringRightAlignXOffset(FONT_NORMAL, str, 0xD0), 33, sTextColor_MenuInfo, TEXT_SKIP_DRAW, str);
+    AddTextPrinterParameterized3(2, FONT_SMALL, GetStringRightAlignXOffset(FONT_SMALL, str, 0xD0), 37, sTextColor_MenuInfo, TEXT_SKIP_DRAW, str);
 }
 
 static void LoadMainMenuWindowFrameTiles(u8 bgId, u16 tileOffset)

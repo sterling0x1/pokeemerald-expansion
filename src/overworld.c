@@ -1966,7 +1966,7 @@ static void CB2_StartNuzlockeRandomizerSetup(void);
 
 static void CB2_CancelNewNuzlockeGame(void)
 {
-    LoadGameSave(SAVE_NORMAL);
+    LoadGameSaveSlot(gSelectedSaveSlot);
     SetMainCallback2(CB2_InitMainMenu);
 }
 
@@ -2005,7 +2005,7 @@ void CB2_WhiteOut(void)
             // A failed run must never replace the player's last valid save.
             // Discard the in-memory battle state and restore the save from flash
             // before returning to the main menu.
-            LoadGameSave(SAVE_NORMAL);
+            LoadGameSaveSlot(gSelectedSaveSlot);
             FieldClearVBlankHBlankCallbacks();
             StopMapMusic();
             SetMainCallback2(CB2_InitMainMenu);

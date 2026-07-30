@@ -14,16 +14,18 @@
 void ReloadSave(void)
 {
     u16 imeBackup = REG_IME;
+    u8 selectedSaveSlot = gSelectedSaveSlot;
     REG_IME = 0;
     RegisterRamReset(RESET_EWRAM);
     ReInitializeEWRAM();
     ClearGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_FORCED_BLANK);
     REG_IME = imeBackup;
     gMain.inBattle = FALSE;
-    SetSaveBlocksPointers(GetSaveBlocksPointersBaseOffset());
+    gSelectedSaveSlot = selectedSaveSlot;
+    SetSaveBlocksPointers(GetSaveBlocksPointersBaseOffsetForSlot(gSelectedSaveSlot));
     ResetMenuAndMonGlobals();
     Save_ResetSaveCounters();
-    LoadGameSave(SAVE_NORMAL);
+    LoadGameSaveSlot(gSelectedSaveSlot);
     if (gSaveFileStatus == SAVE_STATUS_EMPTY || gSaveFileStatus == SAVE_STATUS_CORRUPT)
         Sav2_ClearSetDefault();
     SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);

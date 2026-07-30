@@ -10,6 +10,8 @@
 #define SECTOR_SIZE (SECTOR_DATA_SIZE + SAVE_BLOCK_3_CHUNK_SIZE + SECTOR_FOOTER_SIZE)
 
 #define NUM_SAVE_SLOTS 2
+#define SAVE_SLOT_1 0
+#define SAVE_SLOT_2 1
 
 // If the sector's signature field is not this value then the sector is either invalid or empty.
 #define SECTOR_SIGNATURE 0x8012025
@@ -89,6 +91,7 @@ extern u32 gSaveCounter;
 extern struct SaveSector *gFastSaveSector;
 extern u16 gIncrementalSectorId;
 extern u16 gSaveFileStatus;
+extern u8 gSelectedSaveSlot;
 extern MainCallback gGameContinueCallback;
 extern struct SaveSectorLocation gRamSaveSectorLocations[];
 
@@ -105,7 +108,9 @@ bool8 LinkFullSave_SetLastSectorSignature(void);
 bool8 WriteSaveBlock2(void);
 bool8 WriteSaveBlock1Sector(void);
 u8 LoadGameSave(u8 saveType);
+u8 LoadGameSaveSlot(u8 slot);
 u16 GetSaveBlocksPointersBaseOffset(void);
+u16 GetSaveBlocksPointersBaseOffsetForSlot(u8 slot);
 u32 TryReadSpecialSaveSector(u8 sector, u8 *dst);
 u32 TryWriteSpecialSaveSector(u8 sector, u8 *src);
 void Task_LinkFullSave(u8 taskId);
