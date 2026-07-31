@@ -7,6 +7,7 @@
 #include "item.h"
 #include "script_menu.h"
 #include "menu.h"
+#include "qol.h"
 
 #define SPRAY_COUNT 0
 #define SPRAY_GET 1
@@ -30,7 +31,7 @@ u32 IsRepelPromptEnabled(void);
 
 u32 IsRepelPromptEnabled(void)
 {
-    return ExtendedOptions_Get(EXT_OPT_REPEL_PROMPT);
+    return Qol_IsRepelPromptEnabled();
 }
 
 u32 CountOrGetSprays(u32 func)

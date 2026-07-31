@@ -172,10 +172,12 @@ static const enum OptionId sGeneralOptions[] =
     OPT_SOUND,
     OPT_BUTTON_MODE,
     OPT_FRAME,
+#if MODULE_QOL_ENABLED
     OPT_AUTO_RUN,
     OPT_RUNNING_INDOORS,
     OPT_ITEM_DESCRIPTIONS,
     OPT_REPEL_PROMPT,
+#endif
 };
 
 static const enum OptionId sBattleOptions[] =
@@ -190,11 +192,15 @@ static const enum OptionId sBattleOptions[] =
 
 static const enum OptionId sGameplayOptions[] =
 {
+#if MODULE_QOL_ENABLED
     OPT_REUSABLE_TMS,
+#endif
     OPT_EXP_ON_CATCH,
     OPT_PARTY_EXP,
+#if MODULE_QOL_ENABLED
     OPT_FIELD_POISON,
     OPT_TRAINER_ESCAPE,
+#endif
     OPT_DIFFICULTY,
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,

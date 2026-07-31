@@ -10,6 +10,7 @@
 #include "secret_base.h"
 #include "item_menu.h"
 #include "party_menu.h"
+#include "qol.h"
 #include "strings.h"
 #include "load_save.h"
 #include "item_use.h"
@@ -862,7 +863,7 @@ const u8 *GetItemDescription(enum Item itemId)
 
 u8 GetItemImportance(enum Item itemId)
 {
-    if (ExtendedOptions_Get(EXT_OPT_REUSABLE_TMS)
+    if (Qol_AreTmsReusable()
      && gItemsInfo[SanitizeItemId(itemId)].pocket == POCKET_TM_HM)
         return TRUE;
 

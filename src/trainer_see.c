@@ -7,6 +7,7 @@
 #include "field_player_avatar.h"
 #include "follower_npc.h"
 #include "pokemon.h"
+#include "qol.h"
 #include "script.h"
 #include "script_movement.h"
 #include "sprite.h"
@@ -442,6 +443,8 @@ bool8 CheckForTrainersWantingBattle(void)
     u8 trainerObjectsCount = 0;
 
     if (FlagGet(OW_FLAG_NO_TRAINER_SEE))
+        return FALSE;
+    if (Qol_ShouldSuppressTrainerApproach())
         return FALSE;
 
     gNoOfApproachingTrainers = 0;

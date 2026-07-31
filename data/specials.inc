@@ -77,6 +77,7 @@ gSpecials::
 	def_special GetTrainerFlag
 	def_special DoTrainerApproach, waitstate=1
 	def_special PlayTrainerEncounterMusic
+	def_special ConsumeTrainerEscape
 	def_special ShouldTryRematchBattle
 	def_special IsTrainerReadyForRematch
 	def_special BattleSetup_StartRematchBattle, waitstate=1

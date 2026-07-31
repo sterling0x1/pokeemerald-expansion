@@ -2,6 +2,7 @@
 #include "extended_options.h"
 #include "nuzlocke.h"
 #include "randomizer.h"
+#include "qol.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_ai_main.h"
@@ -4540,7 +4541,9 @@ static void HandleTurnActionSelectionState(void)
                     gBattleStruct->stateIdAfterSelScript[battler] = STATE_BEFORE_ACTION_CHOSEN;
                     return;
                 }
-                else if (CanPlayerForfeitNormalTrainerBattle() && gBattleResources->bufferB[battler][1] == B_ACTION_RUN)
+                else if (CanPlayerForfeitNormalTrainerBattle()
+                      && !Qol_IsTrainerEscapeEnabled()
+                      && gBattleResources->bufferB[battler][1] == B_ACTION_RUN)
                 {
                     gSelectionBattleScripts[battler] = BattleScript_QuestionForfeitBattle;
                     gBattleCommunication[battler] = STATE_SELECTION_SCRIPT_MAY_RUN;
@@ -4550,7 +4553,38 @@ static void HandleTurnActionSelectionState(void)
                 }
                 else if (gBattleTypeFlags & BATTLE_TYPE_TRAINER
                       && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK))
-                      && !ExtendedOptions_Get(EXT_OPT_TRAINER_ESCAPE)
+                      && Qol_IsTrainerEscapeEnabled()
+                      && gBattleResources->bufferB[battler][1] == B_ACTION_RUN)
+                {
+                    if (IsRunningFromBattleImpossible(battler) != BATTLE_RUN_SUCCESS)
+                    {
+                        gSelectionBattleScripts[battler] = BattleScript_PrintCantEscapeFromBattle;
+                        gBattleCommunication[battler] = STATE_SELECTION_SCRIPT;
+                        gBattleStruct->battlerState[battler].selectionScriptFinished = FALSE;
+                        gBattleStruct->stateIdAfterSelScript[battler] = STATE_BEFORE_ACTION_CHOSEN;
+                        return;
+                    }
+
+                    // A guaranteed trainer escape ends the battle immediately. Do
+                    // not route it through turn ordering: the custom battle UI and
+                    // reserve-attacker flow have no follow-up controller response
+                    // for this action.
+                    gBattlerAttacker = battler;
+                    if (TryRunFromBattle(battler))
+                    {
+                        Qol_MarkTrainerEscape();
+                        ClearTrainerFlag(TRAINER_BATTLE_PARAM.opponentA);
+                        if (TRAINER_BATTLE_PARAM.opponentB != 0
+                         && TRAINER_BATTLE_PARAM.opponentB != 0xFFFF)
+                            ClearTrainerFlag(TRAINER_BATTLE_PARAM.opponentB);
+                        gHitMarker |= HITMARKER_RUN;
+                        gBattleMainFunc = HandleEndTurn_RanFromBattle;
+                    }
+                    return;
+                }
+                else if (gBattleTypeFlags & BATTLE_TYPE_TRAINER
+                      && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK))
+                      && !Qol_IsTrainerEscapeEnabled()
                       && gBattleResources->bufferB[battler][1] == B_ACTION_RUN)
                 {
                     BattleScriptExecute(BattleScript_PrintCantRunFromTrainer);
@@ -5677,7 +5711,7 @@ static void HandleEndTurn_RanFromBattle(void)
         gBattlescriptCurrInstr = BattleScript_PrintPlayerForfeited;
         gBattleOutcome = B_OUTCOME_FORFEITED;
     }
-    else if (CanPlayerForfeitNormalTrainerBattle())
+    else if (CanPlayerForfeitNormalTrainerBattle() && !Qol_IsTrainerEscapeEnabled())
     {
         gBattlescriptCurrInstr = BattleScript_ForfeitBattleGaveMoney;
         gBattleOutcome = B_OUTCOME_FORFEITED;

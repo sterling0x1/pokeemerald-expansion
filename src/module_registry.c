@@ -11,6 +11,9 @@ extern const struct ModuleDescriptor gNuzlockeModuleDescriptor;
 #if MODULE_CHEATS_ENABLED
 extern const struct ModuleDescriptor gCheatsModuleDescriptor;
 #endif
+#if MODULE_QOL_ENABLED
+extern const struct ModuleDescriptor gQolModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -22,5 +25,8 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_CHEATS_ENABLED
     [MODULE_ID_CHEATS] = &gCheatsModuleDescriptor,
+#endif
+#if MODULE_QOL_ENABLED
+    [MODULE_ID_QOL] = &gQolModuleDescriptor,
 #endif
 };

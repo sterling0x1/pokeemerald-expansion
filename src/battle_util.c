@@ -16,6 +16,7 @@
 #include "config_changes.h"
 #include "party_menu.h"
 #include "pokemon.h"
+#include "qol.h"
 #include "international_string_util.h"
 #include "item.h"
 #include "util.h"
@@ -657,7 +658,7 @@ bool32 TryRunFromBattle(enum BattlerId battler)
 
     if ((gBattleTypeFlags & BATTLE_TYPE_TRAINER)
      && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK))
-     && ExtendedOptions_Get(EXT_OPT_TRAINER_ESCAPE))
+     && Qol_IsTrainerEscapeEnabled())
         return TRUE;
 
     if (gBattleMons[battler].item == ITEM_ENIGMA_BERRY_E_READER)

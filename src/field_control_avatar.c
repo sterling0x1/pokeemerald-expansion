@@ -28,6 +28,7 @@
 #include "metatile_behavior.h"
 #include "overworld.h"
 #include "pokemon.h"
+#include "qol.h"
 #include "safari_zone.h"
 #include "script.h"
 #include "secret_base.h"
@@ -865,7 +866,7 @@ static bool8 UpdatePoisonStepCounter(void)
 {
     u16 *ptr;
 
-    if (!ExtendedOptions_Get(EXT_OPT_FIELD_POISON))
+    if (!Qol_IsFieldPoisonEnabled())
         return FALSE;
 
     if (gMapHeader.mapType != MAP_TYPE_SECRET_BASE)

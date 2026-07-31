@@ -53,6 +53,7 @@
 #include "pokemon_icon.h"
 #include "pokemon_jump.h"
 #include "pokemon_storage_system.h"
+#include "qol.h"
 #include "pokemon_summary_screen.h"
 #include "pokerus.h"
 #include "region_map.h"
@@ -1477,7 +1478,8 @@ void Task_HandleChooseMonInput(u8 taskId)
     {
         s8 *slotPtr = GetCurrentPartySlotPtr();
 
-        if (JOY_NEW(R_BUTTON)
+        if (Qol_IsBoxShortcutEnabled()
+         && JOY_NEW(R_BUTTON)
          && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
          && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
          && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON)
@@ -2821,7 +2823,8 @@ void DisplayPartyMenuStdMessage(u32 stringId)
 {
     static const u8 sText_BoxShortcut[] = _("{R_BUTTON} BOX");
     u8 *windowPtr = &sPartyMenuInternal->windowId[1];
-    bool32 showBoxShortcut = stringId == PARTY_MSG_CHOOSE_MON
+    bool32 showBoxShortcut = Qol_IsBoxShortcutEnabled()
+                          && stringId == PARTY_MSG_CHOOSE_MON
                           && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
                           && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
                           && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON;

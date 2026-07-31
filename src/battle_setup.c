@@ -6,6 +6,7 @@
 #include "battle_transition.h"
 #include "main.h"
 #include "nuzlocke.h"
+#include "qol.h"
 #include "task.h"
 #include "safari_zone.h"
 #include "script.h"
@@ -1291,6 +1292,23 @@ static void SetBattledTrainersFlags(void)
     FlagSet(GetTrainerAFlag());
 }
 
+static void ClearBattledTrainersFlags(void)
+{
+    if (TRAINER_BATTLE_PARAM.opponentB != 0
+     && TRAINER_BATTLE_PARAM.opponentB != 0xFFFF)
+        FlagClear(GetTrainerBFlag());
+    FlagClear(GetTrainerAFlag());
+}
+
+bool32 ConsumeTrainerEscape(void)
+{
+    if (!Qol_ConsumeTrainerEscape())
+        return FALSE;
+
+    ClearBattledTrainersFlags();
+    return TRUE;
+}
+
 static void UNUSED SetBattledTrainerFlag(void)
 {
     FlagSet(GetTrainerAFlag());
@@ -1490,6 +1508,12 @@ static void CB2_EndTrainerBattle(void)
         else
             SetMainCallback2(CB2_WhiteOut);
     }
+    else if (gBattleOutcome == B_OUTCOME_RAN && Qol_IsTrainerEscapeEnabled())
+    {
+        ClearBattledTrainersFlags();
+        SetMainCallback2(CB2_ReturnToFieldContinueScriptPlayMapMusic);
+        DowngradeBadPoison();
+    }
     else if (IsPlayerDefeated(gBattleOutcome) == TRUE)
     {
         if (CurrentBattlePyramidLocation() != PYRAMID_LOCATION_NONE || InTrainerHillChallenge() || (!NoAliveMonsForPlayer()) || FlagGet(B_FLAG_NO_WHITEOUT))
@@ -1515,6 +1539,12 @@ static void CB2_EndRematchBattle(void)
 
     if (TRAINER_BATTLE_PARAM.opponentA == TRAINER_SECRET_BASE)
     {
+        DowngradeBadPoison();
+        SetMainCallback2(CB2_ReturnToFieldContinueScriptPlayMapMusic);
+    }
+    else if (gBattleOutcome == B_OUTCOME_RAN && Qol_IsTrainerEscapeEnabled())
+    {
+        ClearBattledTrainersFlags();
         DowngradeBadPoison();
         SetMainCallback2(CB2_ReturnToFieldContinueScriptPlayMapMusic);
     }

@@ -33,6 +33,7 @@
 #include "io_reg.h"
 #include "item.h"
 #include "item_icon.h"
+#include "qol.h"
 #include "line_break.h"
 #include "link.h"
 #include "link_rfu.h"
@@ -3796,7 +3797,7 @@ static u8 ReformatItemDescription(enum Item item, u8 *dest)
 
 void ScriptShowItemDescription(struct ScriptContext *ctx)
 {
-    if (ExtendedOptions_Get(EXT_OPT_ITEM_DESCRIPTIONS) == ITEM_DESCRIPTIONS_OFF)
+    if (Qol_GetItemDescriptionsMode() == ITEM_DESCRIPTIONS_OFF)
     {
         (void) ScriptReadByte(ctx);
         return;
@@ -3845,7 +3846,7 @@ void ScriptShowItemDescription(struct ScriptContext *ctx)
 
 void ScriptHideItemDescription(struct ScriptContext *ctx)
 {
-    if (ExtendedOptions_Get(EXT_OPT_ITEM_DESCRIPTIONS) == ITEM_DESCRIPTIONS_OFF)
+    if (Qol_GetItemDescriptionsMode() == ITEM_DESCRIPTIONS_OFF)
         return;
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_SAVE | SCREFF_HARDWARE);

@@ -51,6 +51,8 @@ EventScript_DoNoIntroTrainerBattle::
 	clearflag FLAG_SAFE_FOLLOWER_MOVEMENT
 	special PlayTrainerEncounterMusic
 	dotrainerbattle
+	specialvar VAR_RESULT, ConsumeTrainerEscape
+	goto_if_eq VAR_RESULT, TRUE, EventScript_EscapedTrainerBattle
 	gotopostbattlescript
 
 EventScript_TryDoRematchBattle::
@@ -114,6 +116,8 @@ EventScript_ShowTrainerIntroMsg::
 
 EventScript_DoTrainerBattle::
 	dotrainerbattle
+	specialvar VAR_RESULT, ConsumeTrainerEscape
+	goto_if_eq VAR_RESULT, TRUE, EventScript_EscapedTrainerBattle
 	@ Below battle mode check only needed in FRLG
 	specialvar VAR_RESULT, GetTrainerBattleMode
 	goto_if_eq VAR_RESULT, TRAINER_BATTLE_SINGLE, EventScript_EndTrainerBattle
@@ -123,6 +127,10 @@ EventScript_DoTrainerBattle::
 	goto_if_eq VAR_RESULT, TRAINER_BATTLE_CONTINUE_SCRIPT_DOUBLE_NO_MUSIC, EventScript_EndTrainerBattle
 EventScript_EndTrainerBattle::
 	gotobeatenscript
+	releaseall
+	end
+
+EventScript_EscapedTrainerBattle::
 	releaseall
 	end
 

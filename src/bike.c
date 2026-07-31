@@ -8,6 +8,7 @@
 #include "metatile_behavior.h"
 #include "oras_dowse.h"
 #include "overworld.h"
+#include "qol.h"
 #include "sound.h"
 #include "wild_encounter.h"
 #include "wild_encounter_ow.h"
@@ -1370,7 +1371,7 @@ void Bike_HandleBumpySlopeJump(void)
 
 bool32 IsRunningDisallowed(u8 metatile)
 {
-    if ((!ExtendedOptions_Get(EXT_OPT_RUNNING_INDOORS) && !gMapHeader.allowRunning)
+    if ((!Qol_IsRunningIndoorsEnabled() && !gMapHeader.allowRunning)
      || IsRunningDisallowedByMetatile(metatile) == TRUE)
         return TRUE;
 
