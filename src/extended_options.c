@@ -169,6 +169,12 @@ static void SetExtendedOptionsDefaults(void)
     ExtendedOptions_Set(EXT_OPT_RUNNING_INDOORS, TRUE);
     ExtendedOptions_Set(EXT_OPT_REPEL_PROMPT, TRUE);
 #endif
+#if MODULE_BATTLE_PACING_ENABLED
+    ExtendedOptions_Set(EXT_OPT_BATTLE_SPEED, BATTLE_SPEED_NORMAL);
+    ExtendedOptions_Set(EXT_OPT_FAST_BATTLE_INTRO, FALSE);
+    ExtendedOptions_Set(EXT_OPT_FAST_HP_BARS, FALSE);
+    ExtendedOptions_Set(EXT_OPT_FAST_EXP_BARS, FALSE);
+#endif
     ExtendedOptions_Set(EXT_OPT_MOVE_INFO, TRUE);
     ExtendedOptions_Set(EXT_OPT_EFFECTIVENESS_HINTS, TRUE);
     ExtendedOptions_Set(EXT_OPT_OPPONENT_INFO, TRUE);

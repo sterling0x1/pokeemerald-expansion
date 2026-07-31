@@ -1,4 +1,5 @@
 #include "global.h"
+#include "battle_pacing.h"
 #include "extended_options.h"
 #include "malloc.h"
 #include "battle.h"
@@ -2056,7 +2057,7 @@ s32 MoveBattleBar(enum BattlerId battler, u8 healthboxSpriteId, u8 whichBar, u8 
 
     if (whichBar == HEALTH_BAR) // health bar
     {
-        u16 hpFraction = !ExtendedOptions_Get(EXT_OPT_FAST_HP_BARS)
+        u16 hpFraction = !BattlePacing_IsFastHpEnabled()
                        ? 1
                        : max(gBattleSpritesDataPtr->battleBars[battler].maxValue / (B_HEALTHBAR_PIXELS / 2), 4);
         currentBarValue = CalcNewBarValue(gBattleSpritesDataPtr->battleBars[battler].maxValue,
@@ -2079,7 +2080,7 @@ s32 MoveBattleBar(enum BattlerId battler, u8 healthboxSpriteId, u8 whichBar, u8 
                     gBattleSpritesDataPtr->battleBars[battler].receivedValue,
                     &gBattleSpritesDataPtr->battleBars[battler].currValue,
                     B_EXPBAR_PIXELS / 8, expFraction,
-                    ExtendedOptions_Get(EXT_OPT_FAST_EXP_BARS) ? 4 : 1);
+                    BattlePacing_IsFastExpEnabled() ? 4 : 1);
     }
 
     if (whichBar == EXP_BAR || (whichBar == HEALTH_BAR && !gBattleSpritesDataPtr->battlerData[battler].hpNumbersNoBars))
@@ -2308,7 +2309,7 @@ static u8 GetScaledExpFraction(s32 oldValue, s32 receivedValue, s32 maxValue, u8
     s32 newVal, result;
     s8 oldToMax, newToMax;
 
-    scale *= ExtendedOptions_Get(EXT_OPT_FAST_EXP_BARS) ? 2 : 8;
+    scale *= BattlePacing_IsFastExpEnabled() ? 2 : 8;
     newVal = SubtractClamped(HP_EMPTY, maxValue, oldValue, receivedValue);
 
     oldToMax = oldValue * scale / maxValue;

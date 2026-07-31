@@ -14,6 +14,9 @@ extern const struct ModuleDescriptor gCheatsModuleDescriptor;
 #if MODULE_QOL_ENABLED
 extern const struct ModuleDescriptor gQolModuleDescriptor;
 #endif
+#if MODULE_BATTLE_PACING_ENABLED
+extern const struct ModuleDescriptor gBattlePacingModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -28,5 +31,8 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_QOL_ENABLED
     [MODULE_ID_QOL] = &gQolModuleDescriptor,
+#endif
+#if MODULE_BATTLE_PACING_ENABLED
+    [MODULE_ID_BATTLE_PACING] = &gBattlePacingModuleDescriptor,
 #endif
 };

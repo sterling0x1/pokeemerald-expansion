@@ -22,6 +22,9 @@
 #include "constants/rgb.h"
 
 #define OPTIONS_PER_PAGE 6
+#define OPTION_MENU_EXTENDED (MODULE_RANDOMIZER_ENABLED || MODULE_NUZLOCKE_ENABLED \
+                           || MODULE_CHEATS_ENABLED || MODULE_QOL_ENABLED \
+                           || MODULE_BATTLE_PACING_ENABLED)
 
 #define tSelection       data[0]
 #define tScrollTop       data[1]
@@ -53,10 +56,12 @@ enum OptionId
 #endif
     OPT_BATTLE_ANIMATIONS,
     OPT_BATTLE_STYLE,
+#if MODULE_BATTLE_PACING_ENABLED
     OPT_BATTLE_SPEED,
     OPT_FAST_INTRO,
     OPT_FAST_HP,
     OPT_FAST_EXP,
+#endif
     OPT_MOVE_INFO,
     OPT_EFFECTIVENESS,
     OPT_OPPONENT_INFO,
@@ -94,10 +99,12 @@ enum OptionId
 enum OptionSection
 {
     SECTION_GENERAL,
+#if OPTION_MENU_EXTENDED
     SECTION_BATTLE,
     SECTION_GAMEPLAY,
 #if MODULE_RANDOMIZER_ENABLED
     SECTION_RANDOMIZER,
+#endif
 #endif
     SECTION_COUNT,
 };
@@ -123,10 +130,12 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
 #endif
     [OPT_BATTLE_ANIMATIONS]   = COMPOUND_STRING("BATTLE ANIMATIONS"),
     [OPT_BATTLE_STYLE]        = COMPOUND_STRING("BATTLE STYLE"),
+#if MODULE_BATTLE_PACING_ENABLED
     [OPT_BATTLE_SPEED]        = COMPOUND_STRING("BATTLE SPEED"),
     [OPT_FAST_INTRO]          = COMPOUND_STRING("FAST INTRO"),
     [OPT_FAST_HP]             = COMPOUND_STRING("FAST HP BARS"),
     [OPT_FAST_EXP]            = COMPOUND_STRING("FAST EXP BARS"),
+#endif
     [OPT_MOVE_INFO]           = COMPOUND_STRING("MOVE INFO"),
     [OPT_EFFECTIVENESS]       = COMPOUND_STRING("EFFECTIVENESS"),
     [OPT_OPPONENT_INFO]       = COMPOUND_STRING("OPPONENT INFO"),
@@ -162,19 +171,23 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
 
 
 static const u8 sSectionGeneral[]    = _("GENERAL");
+#if OPTION_MENU_EXTENDED
 static const u8 sSectionBattle[]     = _("BATTLE");
 static const u8 sSectionGameplay[]   = _("GAMEPLAY");
 #if MODULE_RANDOMIZER_ENABLED
 static const u8 sSectionRandomizer[] = _("RANDOMIZER");
 #endif
+#endif
 
 static const u8 *const sSectionNames[SECTION_COUNT] =
 {
     [SECTION_GENERAL]    = sSectionGeneral,
+#if OPTION_MENU_EXTENDED
     [SECTION_BATTLE]     = sSectionBattle,
     [SECTION_GAMEPLAY]   = sSectionGameplay,
 #if MODULE_RANDOMIZER_ENABLED
     [SECTION_RANDOMIZER] = sSectionRandomizer,
+#endif
 #endif
 };
 
@@ -184,6 +197,10 @@ static const enum OptionId sGeneralOptions[] =
     OPT_SOUND,
     OPT_BUTTON_MODE,
     OPT_FRAME,
+#if !OPTION_MENU_EXTENDED
+    OPT_BATTLE_ANIMATIONS,
+    OPT_BATTLE_STYLE,
+#endif
 #if MODULE_QOL_ENABLED
     OPT_AUTO_RUN,
     OPT_RUNNING_INDOORS,
@@ -192,14 +209,17 @@ static const enum OptionId sGeneralOptions[] =
 #endif
 };
 
+#if OPTION_MENU_EXTENDED
 static const enum OptionId sBattleOptions[] =
 {
     OPT_BATTLE_ANIMATIONS,
     OPT_BATTLE_STYLE,
+#if MODULE_BATTLE_PACING_ENABLED
     OPT_BATTLE_SPEED,
     OPT_FAST_INTRO,
     OPT_FAST_HP,
     OPT_FAST_EXP,
+#endif
 };
 
 static const enum OptionId sGameplayOptions[] =
@@ -236,6 +256,7 @@ static const enum OptionId sRandomizerOptions[] =
     OPT_RANDOM_ALL_DATA,
 };
 #endif
+#endif // OPTION_MENU_EXTENDED
 
 static const enum OptionId *GetSectionOptions(enum OptionSection section, u8 *count)
 {
@@ -244,6 +265,7 @@ static const enum OptionId *GetSectionOptions(enum OptionSection section, u8 *co
     case SECTION_GENERAL:
         *count = ARRAY_COUNT(sGeneralOptions);
         return sGeneralOptions;
+#if OPTION_MENU_EXTENDED
     case SECTION_BATTLE:
         *count = ARRAY_COUNT(sBattleOptions);
         return sBattleOptions;
@@ -253,8 +275,9 @@ static const enum OptionId *GetSectionOptions(enum OptionSection section, u8 *co
 #if MODULE_RANDOMIZER_ENABLED
     case SECTION_RANDOMIZER:
 #endif
+#endif
     default:
-#if MODULE_RANDOMIZER_ENABLED
+#if OPTION_MENU_EXTENDED && MODULE_RANDOMIZER_ENABLED
         *count = ARRAY_COUNT(sRandomizerOptions);
         return sRandomizerOptions;
 #else
@@ -291,6 +314,7 @@ static enum OptionId GetCurrentOption(u8 taskId)
     );
 }
 
+#if OPTION_MENU_EXTENDED
 static void ChangeSection(u8 taskId, s8 direction)
 {
     s8 section = gTasks[taskId].tSection;
@@ -306,6 +330,7 @@ static void ChangeSection(u8 taskId, s8 direction)
     gTasks[taskId].tSelection = 0;
     gTasks[taskId].tScrollTop = 0;
 }
+#endif
 
 static const u8 sTextOn[]          = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}ON");
 static const u8 sTextOff[]         = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}OFF");
@@ -313,6 +338,7 @@ static const u8 sTextLocked[]      = _("{COLOR RED}{SHADOW LIGHT_RED}LOCKED");
 static const u8 sTextSlow[]        = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}SLOW");
 static const u8 sTextMid[]         = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}MID");
 static const u8 sTextFast[]        = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}FAST");
+static const u8 sTextFaster[]      = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}FASTER");
 static const u8 sTextInstant[]     = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}INSTANT");
 static const u8 sTextMono[]        = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}MONO");
 static const u8 sTextStereo[]      = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}STEREO");
@@ -339,6 +365,7 @@ static const u8 sTextExp1x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1x");
 static const u8 sTextExp2x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}2x");
 static const u8 sTextExp3x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}3x");
 static const u8 sTextExp4x[]   = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}4x");
+static const u8 sSectionNavigation[] = _("{L_BUTTON}{LEFT_ARROW} {RIGHT_ARROW}{R_BUTTON}");
 //static const u8 sTextAlways[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}ALWAYS");
 
 static const u16 sOptionMenuTextPal[] = INCGFX_U16("graphics/interface/option_menu_text.pal", ".gbapal");
@@ -471,7 +498,7 @@ static const u8 *GetExtendedValueText(enum ExtendedOption option)
     case EXT_OPT_ITEM_DESCRIPTIONS:
         return value == ITEM_DESCRIPTIONS_OFF ? sTextOff : value == ITEM_DESCRIPTIONS_FIRST ? sTextFirst : sTextAlways;
     case EXT_OPT_BATTLE_SPEED:
-        return value == BATTLE_SPEED_NORMAL ? sTextNormal : value == BATTLE_SPEED_FAST ? sTextFast : sTextInstant;
+        return value == BATTLE_SPEED_NORMAL ? sTextNormal : value == BATTLE_SPEED_FAST ? sTextFast : sTextFaster;
     case EXT_OPT_DIFFICULTY:
         return value == DIFFICULTY_EASY ? sTextEasy : value == DIFFICULTY_NORMAL ? sTextNormal : sTextHard;
     case EXT_OPT_ENCOUNTER_STYLE:
@@ -514,10 +541,12 @@ static enum ExtendedOption OptionIdToExtended(enum OptionId option)
         [OPT_ITEM_DESCRIPTIONS]   = EXT_OPT_ITEM_DESCRIPTIONS,
         [OPT_REPEL_PROMPT]        = EXT_OPT_REPEL_PROMPT,
 #endif
+#if MODULE_BATTLE_PACING_ENABLED
         [OPT_BATTLE_SPEED]        = EXT_OPT_BATTLE_SPEED,
         [OPT_FAST_INTRO]          = EXT_OPT_FAST_BATTLE_INTRO,
         [OPT_FAST_HP]             = EXT_OPT_FAST_HP_BARS,
         [OPT_FAST_EXP]            = EXT_OPT_FAST_EXP_BARS,
+#endif
         [OPT_MOVE_INFO]           = EXT_OPT_MOVE_INFO,
         [OPT_EFFECTIVENESS]       = EXT_OPT_EFFECTIVENESS_HINTS,
         [OPT_OPPONENT_INFO]       = EXT_OPT_OPPONENT_INFO,
@@ -635,6 +664,18 @@ static void DrawPage(u8 taskId)
         TEXT_SKIP_DRAW,
         NULL
     );
+
+#if OPTION_MENU_EXTENDED
+    AddTextPrinterParameterized(
+        WIN_HEADER,
+        FONT_NORMAL,
+        sSectionNavigation,
+        GetStringRightAlignXOffset(FONT_NORMAL, sSectionNavigation, 200),
+        1,
+        TEXT_SKIP_DRAW,
+        NULL
+    );
+#endif
 
     FillWindowPixelBuffer(WIN_OPTIONS, PIXEL_FILL(1));
 
@@ -827,6 +868,7 @@ static void Task_OptionMenuInput(u8 taskId)
 {
     u8 count = GetSectionOptionCount(gTasks[taskId].tSection);
 
+#if OPTION_MENU_EXTENDED
     if (JOY_NEW(L_BUTTON))
     {
         ChangeSection(taskId, -1);
@@ -837,7 +879,9 @@ static void Task_OptionMenuInput(u8 taskId)
         ChangeSection(taskId, 1);
         DrawPage(taskId);
     }
-    else if (JOY_NEW(DPAD_UP))
+    else
+#endif
+    if (JOY_NEW(DPAD_UP))
     {
         if (gTasks[taskId].tSelection == 0)
         {
