@@ -2,6 +2,7 @@
 #include "event_data.h"
 #include "extended_options.h"
 #include "nuzlocke.h"
+#include "config/modules.h"
 #include "constants/difficulty.h"
 
 #define EXTENDED_OPTIONS_MAGIC 0x2E36
@@ -164,14 +165,18 @@ static void SetExtendedOptionsDefaults(void)
     VarSet(VAR_EXTENDED_OPTIONS_2, 0);
     VarSet(VAR_EXTENDED_OPTIONS_3, 0);
 
+#if MODULE_QOL_ENABLED
     ExtendedOptions_Set(EXT_OPT_RUNNING_INDOORS, TRUE);
     ExtendedOptions_Set(EXT_OPT_REPEL_PROMPT, TRUE);
+#endif
     ExtendedOptions_Set(EXT_OPT_MOVE_INFO, TRUE);
     ExtendedOptions_Set(EXT_OPT_EFFECTIVENESS_HINTS, TRUE);
     ExtendedOptions_Set(EXT_OPT_OPPONENT_INFO, TRUE);
     ExtendedOptions_Set(EXT_OPT_BENCH_ATTACKER, TRUE);
     ExtendedOptions_Set(EXT_OPT_EXP_ON_CATCH, TRUE);
+#if MODULE_QOL_ENABLED
     ExtendedOptions_Set(EXT_OPT_FIELD_POISON, TRUE);
+#endif
     ExtendedOptions_Set(EXT_OPT_ENCOUNTER_STYLE, ENCOUNTER_STYLE_VISIBLE);
     ExtendedOptions_Set(EXT_OPT_SHINY_ODDS, SHINY_ODDS_8192);
     ExtendedOptions_Set(EXT_OPT_DIFFICULTY, DIFFICULTY_NORMAL);

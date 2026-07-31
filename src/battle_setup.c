@@ -1292,6 +1292,7 @@ static void SetBattledTrainersFlags(void)
     FlagSet(GetTrainerAFlag());
 }
 
+#if MODULE_QOL_ENABLED
 static void ClearBattledTrainersFlags(void)
 {
     if (TRAINER_BATTLE_PARAM.opponentB != 0
@@ -1308,6 +1309,7 @@ bool32 ConsumeTrainerEscape(void)
     ClearBattledTrainersFlags();
     return TRUE;
 }
+#endif
 
 static void UNUSED SetBattledTrainerFlag(void)
 {
@@ -1508,12 +1510,14 @@ static void CB2_EndTrainerBattle(void)
         else
             SetMainCallback2(CB2_WhiteOut);
     }
+#if MODULE_QOL_ENABLED
     else if (gBattleOutcome == B_OUTCOME_RAN && Qol_IsTrainerEscapeEnabled())
     {
         ClearBattledTrainersFlags();
         SetMainCallback2(CB2_ReturnToFieldContinueScriptPlayMapMusic);
         DowngradeBadPoison();
     }
+#endif
     else if (IsPlayerDefeated(gBattleOutcome) == TRUE)
     {
         if (CurrentBattlePyramidLocation() != PYRAMID_LOCATION_NONE || InTrainerHillChallenge() || (!NoAliveMonsForPlayer()) || FlagGet(B_FLAG_NO_WHITEOUT))
@@ -1542,12 +1546,14 @@ static void CB2_EndRematchBattle(void)
         DowngradeBadPoison();
         SetMainCallback2(CB2_ReturnToFieldContinueScriptPlayMapMusic);
     }
+#if MODULE_QOL_ENABLED
     else if (gBattleOutcome == B_OUTCOME_RAN && Qol_IsTrainerEscapeEnabled())
     {
         ClearBattledTrainersFlags();
         DowngradeBadPoison();
         SetMainCallback2(CB2_ReturnToFieldContinueScriptPlayMapMusic);
     }
+#endif
     else if (IsPlayerDefeated(gBattleOutcome) == TRUE)
     {
         SetMainCallback2(CB2_WhiteOut);

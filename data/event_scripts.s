@@ -1,6 +1,7 @@
 #include "config/general.h"
 #include "config/battle.h"
 #include "config/item.h"
+#include "config/modules.h"
 #include "constants/global.h"
 #include "constants/apprentice.h"
 #include "constants/apricorn_tree.h"
@@ -78,6 +79,12 @@
 	.include "asm/macros.inc"
 	.include "asm/macros/event.inc"
 	.include "constants/constants.inc"
+
+#if MODULE_QOL_ENABLED
+	.set MODULE_QOL_BUILD_ENABLED, 1
+#else
+	.set MODULE_QOL_BUILD_ENABLED, 0
+#endif
 
 	.section script_data, "aw", %progbits
 

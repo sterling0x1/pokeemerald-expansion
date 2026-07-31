@@ -26,6 +26,7 @@ static inline bool32 Qol_IsRunningIndoorsEnabled(void) { return FALSE; }
 static inline u8 Qol_GetItemDescriptionsMode(void) { return 0; }
 static inline bool32 Qol_IsRepelPromptEnabled(void) { return FALSE; }
 static inline bool32 Qol_AreTmsReusable(void) { return FALSE; }
+// With the module absent, preserve Expansion's configured field-poison rules.
 static inline bool32 Qol_IsFieldPoisonEnabled(void) { return TRUE; }
 static inline bool32 Qol_IsTrainerEscapeEnabled(void) { return FALSE; }
 static inline bool32 Qol_IsBoxShortcutEnabled(void) { return FALSE; }
