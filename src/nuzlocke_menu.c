@@ -8,6 +8,7 @@
 #include "menu.h"
 #include "nuzlocke.h"
 #include "palette.h"
+#include "progression.h"
 #include "scanline_effect.h"
 #include "sound.h"
 #include "sprite.h"
@@ -28,7 +29,9 @@ enum
 {
     MENUITEM_PRESET,
     MENUITEM_CUSTOM_RULES,
+#if MODULE_PROGRESSION_ENABLED
     MENUITEM_LEVEL_CAPS,
+#endif
     MENUITEM_CONTINUE,
     MENUITEM_COUNT,
 };
@@ -66,6 +69,8 @@ static const u8 *GetCustomValue(enum ExtendedOption option);
 static void HighlightMenuItem(u8 menuItem);
 static void DrawBgWindowFrames(void);
 static void ChangeMonotype(s8 direction);
+static u8 GetCustomRuleCount(u8 page);
+static bool32 CanChangeMainValue(u8 selection);
 
 static MainCallback sBackCallback;
 
@@ -73,7 +78,9 @@ static const u8 sText_Header[] = _("NUZLOCKE SETUP");
 static const u8 sText_Preset[] = _("PRESET");
 static const u8 sText_CustomRules[] = _("CUSTOM RULES");
 static const u8 sText_Type[] = _("TYPE");
+#if MODULE_PROGRESSION_ENABLED
 static const u8 sText_LevelCaps[] = _("LEVEL CAPS");
+#endif
 static const u8 sText_Continue[] = _("CONTINUE");
 static const u8 sText_Next[] = _("NEXT PAGE");
 static const u8 sText_Done[] = _("DONE");
@@ -146,14 +153,25 @@ static const u8 *const sMonotypeNames[] =
     sText_TypeDark, sText_TypeFairy,
 };
 
+#if MODULE_PROGRESSION_ENABLED
 static const u8 sDesc_Standard[] = _("Classic first-catch and permadeath.\nItems allowed; level caps optional.");
 static const u8 sDesc_Hardcore[] = _("Hard caps, SET mode, and no Bag items.\nA full whiteout ends the run.");
+#else
+static const u8 sDesc_Standard[] = _("Classic first-catch and permadeath.\nBattle items remain available.");
+static const u8 sDesc_Hardcore[] = _("SET mode and no Bag items.\nA full whiteout ends the run.");
+#endif
 static const u8 sDesc_Monotype[] = _("All usable Pokémon share one type.\nType selection follows this menu.");
+#if MODULE_PROGRESSION_ENABLED
 static const u8 sDesc_Custom[] = _("Build your own rules for encounters,\nfainting, clauses, caps, and items.");
+#else
+static const u8 sDesc_Custom[] = _("Build your own rules for encounters,\nfainting, clauses, and items.");
+#endif
 static const u8 sDesc_CustomRulesOpen[] = _("Press A to edit all Custom rules.\nChoices are saved with this run.");
 static const u8 sDesc_CustomRulesLocked[] = _("Select the CUSTOM preset to unlock\nand edit the individual rule pages.");
 static const u8 sDesc_Type[] = _("Choose the only Pokémon type permitted\nfor this Monotype Nuzlocke run.");
+#if MODULE_PROGRESSION_ENABLED
 static const u8 sDesc_LevelCaps[] = _("SOFT reduces EXP at badge caps. HARD\nstops EXP and Candy at the cap.");
+#endif
 static const u8 sDesc_Continue[] = _("Accept these rules and continue to\nthe Randomizer Setup.");
 static const u8 sDesc_Permadeath[] = _("Fainted Pokémon cannot be used again.\nSend them to a death box or release.");
 static const u8 sDesc_Encounters[] = _("Allow only the first valid encounter\nin each named area, or disable limits.");
@@ -170,7 +188,9 @@ static const u8 *const sMenuItemNames[MENUITEM_COUNT] =
 {
     [MENUITEM_PRESET] = sText_Preset,
     [MENUITEM_CUSTOM_RULES] = sText_CustomRules,
+#if MODULE_PROGRESSION_ENABLED
     [MENUITEM_LEVEL_CAPS] = sText_LevelCaps,
+#endif
     [MENUITEM_CONTINUE] = sText_Continue,
 };
 
@@ -249,14 +269,14 @@ void Nuzlocke_ApplyPreset(u8 preset)
 
     if (preset == NUZLOCKE_PRESET_HARDCORE)
     {
-        ExtendedOptions_Set(EXT_OPT_LEVEL_CAPS, LEVEL_CAPS_HARD);
+        Progression_SetLevelCapsMode(LEVEL_CAPS_HARD);
         ExtendedOptions_Set(EXT_OPT_NUZLOCKE_WHITEOUT, NUZLOCKE_WHITEOUT_GAME_OVER);
         ExtendedOptions_Set(EXT_OPT_NUZLOCKE_BATTLE_ITEMS, NUZLOCKE_BATTLE_ITEMS_BANNED);
         gSaveBlock2Ptr->optionsBattleStyle = OPTIONS_BATTLE_STYLE_SET;
     }
     else
     {
-        ExtendedOptions_Set(EXT_OPT_LEVEL_CAPS, LEVEL_CAPS_OFF);
+        Progression_SetLevelCapsMode(LEVEL_CAPS_OFF);
         ExtendedOptions_Set(EXT_OPT_NUZLOCKE_WHITEOUT, NUZLOCKE_WHITEOUT_CONTINUE);
         ExtendedOptions_Set(EXT_OPT_NUZLOCKE_BATTLE_ITEMS, NUZLOCKE_BATTLE_ITEMS_ALLOWED);
         gSaveBlock2Ptr->optionsBattleStyle = OPTIONS_BATTLE_STYLE_SHIFT;
@@ -373,7 +393,7 @@ static void Task_ProcessInput(u8 taskId)
 {
     u8 selection = gTasks[taskId].tMenuSelection;
     u8 page = gTasks[taskId].tPage;
-    u8 lastItem = page == PAGE_MAIN ? MENUITEM_CONTINUE : 3;
+    u8 lastItem = page == PAGE_MAIN ? MENUITEM_CONTINUE : GetCustomRuleCount(page);
 
     if (JOY_NEW(DPAD_UP))
     {
@@ -401,7 +421,7 @@ static void Task_ProcessInput(u8 taskId)
             CopyWindowToVram(WIN_OPTIONS, COPYWIN_GFX);
             PlaySE(SE_SELECT);
         }
-        else if (page != PAGE_MAIN || selection == MENUITEM_PRESET || selection == MENUITEM_LEVEL_CAPS)
+        else if (page != PAGE_MAIN || CanChangeMainValue(selection))
         {
             ChangeValue(taskId, selection, -1);
             PlaySE(SE_SELECT);
@@ -417,7 +437,7 @@ static void Task_ProcessInput(u8 taskId)
             CopyWindowToVram(WIN_OPTIONS, COPYWIN_GFX);
             PlaySE(SE_SELECT);
         }
-        else if (page != PAGE_MAIN || selection == MENUITEM_PRESET || selection == MENUITEM_LEVEL_CAPS)
+        else if (page != PAGE_MAIN || CanChangeMainValue(selection))
         {
             ChangeValue(taskId, selection, 1);
             PlaySE(SE_SELECT);
@@ -446,12 +466,12 @@ static void Task_ProcessInput(u8 taskId)
             CopyWindowToVram(WIN_OPTIONS, COPYWIN_GFX);
             PlaySE(SE_SELECT);
         }
-        else if (page != PAGE_MAIN && selection == 3)
+        else if (page != PAGE_MAIN && selection == GetCustomRuleCount(page))
         {
             OpenPage(taskId, page == PAGE_CUSTOM_3 ? PAGE_MAIN : page + 1);
             PlaySE(SE_SELECT);
         }
-        else if (page != PAGE_MAIN || selection == MENUITEM_PRESET || selection == MENUITEM_LEVEL_CAPS)
+        else if (page != PAGE_MAIN || CanChangeMainValue(selection))
         {
             ChangeValue(taskId, selection, 1);
             PlaySE(SE_SELECT);
@@ -513,7 +533,11 @@ static enum ExtendedOption GetCustomOption(u8 page, u8 menuItem)
     {
         {EXT_OPT_NUZLOCKE_PERMADEATH, EXT_OPT_NUZLOCKE_ENCOUNTERS, EXT_OPT_NUZLOCKE_DUPES},
         {EXT_OPT_NUZLOCKE_SHINY_CLAUSE, EXT_OPT_NUZLOCKE_GIFTS, EXT_OPT_NUZLOCKE_WHITEOUT},
+#if MODULE_PROGRESSION_ENABLED
         {EXT_OPT_NUZLOCKE_BATTLE_ITEMS, EXT_OPT_LEVEL_CAPS, EXT_OPT_COUNT},
+#else
+        {EXT_OPT_NUZLOCKE_BATTLE_ITEMS, EXT_OPT_COUNT, EXT_OPT_COUNT},
+#endif
     };
 
     return sCustomOptions[page - PAGE_CUSTOM_1][menuItem];
@@ -525,15 +549,41 @@ static const u8 *GetCustomName(u8 page, u8 menuItem)
     {
         {sText_Permadeath, sText_Encounters, sText_Dupes},
         {sText_Shiny, sText_Gifts, sText_Whiteout},
+#if MODULE_PROGRESSION_ENABLED
         {sText_BattleItems, sText_LevelCaps, sText_BattleStyle},
+#else
+        {sText_BattleItems, sText_BattleStyle, sText_BattleStyle},
+#endif
     };
 
     return sCustomNames[page - PAGE_CUSTOM_1][menuItem];
 }
 
+static u8 GetCustomRuleCount(u8 page)
+{
+#if MODULE_PROGRESSION_ENABLED
+    return 3;
+#else
+    return page == PAGE_CUSTOM_3 ? 2 : 3;
+#endif
+}
+
+static bool32 CanChangeMainValue(u8 selection)
+{
+    if (selection == MENUITEM_PRESET)
+        return TRUE;
+#if MODULE_PROGRESSION_ENABLED
+    if (selection == MENUITEM_LEVEL_CAPS)
+        return TRUE;
+#endif
+    return FALSE;
+}
+
 static const u8 *GetCustomValue(enum ExtendedOption option)
 {
-    u8 value = ExtendedOptions_Get(option);
+    u8 value = option == EXT_OPT_LEVEL_CAPS
+             ? Progression_GetLevelCapsMode()
+             : ExtendedOptions_Get(option);
 
     switch (option)
     {
@@ -579,16 +629,20 @@ static void DrawMenu(u8 taskId)
         }
         DrawValue(taskId, MENUITEM_PRESET);
         DrawValue(taskId, MENUITEM_CUSTOM_RULES);
+#if MODULE_PROGRESSION_ENABLED
         DrawValue(taskId, MENUITEM_LEVEL_CAPS);
+#endif
     }
     else
     {
-        for (i = 0; i < 3; i++)
+        u8 ruleCount = GetCustomRuleCount(page);
+
+        for (i = 0; i < ruleCount; i++)
         {
             AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, GetCustomName(page, i), 8, i * 16 + 1, TEXT_SKIP_DRAW, NULL);
             DrawValue(taskId, i);
         }
-        AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, page == PAGE_CUSTOM_3 ? sText_Done : sText_Next, 8, 3 * 16 + 1, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, page == PAGE_CUSTOM_3 ? sText_Done : sText_Next, 8, ruleCount * 16 + 1, TEXT_SKIP_DRAW, NULL);
     }
     CopyWindowToVram(WIN_OPTIONS, COPYWIN_FULL);
 }
@@ -639,7 +693,11 @@ static void DrawValue(u8 taskId, u8 menuItem)
     }
     else
     {
+#if MODULE_PROGRESSION_ENABLED
         text = GetCustomValue(EXT_OPT_LEVEL_CAPS);
+#else
+        return;
+#endif
     }
 
     FillWindowPixelRect(WIN_OPTIONS, PIXEL_FILL(1), 104, y, 96, 14);
@@ -671,11 +729,29 @@ static void ChangeMonotype(s8 direction)
 static void ChangeValue(u8 taskId, u8 menuItem, s8 direction)
 {
     u8 page = gTasks[taskId].tPage;
-    enum ExtendedOption option = page == PAGE_MAIN
-                               ? (menuItem == MENUITEM_PRESET ? EXT_OPT_NUZLOCKE_PRESET : EXT_OPT_LEVEL_CAPS)
-                               : GetCustomOption(page, menuItem);
+    enum ExtendedOption option;
     u8 value;
     u8 max;
+
+    if (page != PAGE_MAIN)
+    {
+        option = GetCustomOption(page, menuItem);
+    }
+    else if (menuItem == MENUITEM_PRESET)
+    {
+        option = EXT_OPT_NUZLOCKE_PRESET;
+    }
+#if MODULE_PROGRESSION_ENABLED
+    else
+    {
+        option = EXT_OPT_LEVEL_CAPS;
+    }
+#else
+    else
+    {
+        return;
+    }
+#endif
 
     if (option == EXT_OPT_COUNT)
     {
@@ -686,11 +762,16 @@ static void ChangeValue(u8 taskId, u8 menuItem, s8 direction)
         return;
     }
 
-    value = ExtendedOptions_Get(option);
+    value = option == EXT_OPT_LEVEL_CAPS
+          ? Progression_GetLevelCapsMode()
+          : ExtendedOptions_Get(option);
     max = ExtendedOptions_GetMax(option);
 
     value = direction > 0 ? (value == max ? 0 : value + 1) : (value == 0 ? max : value - 1);
-    ExtendedOptions_Set(option, value);
+    if (option == EXT_OPT_LEVEL_CAPS)
+        Progression_SetLevelCapsMode(value);
+    else
+        ExtendedOptions_Set(option, value);
 
     if (page == PAGE_MAIN && menuItem == MENUITEM_PRESET)
     {
@@ -726,8 +807,10 @@ static void DrawDescription(u8 taskId)
                      ? sDesc_CustomRulesOpen
                      : sDesc_CustomRulesLocked;
         }
+#if MODULE_PROGRESSION_ENABLED
         else if (selection == MENUITEM_LEVEL_CAPS)
             text = sDesc_LevelCaps;
+#endif
         else if (selection == MENUITEM_CONTINUE)
             text = sDesc_Continue;
         else
@@ -742,7 +825,7 @@ static void DrawDescription(u8 taskId)
             }
         }
     }
-    else if (selection == 3)
+    else if (selection == GetCustomRuleCount(page))
     {
         text = page == PAGE_CUSTOM_3 ? sDesc_Done : sDesc_Next;
     }
@@ -752,7 +835,11 @@ static void DrawDescription(u8 taskId)
         {
             {sDesc_Permadeath, sDesc_Encounters, sDesc_Dupes},
             {sDesc_Shiny, sDesc_Gifts, sDesc_Whiteout},
+#if MODULE_PROGRESSION_ENABLED
             {sDesc_BattleItems, sDesc_LevelCaps, sDesc_BattleStyle},
+#else
+            {sDesc_BattleItems, sDesc_BattleStyle, sDesc_BattleStyle},
+#endif
         };
         text = sDescriptions[page - PAGE_CUSTOM_1][selection];
     }

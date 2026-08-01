@@ -46,6 +46,7 @@
 #include "pokerus.h"
 #include "random.h"
 #include "randomizer.h"
+#include "pokemon_rules.h"
 #include "recorded_battle.h"
 #include "regions.h"
 #include "rtc.h"
@@ -869,7 +870,7 @@ void CreateMonWithIVs(struct Pokemon *mon, enum Species species, u8 level, u32 p
 
 bool32 ComputePlayerShinyOdds(u32 personality, u32 value)
 {
-    u8 shinyOdds = ExtendedOptions_Get(EXT_OPT_SHINY_ODDS);
+    u8 shinyOdds = PokemonRules_GetShinyOdds();
     u32 shinyThreshold;
 
     if (P_FLAG_FORCE_NO_SHINY != 0 && FlagGet(P_FLAG_FORCE_NO_SHINY))
@@ -3599,7 +3600,7 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, enum Item item, u8 partyIndex, 
                     dataUnsigned = sExpCandyExperienceTable[param - 1] + GetMonData(mon, MON_DATA_EXP);
 
                     if ((B_RARE_CANDY_CAP && B_EXP_CAP_TYPE == EXP_CAP_HARD)
-                     || IsNuzlockeHardLevelCapEnabled())
+                     || IsRuntimeHardLevelCapEnabled())
                     {
                         u32 currentLevelCap = GetCurrentLevelCap();
                         if (dataUnsigned > gExperienceTables[gSpeciesInfo[species].growthRate][currentLevelCap])

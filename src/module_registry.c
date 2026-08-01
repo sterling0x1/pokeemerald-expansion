@@ -17,6 +17,12 @@ extern const struct ModuleDescriptor gQolModuleDescriptor;
 #if MODULE_BATTLE_PACING_ENABLED
 extern const struct ModuleDescriptor gBattlePacingModuleDescriptor;
 #endif
+#if MODULE_PROGRESSION_ENABLED
+extern const struct ModuleDescriptor gProgressionModuleDescriptor;
+#endif
+#if MODULE_POKEMON_RULES_ENABLED
+extern const struct ModuleDescriptor gPokemonRulesModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -34,5 +40,11 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_BATTLE_PACING_ENABLED
     [MODULE_ID_BATTLE_PACING] = &gBattlePacingModuleDescriptor,
+#endif
+#if MODULE_PROGRESSION_ENABLED
+    [MODULE_ID_PROGRESSION] = &gProgressionModuleDescriptor,
+#endif
+#if MODULE_POKEMON_RULES_ENABLED
+    [MODULE_ID_POKEMON_RULES] = &gPokemonRulesModuleDescriptor,
 #endif
 };

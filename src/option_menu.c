@@ -24,7 +24,8 @@
 #define OPTIONS_PER_PAGE 6
 #define OPTION_MENU_EXTENDED (MODULE_RANDOMIZER_ENABLED || MODULE_NUZLOCKE_ENABLED \
                            || MODULE_CHEATS_ENABLED || MODULE_QOL_ENABLED \
-                           || MODULE_BATTLE_PACING_ENABLED)
+                           || MODULE_BATTLE_PACING_ENABLED || MODULE_PROGRESSION_ENABLED \
+                           || MODULE_POKEMON_RULES_ENABLED)
 
 #define tSelection       data[0]
 #define tScrollTop       data[1]
@@ -73,8 +74,10 @@ enum OptionId
 #if MODULE_QOL_ENABLED
     OPT_REUSABLE_TMS,
 #endif
+#if MODULE_POKEMON_RULES_ENABLED
     OPT_EXP_ON_CATCH,
     OPT_PARTY_EXP,
+#endif
 #if MODULE_QOL_ENABLED
     OPT_FIELD_POISON,
     OPT_TRAINER_ESCAPE,
@@ -82,9 +85,13 @@ enum OptionId
     OPT_DIFFICULTY,
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
+#if MODULE_POKEMON_RULES_ENABLED
     OPT_SHINY_ODDS,
+#endif
     OPT_EXP_MULTIPLIER,
+#if MODULE_PROGRESSION_ENABLED
     OPT_LEVEL_CAPS,
+#endif
     OPT_NUZLOCKE,
     OPT_RANDOM_TRAINERS,
     OPT_RANDOM_GIFTS_STATIC,
@@ -147,8 +154,10 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
 #if MODULE_QOL_ENABLED
     [OPT_REUSABLE_TMS]        = COMPOUND_STRING("REUSABLE TMS"),
 #endif
+#if MODULE_POKEMON_RULES_ENABLED
     [OPT_EXP_ON_CATCH]        = COMPOUND_STRING("EXP ON CATCH"),
     [OPT_PARTY_EXP]           = COMPOUND_STRING("PARTY EXP SHARE"),
+#endif
 #if MODULE_QOL_ENABLED
     [OPT_FIELD_POISON]        = COMPOUND_STRING("FIELD POISON"),
     [OPT_TRAINER_ESCAPE]      = COMPOUND_STRING("TRAINER ESCAPE"),
@@ -156,9 +165,13 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
     [OPT_DIFFICULTY]          = COMPOUND_STRING("DIFFICULTY"),
     [OPT_ENCOUNTER_STYLE]     = COMPOUND_STRING("ENCOUNTER STYLE"),
     [OPT_FOLLOWER]            = COMPOUND_STRING("FOLLOWER POKéMON"),
+#if MODULE_POKEMON_RULES_ENABLED
     [OPT_SHINY_ODDS]          = COMPOUND_STRING("SHINY ODDS"),
+#endif
     [OPT_EXP_MULTIPLIER]      = COMPOUND_STRING("EXP MULTIPLIER"),
+#if MODULE_PROGRESSION_ENABLED
     [OPT_LEVEL_CAPS]          = COMPOUND_STRING("LEVEL CAPS"),
+#endif
     [OPT_NUZLOCKE]            = COMPOUND_STRING("NUZLOCKE MODE"),
     [OPT_RANDOM_TRAINERS]     = COMPOUND_STRING("RANDOM TRAINERS"),
     [OPT_RANDOM_GIFTS_STATIC] = COMPOUND_STRING("RANDOM GIFTS/STATIC"),
@@ -227,8 +240,10 @@ static const enum OptionId sGameplayOptions[] =
 #if MODULE_QOL_ENABLED
     OPT_REUSABLE_TMS,
 #endif
+#if MODULE_POKEMON_RULES_ENABLED
     OPT_EXP_ON_CATCH,
     OPT_PARTY_EXP,
+#endif
 #if MODULE_QOL_ENABLED
     OPT_FIELD_POISON,
     OPT_TRAINER_ESCAPE,
@@ -236,8 +251,13 @@ static const enum OptionId sGameplayOptions[] =
     OPT_DIFFICULTY,
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
+#if MODULE_POKEMON_RULES_ENABLED
     OPT_SHINY_ODDS,
+#endif
     OPT_EXP_MULTIPLIER,
+#if MODULE_PROGRESSION_ENABLED
+    OPT_LEVEL_CAPS,
+#endif
 };
 
 #if MODULE_RANDOMIZER_ENABLED
@@ -503,7 +523,8 @@ static const u8 *GetExtendedValueText(enum ExtendedOption option)
         return value == DIFFICULTY_EASY ? sTextEasy : value == DIFFICULTY_NORMAL ? sTextNormal : sTextHard;
     case EXT_OPT_ENCOUNTER_STYLE:
         return value == ENCOUNTER_STYLE_VISIBLE ? sTextVisible : sTextTraditional;
-case EXT_OPT_SHINY_ODDS:
+#if MODULE_POKEMON_RULES_ENABLED
+    case EXT_OPT_SHINY_ODDS:
     switch (value)
     {
     case SHINY_ODDS_4096: return sTextOdds4096;
@@ -517,7 +538,8 @@ case EXT_OPT_SHINY_ODDS:
     case SHINY_ODDS_8192:
     default:
         return sTextOdds8192;
-    }    
+    }
+#endif
     
     case EXT_OPT_LEVEL_CAPS:
         return value == LEVEL_CAPS_OFF ? sTextOff : value == LEVEL_CAPS_NORMAL ? sTextNormal : sTextHard;
@@ -554,8 +576,10 @@ static enum ExtendedOption OptionIdToExtended(enum OptionId option)
 #if MODULE_QOL_ENABLED
         [OPT_REUSABLE_TMS]        = EXT_OPT_REUSABLE_TMS,
 #endif
+#if MODULE_POKEMON_RULES_ENABLED
         [OPT_EXP_ON_CATCH]        = EXT_OPT_EXP_ON_CATCH,
         [OPT_PARTY_EXP]           = EXT_OPT_PARTY_EXP_SHARE,
+#endif
 #if MODULE_QOL_ENABLED
         [OPT_FIELD_POISON]        = EXT_OPT_FIELD_POISON,
         [OPT_TRAINER_ESCAPE]      = EXT_OPT_TRAINER_ESCAPE,
@@ -563,9 +587,13 @@ static enum ExtendedOption OptionIdToExtended(enum OptionId option)
         [OPT_DIFFICULTY]          = EXT_OPT_DIFFICULTY,
         [OPT_ENCOUNTER_STYLE]     = EXT_OPT_ENCOUNTER_STYLE,
         [OPT_FOLLOWER]            = EXT_OPT_FOLLOWER,
+#if MODULE_POKEMON_RULES_ENABLED
         [OPT_SHINY_ODDS]          = EXT_OPT_SHINY_ODDS,
+#endif
         [OPT_EXP_MULTIPLIER]      = EXT_OPT_EXP_MULTIPLIER,
+#if MODULE_PROGRESSION_ENABLED
         [OPT_LEVEL_CAPS]          = EXT_OPT_LEVEL_CAPS,
+#endif
         [OPT_NUZLOCKE]            = EXT_OPT_NUZLOCKE,
         [OPT_RANDOM_TRAINERS]     = EXT_OPT_RANDOM_TRAINERS,
         [OPT_RANDOM_GIFTS_STATIC] = EXT_OPT_RANDOM_GIFTS_STATIC,

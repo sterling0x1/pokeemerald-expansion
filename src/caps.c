@@ -1,26 +1,19 @@
 #include "global.h"
 #include "battle.h"
 #include "event_data.h"
-#include "extended_options.h"
 #include "caps.h"
 #include "pokemon.h"
+#include "progression.h"
 
-static bool32 IsNuzlockeLevelCapEnabled(void)
+bool32 IsRuntimeHardLevelCapEnabled(void)
 {
-    return ExtendedOptions_Get(EXT_OPT_NUZLOCKE)
-        && ExtendedOptions_Get(EXT_OPT_LEVEL_CAPS) != LEVEL_CAPS_OFF;
-}
-
-bool32 IsNuzlockeHardLevelCapEnabled(void)
-{
-    return ExtendedOptions_Get(EXT_OPT_NUZLOCKE)
-        && ExtendedOptions_Get(EXT_OPT_LEVEL_CAPS) == LEVEL_CAPS_HARD;
+    return Progression_IsHardLevelCapEnabled();
 }
 
 bool32 IsHardLevelCapEnabled(void)
 {
-    if (IsNuzlockeLevelCapEnabled())
-        return IsNuzlockeHardLevelCapEnabled();
+    if (Progression_AreLevelCapsEnabled())
+        return IsRuntimeHardLevelCapEnabled();
 
     return B_EXP_CAP_TYPE == EXP_CAP_HARD;
 }
@@ -42,7 +35,7 @@ u32 GetCurrentLevelCap(void)
 
     u32 i;
 
-    if (IsNuzlockeLevelCapEnabled() || B_LEVEL_CAP_TYPE == LEVEL_CAP_FLAG_LIST)
+    if (Progression_AreLevelCapsEnabled() || B_LEVEL_CAP_TYPE == LEVEL_CAP_FLAG_LIST)
     {
         for (i = 0; i < ARRAY_COUNT(sLevelCapFlagMap); i++)
         {
@@ -68,8 +61,8 @@ u32 GetSoftLevelCapExpValue(u32 level, u32 expValue)
 
     u32 capType = B_EXP_CAP_TYPE;
 
-    if (IsNuzlockeLevelCapEnabled())
-        capType = IsNuzlockeHardLevelCapEnabled() ? EXP_CAP_HARD : EXP_CAP_SOFT;
+    if (Progression_AreLevelCapsEnabled())
+        capType = IsRuntimeHardLevelCapEnabled() ? EXP_CAP_HARD : EXP_CAP_SOFT;
 
     if (capType == EXP_CAP_NONE)
         return expValue;

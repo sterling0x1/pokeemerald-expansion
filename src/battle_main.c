@@ -4,6 +4,7 @@
 #include "nuzlocke.h"
 #include "randomizer.h"
 #include "qol.h"
+#include "pokemon_rules.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_ai_main.h"
@@ -3105,7 +3106,7 @@ static void ClearSetBScriptingStruct(void)
     #if TESTING
     gBattleScripting.battleStyle = OPTIONS_BATTLE_STYLE_SET;
     #endif
-    gBattleScripting.expOnCatch = ExtendedOptions_Get(EXT_OPT_EXP_ON_CATCH);
+    gBattleScripting.expOnCatch = PokemonRules_IsExpOnCatchEnabled();
     gBattleScripting.specialTrainerBattleType = specialBattleType;
 }
 

@@ -17,6 +17,7 @@
 #include "party_menu.h"
 #include "pokemon.h"
 #include "qol.h"
+#include "pokemon_rules.h"
 #include "international_string_util.h"
 #include "item.h"
 #include "util.h"
@@ -9592,7 +9593,7 @@ bool32 MoveEffectIsGuaranteed(enum BattlerId battler, enum Ability battlerAbilit
 
 bool32 IsGen6ExpShareEnabled(void)
 {
-    if (ExtendedOptions_Get(EXT_OPT_PARTY_EXP_SHARE))
+    if (PokemonRules_IsPartyExpShareEnabled())
         return TRUE;
 
     if (I_EXP_SHARE_FLAG <= TEMP_FLAGS_END)

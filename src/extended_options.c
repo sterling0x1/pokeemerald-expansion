@@ -175,16 +175,24 @@ static void SetExtendedOptionsDefaults(void)
     ExtendedOptions_Set(EXT_OPT_FAST_HP_BARS, FALSE);
     ExtendedOptions_Set(EXT_OPT_FAST_EXP_BARS, FALSE);
 #endif
+#if MODULE_PROGRESSION_ENABLED
+    ExtendedOptions_Set(EXT_OPT_LEVEL_CAPS, LEVEL_CAPS_OFF);
+#endif
     ExtendedOptions_Set(EXT_OPT_MOVE_INFO, TRUE);
     ExtendedOptions_Set(EXT_OPT_EFFECTIVENESS_HINTS, TRUE);
     ExtendedOptions_Set(EXT_OPT_OPPONENT_INFO, TRUE);
     ExtendedOptions_Set(EXT_OPT_BENCH_ATTACKER, TRUE);
+#if MODULE_POKEMON_RULES_ENABLED
     ExtendedOptions_Set(EXT_OPT_EXP_ON_CATCH, TRUE);
+    ExtendedOptions_Set(EXT_OPT_PARTY_EXP_SHARE, FALSE);
+#endif
 #if MODULE_QOL_ENABLED
     ExtendedOptions_Set(EXT_OPT_FIELD_POISON, TRUE);
 #endif
     ExtendedOptions_Set(EXT_OPT_ENCOUNTER_STYLE, ENCOUNTER_STYLE_VISIBLE);
+#if MODULE_POKEMON_RULES_ENABLED
     ExtendedOptions_Set(EXT_OPT_SHINY_ODDS, SHINY_ODDS_8192);
+#endif
     ExtendedOptions_Set(EXT_OPT_DIFFICULTY, DIFFICULTY_NORMAL);
 }
 
