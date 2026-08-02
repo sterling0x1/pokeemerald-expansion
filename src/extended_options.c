@@ -193,7 +193,9 @@ static void SetExtendedOptionsDefaults(void)
 #if MODULE_POKEMON_RULES_ENABLED
     ExtendedOptions_Set(EXT_OPT_SHINY_ODDS, SHINY_ODDS_8192);
 #endif
+#if MODULE_DIFFICULTY_ENABLED
     ExtendedOptions_Set(EXT_OPT_DIFFICULTY, DIFFICULTY_NORMAL);
+#endif
 }
 
 void ExtendedOptions_InitNewSave(void)

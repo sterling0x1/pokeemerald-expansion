@@ -10,6 +10,8 @@ static s16 sTrainerEscapeX;
 static s16 sTrainerEscapeY;
 static u8 sTrainerEscapeMapGroup;
 static u8 sTrainerEscapeMapNum;
+static u16 sEscapedTrainerA;
+static u16 sEscapedTrainerB;
 
 bool32 Qol_IsAutoRunEnabled(void)
 {
@@ -51,7 +53,7 @@ bool32 Qol_IsBoxShortcutEnabled(void)
     return TRUE;
 }
 
-void Qol_MarkTrainerEscape(void)
+void Qol_MarkTrainerEscape(u16 trainerA, u16 trainerB)
 {
     sTrainerEscapePending = TRUE;
     sTrainerApproachSuppressed = TRUE;
@@ -59,12 +61,19 @@ void Qol_MarkTrainerEscape(void)
     sTrainerEscapeY = gSaveBlock1Ptr->pos.y;
     sTrainerEscapeMapGroup = gSaveBlock1Ptr->location.mapGroup;
     sTrainerEscapeMapNum = gSaveBlock1Ptr->location.mapNum;
+    sEscapedTrainerA = trainerA;
+    sEscapedTrainerB = trainerB;
 }
 
-bool32 Qol_ConsumeTrainerEscape(void)
+bool32 Qol_ConsumeTrainerEscape(u16 *trainerA, u16 *trainerB)
 {
     bool32 escaped = sTrainerEscapePending;
 
+    if (escaped)
+    {
+        *trainerA = sEscapedTrainerA;
+        *trainerB = sEscapedTrainerB;
+    }
     sTrainerEscapePending = FALSE;
     return escaped;
 }
@@ -104,6 +113,8 @@ void Qol_ResetRuntimeState(void)
 {
     sTrainerEscapePending = FALSE;
     sTrainerApproachSuppressed = FALSE;
+    sEscapedTrainerA = 0;
+    sEscapedTrainerB = 0;
 }
 
 #endif // MODULE_QOL_ENABLED

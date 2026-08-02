@@ -28,6 +28,7 @@
 #include "debug.h"
 #include "decompress.h"
 #include "dexnav.h"
+#include "difficulty.h"
 #include "dma3.h"
 #include "event_data.h"
 #include "evolution_scene.h"
@@ -2010,9 +2011,9 @@ u8 CreateNPCTrainerPartyFromTrainer(struct Pokemon *party, const struct Trainer 
             personalityValue += personalityHash << 8;
             species = Randomizer_GetTrainerSpecies(originalSpecies, personalityHash ^ monIndex);
             level = partyData[monIndex].lvl;
-            if (ExtendedOptions_Get(EXT_OPT_DIFFICULTY) == DIFFICULTY_EASY)
+            if (GetCurrentDifficultyLevel() == DIFFICULTY_EASY)
                 level = max(1, (level * 90) / 100);
-            else if (ExtendedOptions_Get(EXT_OPT_DIFFICULTY) == DIFFICULTY_HARD)
+            else if (GetCurrentDifficultyLevel() == DIFFICULTY_HARD)
                 level = min(MAX_LEVEL, max(1, (level * 110 + 99) / 100));
 
             if (partyData[monIndex].gender == TRAINER_MON_MALE)
@@ -4574,7 +4575,9 @@ static void HandleTurnActionSelectionState(void)
                     gBattlerAttacker = battler;
                     if (TryRunFromBattle(battler))
                     {
-                        Qol_MarkTrainerEscape();
+                        Qol_MarkTrainerEscape(TRAINER_BATTLE_PARAM.opponentA,
+                                              TRAINER_BATTLE_PARAM.opponentB);
+                        gBattleOutcome = B_OUTCOME_RAN;
                         ClearTrainerFlag(TRAINER_BATTLE_PARAM.opponentA);
                         if (TRAINER_BATTLE_PARAM.opponentB != 0
                          && TRAINER_BATTLE_PARAM.opponentB != 0xFFFF)

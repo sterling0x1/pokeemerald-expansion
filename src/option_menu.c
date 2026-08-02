@@ -25,7 +25,7 @@
 #define OPTION_MENU_EXTENDED (MODULE_RANDOMIZER_ENABLED || MODULE_NUZLOCKE_ENABLED \
                            || MODULE_CHEATS_ENABLED || MODULE_QOL_ENABLED \
                            || MODULE_BATTLE_PACING_ENABLED || MODULE_PROGRESSION_ENABLED \
-                           || MODULE_POKEMON_RULES_ENABLED)
+                           || MODULE_POKEMON_RULES_ENABLED || MODULE_DIFFICULTY_ENABLED)
 
 #define tSelection       data[0]
 #define tScrollTop       data[1]
@@ -82,7 +82,9 @@ enum OptionId
     OPT_FIELD_POISON,
     OPT_TRAINER_ESCAPE,
 #endif
+#if MODULE_DIFFICULTY_ENABLED
     OPT_DIFFICULTY,
+#endif
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
 #if MODULE_POKEMON_RULES_ENABLED
@@ -162,7 +164,9 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
     [OPT_FIELD_POISON]        = COMPOUND_STRING("FIELD POISON"),
     [OPT_TRAINER_ESCAPE]      = COMPOUND_STRING("TRAINER ESCAPE"),
 #endif
+#if MODULE_DIFFICULTY_ENABLED
     [OPT_DIFFICULTY]          = COMPOUND_STRING("DIFFICULTY"),
+#endif
     [OPT_ENCOUNTER_STYLE]     = COMPOUND_STRING("ENCOUNTER STYLE"),
     [OPT_FOLLOWER]            = COMPOUND_STRING("FOLLOWER POKéMON"),
 #if MODULE_POKEMON_RULES_ENABLED
@@ -248,7 +252,9 @@ static const enum OptionId sGameplayOptions[] =
     OPT_FIELD_POISON,
     OPT_TRAINER_ESCAPE,
 #endif
+#if MODULE_DIFFICULTY_ENABLED
     OPT_DIFFICULTY,
+#endif
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
 #if MODULE_POKEMON_RULES_ENABLED
@@ -519,8 +525,10 @@ static const u8 *GetExtendedValueText(enum ExtendedOption option)
         return value == ITEM_DESCRIPTIONS_OFF ? sTextOff : value == ITEM_DESCRIPTIONS_FIRST ? sTextFirst : sTextAlways;
     case EXT_OPT_BATTLE_SPEED:
         return value == BATTLE_SPEED_NORMAL ? sTextNormal : value == BATTLE_SPEED_FAST ? sTextFast : sTextFaster;
+#if MODULE_DIFFICULTY_ENABLED
     case EXT_OPT_DIFFICULTY:
         return value == DIFFICULTY_EASY ? sTextEasy : value == DIFFICULTY_NORMAL ? sTextNormal : sTextHard;
+#endif
     case EXT_OPT_ENCOUNTER_STYLE:
         return value == ENCOUNTER_STYLE_VISIBLE ? sTextVisible : sTextTraditional;
 #if MODULE_POKEMON_RULES_ENABLED
@@ -584,7 +592,9 @@ static enum ExtendedOption OptionIdToExtended(enum OptionId option)
         [OPT_FIELD_POISON]        = EXT_OPT_FIELD_POISON,
         [OPT_TRAINER_ESCAPE]      = EXT_OPT_TRAINER_ESCAPE,
 #endif
+#if MODULE_DIFFICULTY_ENABLED
         [OPT_DIFFICULTY]          = EXT_OPT_DIFFICULTY,
+#endif
         [OPT_ENCOUNTER_STYLE]     = EXT_OPT_ENCOUNTER_STYLE,
         [OPT_FOLLOWER]            = EXT_OPT_FOLLOWER,
 #if MODULE_POKEMON_RULES_ENABLED

@@ -14,8 +14,8 @@ bool32 Qol_AreTmsReusable(void);
 bool32 Qol_IsFieldPoisonEnabled(void);
 bool32 Qol_IsTrainerEscapeEnabled(void);
 bool32 Qol_IsBoxShortcutEnabled(void);
-void Qol_MarkTrainerEscape(void);
-bool32 Qol_ConsumeTrainerEscape(void);
+void Qol_MarkTrainerEscape(u16 trainerA, u16 trainerB);
+bool32 Qol_ConsumeTrainerEscape(u16 *trainerA, u16 *trainerB);
 bool32 Qol_ShouldSuppressTrainerApproach(void);
 void Qol_ResetRuntimeState(void);
 
@@ -30,8 +30,8 @@ static inline bool32 Qol_AreTmsReusable(void) { return FALSE; }
 static inline bool32 Qol_IsFieldPoisonEnabled(void) { return TRUE; }
 static inline bool32 Qol_IsTrainerEscapeEnabled(void) { return FALSE; }
 static inline bool32 Qol_IsBoxShortcutEnabled(void) { return FALSE; }
-static inline void Qol_MarkTrainerEscape(void) {}
-static inline bool32 Qol_ConsumeTrainerEscape(void) { return FALSE; }
+static inline void Qol_MarkTrainerEscape(u16 trainerA, u16 trainerB) {}
+static inline bool32 Qol_ConsumeTrainerEscape(u16 *trainerA, u16 *trainerB) { return FALSE; }
 static inline bool32 Qol_ShouldSuppressTrainerApproach(void) { return FALSE; }
 static inline void Qol_ResetRuntimeState(void) {}
 

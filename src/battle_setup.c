@@ -1303,10 +1303,15 @@ static void ClearBattledTrainersFlags(void)
 
 bool32 ConsumeTrainerEscape(void)
 {
-    if (!Qol_ConsumeTrainerEscape())
+    u16 trainerA;
+    u16 trainerB;
+
+    if (!Qol_ConsumeTrainerEscape(&trainerA, &trainerB))
         return FALSE;
 
-    ClearBattledTrainersFlags();
+    if (trainerB != 0 && trainerB != 0xFFFF)
+        ClearTrainerFlag(trainerB);
+    ClearTrainerFlag(trainerA);
     return TRUE;
 }
 #endif
