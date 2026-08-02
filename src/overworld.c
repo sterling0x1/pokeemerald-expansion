@@ -1,4 +1,5 @@
 #include "global.h"
+#include "config/modules.h"
 #include "overworld.h"
 #include "battle_pyramid.h"
 #include "battle_setup.h"
@@ -74,6 +75,9 @@
 #include "tileset_anims.h"
 #include "time_events.h"
 #include "trainer_hill.h"
+#if MODULE_START_MENU_UI_ENABLED
+#include "unbound_start_menu.h"
+#endif
 #include "trainer_pokemon_sprites.h"
 #include "tv.h"
 #include "scanline_effect.h"
@@ -2148,6 +2152,11 @@ void CB2_ReturnToFieldFromMultiplayer(void)
 void CB2_ReturnToFieldWithOpenMenu(void)
 {
     FieldClearVBlankHBlankCallbacks();
+#if MODULE_START_MENU_UI_ENABLED
+    if (Usm_IsEnabled())
+        gFieldCallback2 = FieldCB_UsmReturnToField;
+    else
+#endif
     gFieldCallback2 = FieldCB_ReturnToFieldOpenStartMenu;
     CB2_ReturnToField();
 }

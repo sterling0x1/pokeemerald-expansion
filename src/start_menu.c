@@ -1,4 +1,5 @@
 #include "global.h"
+#include "config/modules.h"
 #include "config/save.h"
 #include "battle_pike.h"
 #include "battle_pyramid.h"
@@ -44,6 +45,9 @@
 #include "text.h"
 #include "text_window.h"
 #include "trainer_card.h"
+#if MODULE_START_MENU_UI_ENABLED
+#include "unbound_start_menu.h"
+#endif
 #include "window.h"
 #include "union_room.h"
 #include "dexnav.h"
@@ -639,6 +643,13 @@ void Task_ShowStartMenu(u8 taskId)
 
 void ShowStartMenu(void)
 {
+#if MODULE_START_MENU_UI_ENABLED
+    if (Usm_IsEnabled())
+    {
+        Usm_InitStartMenu();
+        return;
+    }
+#endif
     if (!IsOverworldLinkActive())
     {
         FreezeObjectEvents();
@@ -886,6 +897,15 @@ static bool8 StartMenuBattlePyramidRetireCallback(void)
 // Functionally unused
 void ShowBattlePyramidStartMenu(void)
 {
+#if MODULE_START_MENU_UI_ENABLED
+    if (Usm_IsEnabled())
+    {
+        ClearDialogWindowAndFrameToTransparent(0, FALSE);
+        ScriptUnfreezeObjectEvents();
+        Usm_InitStartMenu();
+        return;
+    }
+#endif
     ClearDialogWindowAndFrameToTransparent(0, FALSE);
     ScriptUnfreezeObjectEvents();
     CreateStartMenuTask(Task_ShowStartMenu);

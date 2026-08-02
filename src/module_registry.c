@@ -23,6 +23,9 @@ extern const struct ModuleDescriptor gProgressionModuleDescriptor;
 #if MODULE_POKEMON_RULES_ENABLED
 extern const struct ModuleDescriptor gPokemonRulesModuleDescriptor;
 #endif
+#if MODULE_START_MENU_UI_ENABLED
+extern const struct ModuleDescriptor gStartMenuUiModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -46,5 +49,8 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_POKEMON_RULES_ENABLED
     [MODULE_ID_POKEMON_RULES] = &gPokemonRulesModuleDescriptor,
+#endif
+#if MODULE_START_MENU_UI_ENABLED
+    [MODULE_ID_START_MENU_UI] = &gStartMenuUiModuleDescriptor,
 #endif
 };
