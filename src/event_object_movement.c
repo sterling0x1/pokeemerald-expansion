@@ -1,5 +1,5 @@
 #include "global.h"
-#include "extended_options.h"
+#include "overworld_features.h"
 #include "malloc.h"
 #include "battle_anim.h"
 #include "battle_pyramid.h"
@@ -2364,7 +2364,7 @@ void UpdateFollowingPokemon(void)
     // 4. a follower NPC is present
     if (OW_POKEMON_OBJECT_EVENTS == FALSE
      || OW_FOLLOWERS_ENABLED == FALSE
-     || !ExtendedOptions_Get(EXT_OPT_FOLLOWER)
+     || !OverworldFeatures_AreFollowersEnabled()
      || FlagGet(B_FLAG_FOLLOWERS_DISABLED)
      || !GetFollowerInfo(&species, &shiny, &female)
      || SpeciesToGraphicsInfo(species, shiny, female) == NULL

@@ -29,6 +29,9 @@ extern const struct ModuleDescriptor gStartMenuUiModuleDescriptor;
 #if MODULE_DIFFICULTY_ENABLED
 extern const struct ModuleDescriptor gDifficultyModuleDescriptor;
 #endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
+extern const struct ModuleDescriptor gOverworldFeaturesModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -58,5 +61,8 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_DIFFICULTY_ENABLED
     [MODULE_ID_DIFFICULTY] = &gDifficultyModuleDescriptor,
+#endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
+    [MODULE_ID_OVERWORLD_FEATURES] = &gOverworldFeaturesModuleDescriptor,
 #endif
 };

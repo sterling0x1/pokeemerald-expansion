@@ -189,7 +189,10 @@ static void SetExtendedOptionsDefaults(void)
 #if MODULE_QOL_ENABLED
     ExtendedOptions_Set(EXT_OPT_FIELD_POISON, TRUE);
 #endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
     ExtendedOptions_Set(EXT_OPT_ENCOUNTER_STYLE, ENCOUNTER_STYLE_VISIBLE);
+    ExtendedOptions_Set(EXT_OPT_FOLLOWER, FALSE);
+#endif
 #if MODULE_POKEMON_RULES_ENABLED
     ExtendedOptions_Set(EXT_OPT_SHINY_ODDS, SHINY_ODDS_8192);
 #endif

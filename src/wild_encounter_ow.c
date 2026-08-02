@@ -1,5 +1,5 @@
 #include "global.h"
-#include "extended_options.h"
+#include "overworld_features.h"
 #include "wild_encounter_ow.h"
 #include "battle_setup.h"
 #include "battle_main.h"
@@ -236,7 +236,7 @@ void UpdateOverworldWildEncounter(void)
 
     bool32 shouldSpawnWaterMons = ShouldSpawnWaterOWE();
 
-    if (ExtendedOptions_Get(EXT_OPT_ENCOUNTER_STYLE) == ENCOUNTER_STYLE_TRADITIONAL)
+    if (!OverworldFeatures_UseVisibleEncounters())
     {
         DespawnAllOverworldWildEncounters(OWE_GENERATED, 0);
         return;

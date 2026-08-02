@@ -25,7 +25,8 @@
 #define OPTION_MENU_EXTENDED (MODULE_RANDOMIZER_ENABLED || MODULE_NUZLOCKE_ENABLED \
                            || MODULE_CHEATS_ENABLED || MODULE_QOL_ENABLED \
                            || MODULE_BATTLE_PACING_ENABLED || MODULE_PROGRESSION_ENABLED \
-                           || MODULE_POKEMON_RULES_ENABLED || MODULE_DIFFICULTY_ENABLED)
+                           || MODULE_POKEMON_RULES_ENABLED || MODULE_DIFFICULTY_ENABLED \
+                           || MODULE_OVERWORLD_FEATURES_ENABLED)
 
 #define tSelection       data[0]
 #define tScrollTop       data[1]
@@ -85,8 +86,10 @@ enum OptionId
 #if MODULE_DIFFICULTY_ENABLED
     OPT_DIFFICULTY,
 #endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
+#endif
 #if MODULE_POKEMON_RULES_ENABLED
     OPT_SHINY_ODDS,
 #endif
@@ -167,8 +170,10 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
 #if MODULE_DIFFICULTY_ENABLED
     [OPT_DIFFICULTY]          = COMPOUND_STRING("DIFFICULTY"),
 #endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
     [OPT_ENCOUNTER_STYLE]     = COMPOUND_STRING("ENCOUNTER STYLE"),
     [OPT_FOLLOWER]            = COMPOUND_STRING("FOLLOWER POKéMON"),
+#endif
 #if MODULE_POKEMON_RULES_ENABLED
     [OPT_SHINY_ODDS]          = COMPOUND_STRING("SHINY ODDS"),
 #endif
@@ -255,8 +260,10 @@ static const enum OptionId sGameplayOptions[] =
 #if MODULE_DIFFICULTY_ENABLED
     OPT_DIFFICULTY,
 #endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
     OPT_ENCOUNTER_STYLE,
     OPT_FOLLOWER,
+#endif
 #if MODULE_POKEMON_RULES_ENABLED
     OPT_SHINY_ODDS,
 #endif
@@ -529,8 +536,10 @@ static const u8 *GetExtendedValueText(enum ExtendedOption option)
     case EXT_OPT_DIFFICULTY:
         return value == DIFFICULTY_EASY ? sTextEasy : value == DIFFICULTY_NORMAL ? sTextNormal : sTextHard;
 #endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
     case EXT_OPT_ENCOUNTER_STYLE:
         return value == ENCOUNTER_STYLE_VISIBLE ? sTextVisible : sTextTraditional;
+#endif
 #if MODULE_POKEMON_RULES_ENABLED
     case EXT_OPT_SHINY_ODDS:
     switch (value)
@@ -595,8 +604,10 @@ static enum ExtendedOption OptionIdToExtended(enum OptionId option)
 #if MODULE_DIFFICULTY_ENABLED
         [OPT_DIFFICULTY]          = EXT_OPT_DIFFICULTY,
 #endif
+#if MODULE_OVERWORLD_FEATURES_ENABLED
         [OPT_ENCOUNTER_STYLE]     = EXT_OPT_ENCOUNTER_STYLE,
         [OPT_FOLLOWER]            = EXT_OPT_FOLLOWER,
+#endif
 #if MODULE_POKEMON_RULES_ENABLED
         [OPT_SHINY_ODDS]          = EXT_OPT_SHINY_ODDS,
 #endif
