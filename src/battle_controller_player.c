@@ -490,6 +490,7 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
     gBattle_BG0_X = 0;
     gBattle_BG0_Y = DISPLAY_HEIGHT * 2;
     sCompactAttackerCursor[battler] = gBattlerPartyIndexes[battler];
+    DrawModernMoveSelectionPanels();
     DrawCompactAttackerPicker(battler);
     gBattlerControllerFuncs[battler] = HandleInputCompactAttackerPicker;
 }
@@ -622,8 +623,8 @@ static void DrawCompactAttackerPicker(enum BattlerId battler)
     static const u8 sBlank[] = _(" ");
     static const u8 sEmptySlot[] = _("-");
 
-    // The left panel chooses an attacker; the right one is that Pokémon's card.
-    DrawModernMoveSelectionPanels();
+    // The panel frames are created once when the picker opens. Cursor movement
+    // only refreshes their contents, avoiding a visible background flash.
     FillWindowPixelBuffer(B_WIN_MOVE_NAME_1, PIXEL_FILL(0xE));
     FillWindowPixelBuffer(B_WIN_MOVE_DESCRIPTION, PIXEL_FILL(0xE));
 
@@ -643,7 +644,7 @@ static void DrawCompactAttackerPicker(enum BattlerId battler)
             name = sCompactAttackerNames[i];
         }
 
-        AddTextPrinterParameterized4(B_WIN_MOVE_NAME_1, FONT_COMPACT, x, y + 3, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_MOVE_NAME_1, FONT_SMALL_NARROWER, x, y, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, (i == sCompactAttackerCursor[battler]) ? sCursor : sBlank);
         AddTextPrinterParameterized4(B_WIN_MOVE_NAME_1, FONT_SMALL_NARROWER, x + 8, y, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, name);

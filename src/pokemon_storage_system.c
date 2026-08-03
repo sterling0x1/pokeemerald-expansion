@@ -257,6 +257,7 @@ enum {
 enum {
     GFXTAG_CURSOR,
     GFXTAG_CURSOR_SHADOW,
+    GFXTAG_CURSOR_L_HINT,
     GFXTAG_DISPLAY_MON,
     GFXTAG_BOX_TITLE,
     GFXTAG_BOX_TITLE_ALT,
@@ -466,6 +467,7 @@ struct PokemonStorageSystemData
     u16 menuWindowId;
     struct Sprite *cursorSprite;
     struct Sprite *cursorShadowSprite;
+    struct Sprite *cursorLHintSprite;
     s32 cursorNewX;
     s32 cursorNewY;
     u32 cursorSpeedX;
@@ -736,6 +738,7 @@ static void SpriteCB_ItemIcon_SwapToMon(struct Sprite *);
 
 // Cursor
 static void CreateCursorSprites(void);
+static void SpriteCB_CursorLHint(struct Sprite *);
 static void ToggleCursorAutoAction(void);
 static u8 GetCursorPosition(void);
 static void StartCursorAnim(u8);
@@ -934,6 +937,19 @@ static const union AffineAnimCmd *const sAffineAnims_ChooseBoxMenu[] =
 
 static const u8 sChooseBoxMenu_TextColors[] = {TEXT_COLOR_RED, TEXT_DYNAMIC_COLOR_6, TEXT_DYNAMIC_COLOR_5};
 static const u8 sText_OutOf30[] = _("/30");
+
+// Small rounded L-button badge displayed beside the hand cursor.
+static const u32 sCursorLHint_Gfx[] =
+{
+    0x02222220,
+    0x22228822,
+    0x22228822,
+    0x22228822,
+    0x22228822,
+    0x28888822,
+    0x28888822,
+    0x02222220,
+};
 
 static const u16 sChooseBoxMenu_Pal[]        = INCGFX_U16("graphics/pokemon_storage/box_selection_popup.pal", ".gbapal");
 static const u8 sChooseBoxMenuCenter_Gfx[]   = INCGFX_U8("graphics/pokemon_storage/box_selection_popup_center.png", ".4bpp");
@@ -7276,6 +7292,23 @@ static u8 InBoxInput_Normal(void)
             break;
         }
 
+        // In Move Pokémon mode, L provides a menu-free pick/place shortcut.
+        // Reuse the normal storage actions so placement, swapping, animations,
+        // and party-data refreshes keep their existing behaviour.
+        if (sStorage->boxOption == OPTION_MOVE_MONS && JOY_NEW(L_BUTTON))
+        {
+            if (sIsMonBeingMoved)
+            {
+                if (GetBoxMonDataAt(StorageGetCurrentBox(), sCursorPosition, MON_DATA_SPECIES_OR_EGG) == SPECIES_NONE)
+                    return INPUT_PLACE_MON;
+                return INPUT_SHIFT_MON;
+            }
+            else if (GetBoxMonDataAt(StorageGetCurrentBox(), sCursorPosition, MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE)
+            {
+                return INPUT_MOVE_MON;
+            }
+        }
+
         if ((JOY_NEW(A_BUTTON)) && SetSelectionMenuTexts())
         {
             if (!sAutoActionOn)
@@ -7550,6 +7583,24 @@ static u8 HandleInput_InParty(void)
                 cursorPosition = 0;
             }
             break;
+        }
+
+        // Match the box-grid shortcut on party slots. The existing Move,
+        // Place, and Shift tasks retain last-party and Nuzlocke safeguards.
+        if (sStorage->boxOption == OPTION_MOVE_MONS
+         && sCursorPosition < PARTY_SIZE
+         && JOY_NEW(L_BUTTON))
+        {
+            if (sIsMonBeingMoved)
+            {
+                if (GetMonData(&gParties[B_TRAINER_PLAYER][sCursorPosition], MON_DATA_SPECIES_OR_EGG) == SPECIES_NONE)
+                    return INPUT_PLACE_MON;
+                return INPUT_SHIFT_MON;
+            }
+            else if (GetMonData(&gParties[B_TRAINER_PLAYER][sCursorPosition], MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE)
+            {
+                return INPUT_MOVE_MON;
+            }
         }
 
         if (JOY_NEW(A_BUTTON))
@@ -7930,6 +7981,17 @@ static void SpriteCB_CursorShadow(struct Sprite *sprite)
     sprite->y = sStorage->cursorSprite->y + 20;
 }
 
+static void SpriteCB_CursorLHint(struct Sprite *sprite)
+{
+    bool8 cursorIsOnMon = (sCursorArea == CURSOR_AREA_IN_BOX || sCursorArea == CURSOR_AREA_IN_PARTY);
+    bool8 shortcutIsUsable = sIsMonBeingMoved || GetSpeciesAtCursorPosition() != SPECIES_NONE;
+
+    sprite->x = sStorage->cursorSprite->x + 12;
+    sprite->y = sStorage->cursorSprite->y + sStorage->cursorSprite->y2 - 12;
+    sprite->oam.priority = sStorage->cursorSprite->oam.priority;
+    sprite->invisible = !cursorIsOnMon || !shortcutIsUsable;
+}
+
 static void CreateCursorSprites(void)
 {
     u16 x, y;
@@ -7939,6 +8001,7 @@ static void CreateCursorSprites(void)
     {
         {sHandCursor_Gfx, 0x800, GFXTAG_CURSOR},
         {sHandCursorShadow_Gfx, 0x80, GFXTAG_CURSOR_SHADOW},
+        {sCursorLHint_Gfx, sizeof(sCursorLHint_Gfx), GFXTAG_CURSOR_L_HINT},
         {}
     };
 
@@ -7958,6 +8021,12 @@ static void CreateCursorSprites(void)
     {
         .shape = SPRITE_SHAPE(16x16),
         .size = SPRITE_SIZE(16x16),
+        .priority = 1,
+    };
+    static const struct OamData sOamData_CursorLHint =
+    {
+        .shape = SPRITE_SHAPE(8x8),
+        .size = SPRITE_SIZE(8x8),
         .priority = 1,
     };
 
@@ -8006,6 +8075,13 @@ static void CreateCursorSprites(void)
         .oam = &sOamData_CursorShadow,
         .callback = SpriteCB_CursorShadow,
     };
+    static const struct SpriteTemplate sSpriteTemplate_CursorLHint =
+    {
+        .tileTag = GFXTAG_CURSOR_L_HINT,
+        .paletteTag = PALTAG_MISC_1,
+        .oam = &sOamData_CursorLHint,
+        .callback = SpriteCB_CursorLHint,
+    };
 
     LoadSpriteSheets(spriteSheets);
     LoadSpritePalettes(spritePalettes);
@@ -8049,6 +8125,14 @@ static void CreateCursorSprites(void)
     else
     {
         sStorage->cursorShadowSprite = NULL;
+    }
+
+    sStorage->cursorLHintSprite = NULL;
+    if (sStorage->boxOption == OPTION_MOVE_MONS)
+    {
+        spriteId = CreateSprite(&sSpriteTemplate_CursorLHint, x + 12, y - 12, 5);
+        if (spriteId != MAX_SPRITES)
+            sStorage->cursorLHintSprite = &gSprites[spriteId];
     }
 }
 
