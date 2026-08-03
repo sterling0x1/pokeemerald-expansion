@@ -17,6 +17,7 @@
 #include "follower_npc.h"
 #include "random.h"
 #include "starter_choose.h"
+#include "game_mode.h"
 #include "script_pokemon_util.h"
 #include "palette.h"
 #include "window.h"
@@ -973,7 +974,8 @@ static void CB2_GiveStarter(void)
 
     *GetVarPointer(VAR_STARTER_MON) = gSpecialVar_Result;
     starterMon = GetStarterPokemon(gSpecialVar_Result);
-    ScriptGiveMonWithoutRandomization(starterMon, 5, ITEM_NONE);
+    ScriptGiveMonWithoutRandomization(starterMon,
+        GameMode_RandomizeGiftLevel(5, 0x53544152 ^ gSpecialVar_Result ^ starterMon), ITEM_NONE);
     ResetTasks();
     PlayBattleBGM();
     SetMainCallback2(CB2_StartFirstBattle);

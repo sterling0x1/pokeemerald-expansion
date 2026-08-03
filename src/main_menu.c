@@ -8,6 +8,8 @@
 #include "decompress.h"
 #include "event_data.h"
 #include "field_effect.h"
+#include "game_mode.h"
+#include "game_mode_menu.h"
 #include "gpu_regs.h"
 #include "graphics.h"
 #include "international_string_util.h"
@@ -170,6 +172,7 @@
  */
 
 #define OPTION_MENU_FLAG (1 << 15)
+#define MAIN_MENU_NUZLOCKE_ENTRY FALSE
 
 // Static type declarations
 
@@ -285,7 +288,7 @@ static const u8 gText_ContinueMenuPlayer[] = _("PLAYER");
 static const u8 gText_ContinueMenuTime[] = _("TIME");
 static const u8 gText_ContinueMenuPokedex[] = _("POKéDEX");
 static const u8 gText_ContinueMenuBadges[] = _("BADGES");
-static const u8 sText_SaveSlotHelp[] = _("LEFT/RIGHT: CHANGE SAVE SLOT");
+static const u8 sText_ContinueMenuMode[] = _("MODE");
 
 #define MENU_LEFT 2
 #define MENU_TOP_WIN0 1
@@ -719,19 +722,19 @@ static void Task_MainMenuCheckSaveFile(u8 taskId)
             {
             case HAS_NO_SAVED_GAME:
             case HAS_SAVED_GAME:
-                sCurrItemAndOptionMenuCheck = tMenuType + 1 + MODULE_NUZLOCKE_ENABLED;
+                sCurrItemAndOptionMenuCheck = tMenuType + 1 + MAIN_MENU_NUZLOCKE_ENTRY;
                 break;
             case HAS_MYSTERY_GIFT:
-                sCurrItemAndOptionMenuCheck = 3 + MODULE_NUZLOCKE_ENABLED;
+                sCurrItemAndOptionMenuCheck = 3 + MAIN_MENU_NUZLOCKE_ENTRY;
                 break;
             case HAS_MYSTERY_EVENTS:
-                sCurrItemAndOptionMenuCheck = 4 + MODULE_NUZLOCKE_ENABLED;
+                sCurrItemAndOptionMenuCheck = 4 + MAIN_MENU_NUZLOCKE_ENTRY;
                 break;
             }
         }
         sCurrItemAndOptionMenuCheck &= ~OPTION_MENU_FLAG;  // turn off the "returning from options menu" flag
         tCurrItem = sCurrItemAndOptionMenuCheck;
-        tItemCount = tMenuType + 2 + MODULE_NUZLOCKE_ENABLED;
+        tItemCount = tMenuType + 2 + MAIN_MENU_NUZLOCKE_ENTRY;
     }
 }
 
@@ -826,104 +829,104 @@ static void Task_DisplayMainMenu(u8 taskId)
         case HAS_NO_SAVED_GAME:
         default:
             FillWindowPixelBuffer(0, PIXEL_FILL(0xA));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             FillWindowPixelBuffer(1, PIXEL_FILL(0xA));
 #endif
-            FillWindowPixelBuffer(3 - 2 * !MODULE_NUZLOCKE_ENABLED, PIXEL_FILL(0xA));
+            FillWindowPixelBuffer(3 - 2 * !MAIN_MENU_NUZLOCKE_ENTRY, PIXEL_FILL(0xA));
             AddTextPrinterParameterized3(0, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             AddTextPrinterParameterized3(1, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
 #endif
-            AddTextPrinterParameterized3(3 - 2 * !MODULE_NUZLOCKE_ENABLED, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
+            AddTextPrinterParameterized3(3 - 2 * !MAIN_MENU_NUZLOCKE_ENTRY, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
             PutWindowTilemap(0);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             PutWindowTilemap(1);
 #endif
-            PutWindowTilemap(3 - 2 * !MODULE_NUZLOCKE_ENABLED);
+            PutWindowTilemap(3 - 2 * !MAIN_MENU_NUZLOCKE_ENTRY);
             CopyWindowToVram(0, COPYWIN_GFX);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             CopyWindowToVram(1, COPYWIN_GFX);
 #endif
-            CopyWindowToVram(3 - 2 * !MODULE_NUZLOCKE_ENABLED, COPYWIN_GFX);
+            CopyWindowToVram(3 - 2 * !MAIN_MENU_NUZLOCKE_ENTRY, COPYWIN_GFX);
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[0], MAIN_MENU_BORDER_TILE);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[1], MAIN_MENU_BORDER_TILE);
 #endif
-            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[3 - 2 * !MODULE_NUZLOCKE_ENABLED], MAIN_MENU_BORDER_TILE);
+            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[3 - 2 * !MAIN_MENU_NUZLOCKE_ENTRY], MAIN_MENU_BORDER_TILE);
             break;
         case HAS_SAVED_GAME:
             FillWindowPixelBuffer(2, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(3, PIXEL_FILL(0xA));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             FillWindowPixelBuffer(4, PIXEL_FILL(0xA));
 #endif
-            FillWindowPixelBuffer(5 - !MODULE_NUZLOCKE_ENABLED, PIXEL_FILL(0xA));
+            FillWindowPixelBuffer(5 - !MAIN_MENU_NUZLOCKE_ENTRY, PIXEL_FILL(0xA));
             AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuContinue));
             AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
 #endif
-            AddTextPrinterParameterized3(5 - !MODULE_NUZLOCKE_ENABLED, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
+            AddTextPrinterParameterized3(5 - !MAIN_MENU_NUZLOCKE_ENTRY, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
             MainMenu_FormatSavegameText();
             PutWindowTilemap(2);
             PutWindowTilemap(3);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             PutWindowTilemap(4);
 #endif
-            PutWindowTilemap(5 - !MODULE_NUZLOCKE_ENABLED);
+            PutWindowTilemap(5 - !MAIN_MENU_NUZLOCKE_ENTRY);
             CopyWindowToVram(2, COPYWIN_GFX);
             CopyWindowToVram(3, COPYWIN_GFX);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             CopyWindowToVram(4, COPYWIN_GFX);
 #endif
-            CopyWindowToVram(5 - !MODULE_NUZLOCKE_ENABLED, COPYWIN_GFX);
+            CopyWindowToVram(5 - !MAIN_MENU_NUZLOCKE_ENTRY, COPYWIN_GFX);
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[2], MAIN_MENU_BORDER_TILE);
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[3], MAIN_MENU_BORDER_TILE);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[4], MAIN_MENU_BORDER_TILE);
 #endif
-            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[5 - !MODULE_NUZLOCKE_ENABLED], MAIN_MENU_BORDER_TILE);
+            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[5 - !MAIN_MENU_NUZLOCKE_ENTRY], MAIN_MENU_BORDER_TILE);
             break;
         case HAS_MYSTERY_GIFT:
             FillWindowPixelBuffer(2, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(3, PIXEL_FILL(0xA));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             FillWindowPixelBuffer(4, PIXEL_FILL(0xA));
 #endif
-            FillWindowPixelBuffer(5 - !MODULE_NUZLOCKE_ENABLED, PIXEL_FILL(0xA));
-            FillWindowPixelBuffer(6 - !MODULE_NUZLOCKE_ENABLED, PIXEL_FILL(0xA));
+            FillWindowPixelBuffer(5 - !MAIN_MENU_NUZLOCKE_ENTRY, PIXEL_FILL(0xA));
+            FillWindowPixelBuffer(6 - !MAIN_MENU_NUZLOCKE_ENTRY, PIXEL_FILL(0xA));
             AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuContinue));
             AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
 #endif
-            AddTextPrinterParameterized3(5 - !MODULE_NUZLOCKE_ENABLED, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryGift);
-            AddTextPrinterParameterized3(6 - !MODULE_NUZLOCKE_ENABLED, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
+            AddTextPrinterParameterized3(5 - !MAIN_MENU_NUZLOCKE_ENTRY, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryGift);
+            AddTextPrinterParameterized3(6 - !MAIN_MENU_NUZLOCKE_ENTRY, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
             MainMenu_FormatSavegameText();
             PutWindowTilemap(2);
             PutWindowTilemap(3);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             PutWindowTilemap(4);
 #endif
-            PutWindowTilemap(5 - !MODULE_NUZLOCKE_ENABLED);
-            PutWindowTilemap(6 - !MODULE_NUZLOCKE_ENABLED);
+            PutWindowTilemap(5 - !MAIN_MENU_NUZLOCKE_ENTRY);
+            PutWindowTilemap(6 - !MAIN_MENU_NUZLOCKE_ENTRY);
             CopyWindowToVram(2, COPYWIN_GFX);
             CopyWindowToVram(3, COPYWIN_GFX);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             CopyWindowToVram(4, COPYWIN_GFX);
 #endif
-            CopyWindowToVram(5 - !MODULE_NUZLOCKE_ENABLED, COPYWIN_GFX);
-            CopyWindowToVram(6 - !MODULE_NUZLOCKE_ENABLED, COPYWIN_GFX);
+            CopyWindowToVram(5 - !MAIN_MENU_NUZLOCKE_ENTRY, COPYWIN_GFX);
+            CopyWindowToVram(6 - !MAIN_MENU_NUZLOCKE_ENTRY, COPYWIN_GFX);
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[2], MAIN_MENU_BORDER_TILE);
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[3], MAIN_MENU_BORDER_TILE);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[4], MAIN_MENU_BORDER_TILE);
 #endif
-            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[5 - !MODULE_NUZLOCKE_ENABLED], MAIN_MENU_BORDER_TILE);
-            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[6 - !MODULE_NUZLOCKE_ENABLED], MAIN_MENU_BORDER_TILE);
+            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[5 - !MAIN_MENU_NUZLOCKE_ENTRY], MAIN_MENU_BORDER_TILE);
+            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[6 - !MAIN_MENU_NUZLOCKE_ENTRY], MAIN_MENU_BORDER_TILE);
             tScrollArrowTaskId = AddScrollIndicatorArrowPair(&sScrollArrowsTemplate_MainMenu, &sCurrItemAndOptionMenuCheck);
             gTasks[tScrollArrowTaskId].func = Task_ScrollIndicatorArrowPairOnMainMenu;
-            if (sCurrItemAndOptionMenuCheck == 3 + MODULE_NUZLOCKE_ENABLED)
+            if (sCurrItemAndOptionMenuCheck == 3 + MAIN_MENU_NUZLOCKE_ENTRY)
             {
                 ChangeBgY(0, 0x2000, BG_COORD_ADD);
                 ChangeBgY(1, 0x2000, BG_COORD_ADD);
@@ -934,48 +937,48 @@ static void Task_DisplayMainMenu(u8 taskId)
         case HAS_MYSTERY_EVENTS:
             FillWindowPixelBuffer(2, PIXEL_FILL(0xA));
             FillWindowPixelBuffer(3, PIXEL_FILL(0xA));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             FillWindowPixelBuffer(4, PIXEL_FILL(0xA));
 #endif
-            FillWindowPixelBuffer(5 - !MODULE_NUZLOCKE_ENABLED, PIXEL_FILL(0xA));
-            FillWindowPixelBuffer(6 - !MODULE_NUZLOCKE_ENABLED, PIXEL_FILL(0xA));
-            FillWindowPixelBuffer(7 - !MODULE_NUZLOCKE_ENABLED, PIXEL_FILL(0xA));
+            FillWindowPixelBuffer(5 - !MAIN_MENU_NUZLOCKE_ENTRY, PIXEL_FILL(0xA));
+            FillWindowPixelBuffer(6 - !MAIN_MENU_NUZLOCKE_ENTRY, PIXEL_FILL(0xA));
+            FillWindowPixelBuffer(7 - !MAIN_MENU_NUZLOCKE_ENTRY, PIXEL_FILL(0xA));
             AddTextPrinterParameterized3(2, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuContinue));
             AddTextPrinterParameterized3(3, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNewGame));
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             AddTextPrinterParameterized3(4, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, GetSaveSlotMenuText(gText_MainMenuNuzlocke));
 #endif
-            AddTextPrinterParameterized3(5 - !MODULE_NUZLOCKE_ENABLED, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryGift2);
-            AddTextPrinterParameterized3(6 - !MODULE_NUZLOCKE_ENABLED, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryEvents);
-            AddTextPrinterParameterized3(7 - !MODULE_NUZLOCKE_ENABLED, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
+            AddTextPrinterParameterized3(5 - !MAIN_MENU_NUZLOCKE_ENTRY, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryGift2);
+            AddTextPrinterParameterized3(6 - !MAIN_MENU_NUZLOCKE_ENTRY, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuMysteryEvents);
+            AddTextPrinterParameterized3(7 - !MAIN_MENU_NUZLOCKE_ENTRY, FONT_NORMAL, 0, 1, sTextColor_Headers, TEXT_SKIP_DRAW, gText_MainMenuOption);
             MainMenu_FormatSavegameText();
             PutWindowTilemap(2);
             PutWindowTilemap(3);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             PutWindowTilemap(4);
 #endif
-            PutWindowTilemap(5 - !MODULE_NUZLOCKE_ENABLED);
-            PutWindowTilemap(6 - !MODULE_NUZLOCKE_ENABLED);
-            PutWindowTilemap(7 - !MODULE_NUZLOCKE_ENABLED);
+            PutWindowTilemap(5 - !MAIN_MENU_NUZLOCKE_ENTRY);
+            PutWindowTilemap(6 - !MAIN_MENU_NUZLOCKE_ENTRY);
+            PutWindowTilemap(7 - !MAIN_MENU_NUZLOCKE_ENTRY);
             CopyWindowToVram(2, COPYWIN_GFX);
             CopyWindowToVram(3, COPYWIN_GFX);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             CopyWindowToVram(4, COPYWIN_GFX);
 #endif
-            CopyWindowToVram(5 - !MODULE_NUZLOCKE_ENABLED, COPYWIN_GFX);
-            CopyWindowToVram(6 - !MODULE_NUZLOCKE_ENABLED, COPYWIN_GFX);
-            CopyWindowToVram(7 - !MODULE_NUZLOCKE_ENABLED, COPYWIN_GFX);
+            CopyWindowToVram(5 - !MAIN_MENU_NUZLOCKE_ENTRY, COPYWIN_GFX);
+            CopyWindowToVram(6 - !MAIN_MENU_NUZLOCKE_ENTRY, COPYWIN_GFX);
+            CopyWindowToVram(7 - !MAIN_MENU_NUZLOCKE_ENTRY, COPYWIN_GFX);
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[2], MAIN_MENU_BORDER_TILE);
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[3], MAIN_MENU_BORDER_TILE);
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[4], MAIN_MENU_BORDER_TILE);
 #endif
-            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[5 - !MODULE_NUZLOCKE_ENABLED], MAIN_MENU_BORDER_TILE);
-            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[6 - !MODULE_NUZLOCKE_ENABLED], MAIN_MENU_BORDER_TILE);
-            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[7 - !MODULE_NUZLOCKE_ENABLED], MAIN_MENU_BORDER_TILE);
+            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[5 - !MAIN_MENU_NUZLOCKE_ENTRY], MAIN_MENU_BORDER_TILE);
+            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[6 - !MAIN_MENU_NUZLOCKE_ENTRY], MAIN_MENU_BORDER_TILE);
+            DrawMainMenuWindowBorder(&sWindowTemplates_MainMenu[7 - !MAIN_MENU_NUZLOCKE_ENTRY], MAIN_MENU_BORDER_TILE);
             tScrollArrowTaskId = AddScrollIndicatorArrowPair(&sScrollArrowsTemplate_MainMenu, &sCurrItemAndOptionMenuCheck);
             gTasks[tScrollArrowTaskId].func = Task_ScrollIndicatorArrowPairOnMainMenu;
-            if (sCurrItemAndOptionMenuCheck == 4 + MODULE_NUZLOCKE_ENABLED)
+            if (sCurrItemAndOptionMenuCheck == 4 + MAIN_MENU_NUZLOCKE_ENTRY)
             {
                 ChangeBgY(0, 0x4000, BG_COORD_ADD);
                 ChangeBgY(1, 0x4000, BG_COORD_ADD);
@@ -1039,7 +1042,7 @@ static bool8 HandleMainMenuInput(u8 taskId)
     }
     else if ((JOY_NEW(DPAD_DOWN)) && tCurrItem < tItemCount - 1)
     {
-        if (tMenuType >= HAS_MYSTERY_GIFT && tCurrItem == 2 + MODULE_NUZLOCKE_ENABLED && tIsScrolled == 0)
+        if (tMenuType >= HAS_MYSTERY_GIFT && tCurrItem == 2 + MAIN_MENU_NUZLOCKE_ENTRY && tIsScrolled == 0)
         {
             tIsScrolled = (tMenuType == HAS_MYSTERY_EVENTS) ? 64 : 32;
             ChangeBgY(0, tIsScrolled << 8, BG_COORD_ADD);
@@ -1106,7 +1109,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
                 action = ACTION_NEW_GAME;
                 break;
             case 1:
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
                 action = ACTION_NUZLOCKE;
                 break;
             case 2:
@@ -1126,7 +1129,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
                 action = ACTION_NEW_GAME;
                 break;
             case 2:
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
                 action = ACTION_NUZLOCKE;
                 break;
             case 3:
@@ -1146,7 +1149,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
                 action = ACTION_NEW_GAME;
                 break;
             case 2:
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
                 action = ACTION_NUZLOCKE;
                 break;
             case 3:
@@ -1158,7 +1161,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
                     gTasks[taskId].tMenuType = HAS_NO_SAVED_GAME;
                 }
                 break;
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             case 4:
 #else
             case 3:
@@ -1178,7 +1181,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
                 action = ACTION_NEW_GAME;
                 break;
             case 2:
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
                 action = ACTION_NUZLOCKE;
                 break;
             case 3:
@@ -1202,7 +1205,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
                     action = ACTION_EREADER;
                 }
                 break;
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             case 4:
 #else
             case 3:
@@ -1217,7 +1220,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
                     action = ACTION_MYSTERY_EVENTS;
                 }
                 break;
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
             case 5:
 #else
             case 4:
@@ -1231,15 +1234,18 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
         ChangeBgY(1, 0, BG_COORD_SET);
         switch (action)
         {
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
         case ACTION_NUZLOCKE:
             sStartingNuzlocke = TRUE;
             goto start_new_game;
 #endif
         case ACTION_NEW_GAME:
+            StartGameModeMenu(CB2_ReinitMainMenu);
+            DestroyTask(taskId);
+            break;
         default:
             sStartingNuzlocke = FALSE;
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
 start_new_game:
 #endif
             if (IS_FRLG)
@@ -1388,7 +1394,7 @@ static void HighlightSelectedMainMenuItem(enum PartyMenuType menuType, u8 select
         case 1:
             SetGpuReg(REG_OFFSET_WIN0V, MENU_WIN_VCOORDS(1));
             break;
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
         case 2:
             SetGpuReg(REG_OFFSET_WIN0V, MENU_WIN_VCOORDS(3));
             break;
@@ -1396,7 +1402,7 @@ static void HighlightSelectedMainMenuItem(enum PartyMenuType menuType, u8 select
         }
         break;
     case HAS_SAVED_GAME:
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
         switch (selectedMenuItem)
         {
         case 0:
@@ -1421,7 +1427,7 @@ static void HighlightSelectedMainMenuItem(enum PartyMenuType menuType, u8 select
 #endif
         break;
     case HAS_MYSTERY_GIFT:
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
         switch (selectedMenuItem)
         {
         case 0:
@@ -1449,7 +1455,7 @@ static void HighlightSelectedMainMenuItem(enum PartyMenuType menuType, u8 select
 #endif
         break;
     case HAS_MYSTERY_EVENTS:
-#if MODULE_NUZLOCKE_ENABLED
+#if MAIN_MENU_NUZLOCKE_ENTRY
         switch (selectedMenuItem)
         {
         case 0:
@@ -2384,13 +2390,29 @@ static void CreateMainMenuErrorWindow(const u8 *str)
 
 static void MainMenu_FormatSavegameText(void)
 {
-    AddTextPrinterParameterized3(2, FONT_SMALL,
-                                 GetStringCenterAlignXOffset(FONT_SMALL, sText_SaveSlotHelp, 208),
-                                 13, sTextColor_MenuInfo, TEXT_SKIP_DRAW, sText_SaveSlotHelp);
+    const u8 *modeName = GameMode_GetName(GameMode_GetActive());
+
+    AddTextPrinterParameterized3(2, FONT_SMALL, 0, 13, sTextColor_MenuInfo, TEXT_SKIP_DRAW, sText_ContinueMenuMode);
+    AddTextPrinterParameterized3(2, FONT_SMALL, GetStringRightAlignXOffset(FONT_SMALL, modeName, 208), 13,
+                                 sTextColor_MenuInfo, TEXT_SKIP_DRAW, modeName);
     MainMenu_FormatSavegamePlayer();
     MainMenu_FormatSavegamePokedex();
     MainMenu_FormatSavegameTime();
     MainMenu_FormatSavegameBadges();
+}
+
+void CB2_StartSelectedNewGame(void)
+{
+    sStartingNuzlocke = GameMode_GetPending() == GAME_MODE_NUZLOCKE;
+    ResetTasks();
+    // Birch's introduction reuses the main menu's BG1 configuration for its
+    // gradient map. Restore it after returning from the game mode selector.
+    InitBgFromTemplate(&sMainMenuBgTemplates[1]);
+    ChangeBgX(1, 0, BG_COORD_SET);
+    ChangeBgY(1, 0, BG_COORD_SET);
+    SetVBlankCallback(VBlankCB_MainMenu);
+    CreateTask(Task_NewGameBirchSpeech_Init, 0);
+    SetMainCallback2(CB2_MainMenu);
 }
 
 static void MainMenu_FormatSavegamePlayer(void)

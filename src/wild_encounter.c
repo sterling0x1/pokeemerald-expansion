@@ -10,6 +10,7 @@
 #include "item.h"
 #include "random.h"
 #include "randomizer.h"
+#include "game_mode.h"
 #include "field_player_avatar.h"
 #include "link.h"
 #include "metatile_behavior.h"
@@ -468,6 +469,10 @@ static u8 PickWildMonNature(enum Species species)
 void CreateWildMon(enum Species species, u8 level)
 {
     species = Randomizer_GetWildSpecies(species);
+    level = GameMode_RandomizeWildLevel(level,
+        ((u32)(u8)gSaveBlock1Ptr->location.mapGroup << 24)
+      ^ ((u32)(u8)gSaveBlock1Ptr->location.mapNum << 16)
+      ^ species);
     ZeroEnemyPartyMons();
     u32 personality = GetMonPersonality(species, GetSynchronizedGender(WILDMON_ORIGIN, species), PickWildMonNature(species), RANDOM_UNOWN_LETTER);
     CreateMonWithIVs(&gParties[B_TRAINER_OPPONENT_A][0], species, level, personality, OTID_STRUCT_PLAYER_ID, USE_RANDOM_IVS);

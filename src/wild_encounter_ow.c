@@ -15,6 +15,7 @@
 #include "overworld.h"
 #include "random.h"
 #include "randomizer.h"
+#include "game_mode.h"
 #include "roamer.h"
 #include "script.h"
 #include "script_movement.h"
@@ -408,6 +409,9 @@ void StartWildBattleWithOWE(struct ScriptContext *ctx)
     {
         level = MIN_LEVEL;
     }
+
+    if (GetOverworldWildEncounterType(owe) == OWE_MANUAL)
+        level = GameMode_RandomizeGiftLevel(level, ((u32)localId << 8) ^ speciesId);
 
     ZeroEnemyPartyMons();
     personality = GetMonPersonality(speciesId, gender, NATURE_RANDOM, RANDOM_UNOWN_LETTER);

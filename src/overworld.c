@@ -29,6 +29,7 @@
 #include "fieldmap.h"
 #include "fldeff.h"
 #include "follower_npc.h"
+#include "game_mode.h"
 #include "gpu_regs.h"
 #include "heal_location.h"
 #include "io_reg.h"
@@ -1959,21 +1960,36 @@ static void CB2_ContinueNewGame(void)
 #endif
 }
 
+#if MODULE_NUZLOCKE_ENABLED
+static void CB2_StartNuzlockeRandomizerSetup(void);
+static void CB2_CancelNewNuzlockeGame(void);
+#endif
+
 void CB2_NewGame(void)
 {
     FieldClearVBlankHBlankCallbacks();
     StopMapMusic();
     ResetSafariZoneFlag_();
     NewGameInitData();
-    if (ModuleManager_IsEnabled(MODULE_ID_RANDOMIZER))
+
+#if MODULE_NUZLOCKE_ENABLED
+    if (GameMode_GetActive() == GAME_MODE_NUZLOCKE)
+    {
+        StartNuzlockeSetupMenuWithBack(CB2_StartNuzlockeRandomizerSetup, CB2_CancelNewNuzlockeGame);
+    }
+    else
+#endif
+    if (GameMode_GetActive() == GAME_MODE_CARNAGE)
+    {
+        CB2_ContinueNewGame();
+    }
+    else if (ModuleManager_IsEnabled(MODULE_ID_RANDOMIZER))
         StartRandomizerSetupMenu(CB2_ContinueNewGame);
     else
         CB2_ContinueNewGame();
 }
 
 #if MODULE_NUZLOCKE_ENABLED
-static void CB2_StartNuzlockeRandomizerSetup(void);
-
 static void CB2_CancelNewNuzlockeGame(void)
 {
     LoadGameSaveSlot(gSelectedSaveSlot);
@@ -1998,6 +2014,7 @@ void CB2_NewNuzlockeGame(void)
     FieldClearVBlankHBlankCallbacks();
     StopMapMusic();
     ResetSafariZoneFlag_();
+    GameMode_SetPending(GAME_MODE_NUZLOCKE);
     NewGameInitData();
     ExtendedOptions_Set(EXT_OPT_NUZLOCKE, TRUE);
     Nuzlocke_InitRunData();

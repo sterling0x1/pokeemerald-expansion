@@ -1,5 +1,6 @@
 #include "global.h"
 #include "randomizer.h"
+#include "game_mode.h"
 #include "battle.h"
 #include "battle_gfx_sfx_util.h"
 #include "berry.h"
@@ -125,9 +126,11 @@ bool8 DoesPartyHaveEnigmaBerry(void)
 
 void CreateScriptedWildMon(enum Species species, u8 level, enum Item item)
 {
-    species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
-                                                       ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
-                                                       ^ species);
+    u32 encounterKey = ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                     ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                     ^ species;
+    species = Randomizer_GetGiftStaticSpecies(species, encounterKey);
+    level = GameMode_RandomizeGiftLevel(level, encounterKey ^ species);
     u8 heldItem[2];
 
     ZeroEnemyPartyMons();
@@ -151,6 +154,8 @@ void CreateScriptedDoubleWildMon(enum Species species1, u8 level1, enum Item ite
 
     species1 = Randomizer_GetGiftStaticSpecies(species1, mapKey ^ species1);
     species2 = Randomizer_GetGiftStaticSpecies(species2, mapKey ^ species2 ^ 1);
+    level1 = GameMode_RandomizeGiftLevel(level1, mapKey ^ species1);
+    level2 = GameMode_RandomizeGiftLevel(level2, mapKey ^ species2 ^ 1);
     u8 heldItem1[2];
     u8 heldItem2[2];
 
@@ -378,9 +383,11 @@ void SetTeraType(struct ScriptContext *ctx)
  */
 static u32 ScriptGiveMonParameterized(u8 side, u8 slot, enum Species species, u8 level, enum Item item, enum PokeBall ball, u8 nature, u8 abilityNum, u8 gender, u16 *evs, u16 *ivs, enum Move *moves, enum ShinyMode shinyMode, bool8 gmaxFactor, enum Type teraType, u8 dmaxLevel)
 {
-    species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
-                                                       ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
-                                                       ^ species ^ slot);
+    u32 giftKey = ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                ^ species ^ slot;
+    species = Randomizer_GetGiftStaticSpecies(species, giftKey);
+    level = GameMode_RandomizeGiftLevel(level, giftKey ^ species);
     struct Pokemon mon;
     u32 i;
     bool32 isShiny;
@@ -508,9 +515,11 @@ static u32 ScriptGiveMonInternal(enum Species species, u8 level, enum Item item,
 {
     if (applyRandomizer)
     {
-        species = Randomizer_GetGiftStaticSpecies(species, ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
-                                                           ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
-                                                           ^ species);
+        u32 giftKey = ((u32)gSaveBlock1Ptr->location.mapGroup << 24)
+                    ^ ((u32)gSaveBlock1Ptr->location.mapNum << 16)
+                    ^ species;
+        species = Randomizer_GetGiftStaticSpecies(species, giftKey);
+        level = GameMode_RandomizeGiftLevel(level, giftKey ^ species);
     }
     struct Pokemon mon;
     u32 result;

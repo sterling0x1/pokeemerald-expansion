@@ -3,6 +3,7 @@
 #include "extended_options.h"
 #include "nuzlocke.h"
 #include "randomizer.h"
+#include "game_mode.h"
 #include "qol.h"
 #include "pokemon_rules.h"
 #include "battle.h"
@@ -2015,6 +2016,7 @@ u8 CreateNPCTrainerPartyFromTrainer(struct Pokemon *party, const struct Trainer 
                 level = max(1, (level * 90) / 100);
             else if (GetCurrentDifficultyLevel() == DIFFICULTY_HARD)
                 level = min(MAX_LEVEL, max(1, (level * 110 + 99) / 100));
+            level = GameMode_RandomizeTrainerLevel(level, personalityHash ^ monIndex ^ species);
 
             if (partyData[monIndex].gender == TRAINER_MON_MALE)
                 personalityValue = (personalityValue & 0xFFFFFF00) | GeneratePersonalityForGender(MON_MALE, species);
