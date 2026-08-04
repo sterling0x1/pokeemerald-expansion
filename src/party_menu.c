@@ -29,7 +29,6 @@
 #include "fldeff_misc.h"
 #include "follower_npc.h"
 #include "frontier_util.h"
-#include "game_mode.h"
 #include "gpu_regs.h"
 #include "graphics.h"
 #include "international_string_util.h"
@@ -1494,7 +1493,7 @@ void Task_HandleChooseMonInput(u8 taskId)
 
 #if MODULE_SHARED_TRANSFER_BOX_ENABLED
         if (JOY_NEW(SELECT_BUTTON)
-         && GameMode_GetActive() != GAME_MODE_NUZLOCKE
+         && !Nuzlocke_IsActive()
          && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
          && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
          && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON)
@@ -2837,9 +2836,9 @@ static void PartyMenuRemoveWindow(u8 *ptr)
 
 void DisplayPartyMenuStdMessage(u32 stringId)
 {
-    static const u8 sText_BoxShortcut[] = _("CHOOSE   {R_BUTTON} BOX");
-    static const u8 sText_TransferShortcut[] = _("CHOOSE   {SELECT_BUTTON} XFER");
-    static const u8 sText_BoxAndTransferShortcuts[] = _("CHOOSE  {SELECT_BUTTON} XFER  {R_BUTTON} BOX");
+    static const u8 sText_Choose[] = _("CHOOSE");
+    static const u8 sText_BoxShortcut[] = _("{R_BUTTON} BOX");
+    static const u8 sText_TransferShortcut[] = _("{SELECT_BUTTON} SHARED BOX");
     u8 *windowPtr = &sPartyMenuInternal->windowId[1];
     bool32 showBoxShortcut = Qol_IsBoxShortcutEnabled()
                           && stringId == PARTY_MSG_CHOOSE_MON
@@ -2847,7 +2846,7 @@ void DisplayPartyMenuStdMessage(u32 stringId)
                           && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
                           && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON;
 #if MODULE_SHARED_TRANSFER_BOX_ENABLED
-    bool32 showTransferShortcut = GameMode_GetActive() != GAME_MODE_NUZLOCKE
+    bool32 showTransferShortcut = !Nuzlocke_IsActive()
                                && stringId == PARTY_MSG_CHOOSE_MON
                                && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
                                && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
@@ -2900,12 +2899,16 @@ void DisplayPartyMenuStdMessage(u32 stringId)
         DrawStdFrameWithCustomTileAndPalette(*windowPtr, FALSE, 0x4F, 13);
         if (showBoxShortcut || showTransferShortcut)
         {
-            const u8 *shortcutText = showBoxShortcut && showTransferShortcut
-                                   ? sText_BoxAndTransferShortcuts
-                                   : showTransferShortcut ? sText_TransferShortcut : sText_BoxShortcut;
-            AddTextPrinterParameterized(*windowPtr, FONT_SMALL, shortcutText,
-                                        GetStringCenterAlignXOffset(FONT_SMALL, shortcutText, WindowWidthPx(*windowPtr)),
-                                        3, 0, 0);
+            u32 windowWidth = WindowWidthPx(*windowPtr);
+
+            if (showTransferShortcut)
+                AddTextPrinterParameterized(*windowPtr, FONT_SMALL, sText_TransferShortcut, 0, 3, 0, 0);
+            else
+                AddTextPrinterParameterized(*windowPtr, FONT_SMALL, sText_Choose, 0, 3, 0, 0);
+            if (showBoxShortcut)
+                AddTextPrinterParameterized(*windowPtr, FONT_SMALL, sText_BoxShortcut,
+                                            GetStringRightAlignXOffset(FONT_SMALL, sText_BoxShortcut, windowWidth - 2),
+                                            3, 0, 0);
         }
         else
         {

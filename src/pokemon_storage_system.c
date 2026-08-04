@@ -9,7 +9,6 @@
 #include "event_object_movement.h"
 #include "field_screen_effect.h"
 #include "field_weather.h"
-#include "game_mode.h"
 #include "fldeff_misc.h"
 #include "gpu_regs.h"
 #include "graphics.h"
@@ -1597,7 +1596,7 @@ static void Task_PCMainMenu(u8 taskId)
                 task->tState = STATE_ERROR_MSG;
             }
 #if MODULE_SHARED_TRANSFER_BOX_ENABLED
-            else if (task->tInput == OPTION_TRANSFER_BOX && GameMode_GetActive() == GAME_MODE_NUZLOCKE)
+            else if (task->tInput == OPTION_TRANSFER_BOX && Nuzlocke_IsActive())
             {
                 static const u8 sTextUnavailableNuzlocke[] = _("The TRANSFER BOX is unavailable\nduring a Nuzlocke run.");
                 FillWindowPixelBuffer(0, PIXEL_FILL(1));

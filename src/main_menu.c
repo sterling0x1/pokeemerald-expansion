@@ -46,6 +46,7 @@
 #include "title_screen.h"
 #include "window.h"
 #include "mystery_gift_menu.h"
+#include "config/modules.h"
 
 /*
  * Main menu state machine
@@ -288,7 +289,9 @@ static const u8 gText_ContinueMenuPlayer[] = _("PLAYER");
 static const u8 gText_ContinueMenuTime[] = _("TIME");
 static const u8 gText_ContinueMenuPokedex[] = _("POKéDEX");
 static const u8 gText_ContinueMenuBadges[] = _("BADGES");
+#if MODULE_GAME_MODES_ENABLED
 static const u8 sText_ContinueMenuMode[] = _("MODE");
+#endif
 
 #define MENU_LEFT 2
 #define MENU_TOP_WIN0 1
@@ -1240,12 +1243,17 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
             goto start_new_game;
 #endif
         case ACTION_NEW_GAME:
+#if MODULE_GAME_MODES_ENABLED
             StartGameModeMenu(CB2_ReinitMainMenu);
             DestroyTask(taskId);
             break;
+#else
+            sStartingNuzlocke = FALSE;
+            goto start_new_game;
+#endif
         default:
             sStartingNuzlocke = FALSE;
-#if MAIN_MENU_NUZLOCKE_ENTRY
+#if MAIN_MENU_NUZLOCKE_ENTRY || !MODULE_GAME_MODES_ENABLED
 start_new_game:
 #endif
             if (IS_FRLG)
@@ -2390,11 +2398,13 @@ static void CreateMainMenuErrorWindow(const u8 *str)
 
 static void MainMenu_FormatSavegameText(void)
 {
+#if MODULE_GAME_MODES_ENABLED
     const u8 *modeName = GameMode_GetName(GameMode_GetActive());
 
-    AddTextPrinterParameterized3(2, FONT_SMALL, 0, 13, sTextColor_MenuInfo, TEXT_SKIP_DRAW, sText_ContinueMenuMode);
+    AddTextPrinterParameterized3(2, FONT_SMALL, 0x6C, 13, sTextColor_MenuInfo, TEXT_SKIP_DRAW, sText_ContinueMenuMode);
     AddTextPrinterParameterized3(2, FONT_SMALL, GetStringRightAlignXOffset(FONT_SMALL, modeName, 208), 13,
                                  sTextColor_MenuInfo, TEXT_SKIP_DRAW, modeName);
+#endif
     MainMenu_FormatSavegamePlayer();
     MainMenu_FormatSavegamePokedex();
     MainMenu_FormatSavegameTime();

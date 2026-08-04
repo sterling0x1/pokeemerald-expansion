@@ -6,6 +6,11 @@
 #include "nuzlocke_menu.h"
 #include "randomizer.h"
 #include "config/module_ids.h"
+#include "config/modules.h"
+
+static const u8 sModeNameVanilla[] = _("VANILLA");
+
+#if MODULE_GAME_MODES_ENABLED
 
 #define GAME_MODE_SAVE_VERSION 1
 
@@ -17,7 +22,6 @@ struct GameModeSaveData
 
 static EWRAM_DATA enum GameMode sPendingMode = GAME_MODE_VANILLA;
 
-static const u8 sModeNameVanilla[] = _("VANILLA");
 static const u8 sModeNameNuzlocke[] = _("NUZLOCKE");
 static const u8 sModeNameCarnage[] = _("CARNAGE");
 
@@ -158,3 +162,54 @@ u8 GameMode_RandomizeGiftLevel(u8 level, u32 key)
     offset = (HashLevelKey(Randomizer_GetSeed() ^ key ^ level ^ 0x47494654) % 7) - 3;
     return min(MAX_LEVEL, max(MIN_LEVEL, level + offset));
 }
+
+#else
+
+void GameMode_InitNewSave(void)
+{
+}
+
+void GameMode_LoadSave(void)
+{
+}
+
+void GameMode_SetPending(enum GameMode mode)
+{
+    (void)mode;
+}
+
+enum GameMode GameMode_GetPending(void)
+{
+    return GAME_MODE_VANILLA;
+}
+
+enum GameMode GameMode_GetActive(void)
+{
+    return GAME_MODE_VANILLA;
+}
+
+const u8 *GameMode_GetName(enum GameMode mode)
+{
+    (void)mode;
+    return sModeNameVanilla;
+}
+
+u8 GameMode_RandomizeWildLevel(u8 level, u32 key)
+{
+    (void)key;
+    return level;
+}
+
+u8 GameMode_RandomizeTrainerLevel(u8 level, u32 key)
+{
+    (void)key;
+    return level;
+}
+
+u8 GameMode_RandomizeGiftLevel(u8 level, u32 key)
+{
+    (void)key;
+    return level;
+}
+
+#endif // MODULE_GAME_MODES_ENABLED
