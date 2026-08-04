@@ -29,6 +29,7 @@
 #define VISIBLE_TRANSFER_ROWS 6
 #define tSlot data[0]
 #define tParty data[1]
+#define tConfirmChoice data[2]
 
 enum
 {
@@ -45,8 +46,10 @@ static void MainCB2(void);
 static void VBlankCB(void);
 static void Task_FadeIn(u8 taskId);
 static void Task_Input(u8 taskId);
+static void Task_ConfirmTransfer(u8 taskId);
 static void Task_FadeOut(u8 taskId);
 static void DrawScreen(u8 taskId);
+static bool32 BeginTransferConfirmation(u8 taskId);
 static bool32 DepositSelectedPartyMon(u8 taskId);
 static bool32 WithdrawSelectedMon(u8 taskId);
 
@@ -55,14 +58,18 @@ static const u8 sTextCursor[] = _(">");
 static const u8 sTextEmpty[] = _("-- EMPTY --");
 static const u8 sTextHelp[] = _("{DPAD_UPDOWN} SLOT\n{DPAD_LEFTRIGHT} PARTY\n{A_BUTTON} MOVE\n{B_BUTTON} EXIT");
 static const u8 sTextParty[] = _("PARTY");
-static const u8 sTextShared[] = _("SHARED  /20");
+static const u8 sTextShared[] = _("SHARED {STR_VAR_1}/20");
 static const u8 sTextStored[] = _("POKéMON\nDEPOSITED.\nTRANSFER SAVED.");
 static const u8 sTextTaken[] = _("POKéMON\nWITHDRAWN.\nTRANSFER SAVED.");
+static const u8 sTextConfirmDeposit[] = _("DEPOSIT THIS\nPOKéMON?\nGAME WILL SAVE.");
+static const u8 sTextConfirmWithdraw[] = _("WITHDRAW THIS\nPOKéMON?\nGAME WILL SAVE.");
 static const u8 sTextLastMon[] = _("KEEP ONE\nPOKéMON IN\nYOUR PARTY.");
 static const u8 sTextPartyFull[] = _("YOUR PARTY\nIS FULL.");
 static const u8 sTextMail[] = _("REMOVE MAIL\nFIRST.");
 static const u8 sTextSaveFailed[] = _("SAVE FAILED.\nTRANSFER\nCANCELLED.");
 static const u8 sTextSlash[] = _("/");
+static const u8 sTextYes[] = _("YES");
+static const u8 sTextNo[] = _("NO");
 
 static const struct WindowTemplate sWindows[] =
 {
@@ -166,8 +173,10 @@ static void DrawScreen(u8 taskId)
 {
     u8 first = (gTasks[taskId].tSlot / VISIBLE_TRANSFER_ROWS) * VISIBLE_TRANSFER_ROWS;
     u8 partyCount = CalculatePlayerPartyCount();
+    bool32 isConfirming = sStatusText == sTextConfirmDeposit || sStatusText == sTextConfirmWithdraw;
     u8 i;
 
+    PutWindowTilemap(WIN_BODY);
     FillWindowPixelBuffer(WIN_HEADER, PIXEL_FILL(1));
     AddTextPrinterParameterized(WIN_HEADER, FONT_NORMAL, sTextHeader,
                                 GetStringCenterAlignXOffset(FONT_NORMAL, sTextHeader, 208), 1, TEXT_SKIP_DRAW, NULL);
@@ -194,31 +203,45 @@ static void DrawScreen(u8 taskId)
             AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sTextEmpty, 36, y + 2, TEXT_SKIP_DRAW, NULL);
     }
 
-    AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sTextParty, 151, 1, TEXT_SKIP_DRAW, NULL);
-    if (partyCount != 0)
+    if (isConfirming)
     {
-        if (gTasks[taskId].tParty >= partyCount)
-            gTasks[taskId].tParty = partyCount - 1;
-        GetMonData(&gParties[B_TRAINER_PLAYER][gTasks[taskId].tParty], MON_DATA_NICKNAME, gStringVar1);
-        AddTextPrinterParameterized(WIN_BODY, FONT_NORMAL, gStringVar1, 151, 16, TEXT_SKIP_DRAW, NULL);
-        ConvertIntToDecimalStringN(gStringVar2, gTasks[taskId].tParty + 1, STR_CONV_MODE_LEFT_ALIGN, 1);
-        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, gStringVar2, 190, 1, TEXT_SKIP_DRAW, NULL);
-        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sTextSlash, 200, 1, TEXT_SKIP_DRAW, NULL);
-        ConvertIntToDecimalStringN(gStringVar3, partyCount, STR_CONV_MODE_LEFT_ALIGN, 1);
-        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, gStringVar3, 210, 1, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sStatusText, 151, 1, TEXT_SKIP_DRAW, NULL);
+    }
+    else
+    {
+        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sTextParty, 151, 1, TEXT_SKIP_DRAW, NULL);
+        if (partyCount != 0)
+        {
+            if (gTasks[taskId].tParty >= partyCount)
+                gTasks[taskId].tParty = partyCount - 1;
+            GetMonData(&gParties[B_TRAINER_PLAYER][gTasks[taskId].tParty], MON_DATA_NICKNAME, gStringVar1);
+            AddTextPrinterParameterized(WIN_BODY, FONT_NORMAL, gStringVar1, 151, 16, TEXT_SKIP_DRAW, NULL);
+            ConvertIntToDecimalStringN(gStringVar2, gTasks[taskId].tParty + 1, STR_CONV_MODE_LEFT_ALIGN, 1);
+            AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, gStringVar2, 190, 1, TEXT_SKIP_DRAW, NULL);
+            AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sTextSlash, 200, 1, TEXT_SKIP_DRAW, NULL);
+            ConvertIntToDecimalStringN(gStringVar3, partyCount, STR_CONV_MODE_LEFT_ALIGN, 1);
+            AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, gStringVar3, 210, 1, TEXT_SKIP_DRAW, NULL);
+        }
     }
 
     if (sStatusText == NULL)
     {
         ConvertIntToDecimalStringN(gStringVar1, sTransferBox != NULL ? SharedTransferBox_Count(sTransferBox) : 0,
-                                   STR_CONV_MODE_LEFT_ALIGN, 2);
-        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sTextShared, 151, 35, TEXT_SKIP_DRAW, NULL);
-        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, gStringVar1, 190, 35, TEXT_SKIP_DRAW, NULL);
+                                   STR_CONV_MODE_LEADING_ZEROS, 2);
+        StringExpandPlaceholders(gStringVar4, sTextShared);
+        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, gStringVar4, 151, 35, TEXT_SKIP_DRAW, NULL);
         AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sTextHelp, 151, 55, TEXT_SKIP_DRAW, NULL);
+    }
+    else if (!isConfirming)
+    {
+        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sStatusText, 151, 58, TEXT_SKIP_DRAW, NULL);
     }
     else
     {
-        AddTextPrinterParameterized(WIN_BODY, FONT_SMALL, sStatusText, 151, 58, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(WIN_BODY, FONT_NORMAL, sTextYes, 169, 58, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(WIN_BODY, FONT_NORMAL, sTextNo, 169, 78, TEXT_SKIP_DRAW, NULL);
+        AddTextPrinterParameterized(WIN_BODY, FONT_NORMAL, sTextCursor, 153,
+                                    gTasks[taskId].tConfirmChoice == 0 ? 58 : 78, TEXT_SKIP_DRAW, NULL);
     }
     CopyWindowToVram(WIN_HEADER, COPYWIN_FULL);
     CopyWindowToVram(WIN_BODY, COPYWIN_FULL);
@@ -265,17 +288,86 @@ static void Task_Input(u8 taskId)
     }
     else if (JOY_NEW(A_BUTTON) && sTransferBox != NULL)
     {
-        if (SharedTransferBox_IsSlotOccupied(sTransferBox, gTasks[taskId].tSlot))
-            WithdrawSelectedMon(taskId);
-        else
-            DepositSelectedPartyMon(taskId);
-        DrawScreen(taskId);
-        PlaySE(SE_SELECT);
+        if (BeginTransferConfirmation(taskId))
+            PlaySE(SE_SELECT);
     }
     else if (JOY_NEW(B_BUTTON))
     {
         BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
         gTasks[taskId].func = Task_FadeOut;
+        PlaySE(SE_SELECT);
+    }
+}
+
+static bool32 BeginTransferConfirmation(u8 taskId)
+{
+    u8 slot = gTasks[taskId].tSlot;
+
+    if (SharedTransferBox_IsSlotOccupied(sTransferBox, slot))
+    {
+        if (CalculatePlayerPartyCount() >= PARTY_SIZE)
+        {
+            sStatusText = sTextPartyFull;
+            DrawScreen(taskId);
+            return FALSE;
+        }
+        sStatusText = sTextConfirmWithdraw;
+    }
+    else
+    {
+        struct Pokemon *mon = &gParties[B_TRAINER_PLAYER][gTasks[taskId].tParty];
+
+        if (CalculatePlayerPartyCount() <= 1)
+        {
+            sStatusText = sTextLastMon;
+            DrawScreen(taskId);
+            return FALSE;
+        }
+        if (ItemIsMail(GetMonData(mon, MON_DATA_HELD_ITEM)))
+        {
+            sStatusText = sTextMail;
+            DrawScreen(taskId);
+            return FALSE;
+        }
+        sStatusText = sTextConfirmDeposit;
+    }
+
+    gTasks[taskId].tConfirmChoice = 1;
+    DrawScreen(taskId);
+    gTasks[taskId].func = Task_ConfirmTransfer;
+    return TRUE;
+}
+
+static void Task_ConfirmTransfer(u8 taskId)
+{
+    if (JOY_NEW(DPAD_UP | DPAD_DOWN))
+    {
+        gTasks[taskId].tConfirmChoice ^= 1;
+        DrawScreen(taskId);
+        PlaySE(SE_SELECT);
+    }
+    else if (JOY_NEW(A_BUTTON))
+    {
+        if (gTasks[taskId].tConfirmChoice == 0)
+        {
+            if (SharedTransferBox_IsSlotOccupied(sTransferBox, gTasks[taskId].tSlot))
+                WithdrawSelectedMon(taskId);
+            else
+                DepositSelectedPartyMon(taskId);
+        }
+        else
+        {
+            sStatusText = NULL;
+        }
+        DrawScreen(taskId);
+        gTasks[taskId].func = Task_Input;
+        PlaySE(SE_SELECT);
+    }
+    else if (JOY_NEW(B_BUTTON))
+    {
+        sStatusText = NULL;
+        DrawScreen(taskId);
+        gTasks[taskId].func = Task_Input;
         PlaySE(SE_SELECT);
     }
 }
@@ -375,3 +467,4 @@ static void Task_FadeOut(u8 taskId)
 
 #undef tSlot
 #undef tParty
+#undef tConfirmChoice
