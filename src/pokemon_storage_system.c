@@ -9,6 +9,7 @@
 #include "event_object_movement.h"
 #include "field_screen_effect.h"
 #include "field_weather.h"
+#include "game_mode.h"
 #include "fldeff_misc.h"
 #include "gpu_regs.h"
 #include "graphics.h"
@@ -30,6 +31,7 @@
 #include "pokemon_summary_screen.h"
 #include "pokemon_storage_system.h"
 #include "script.h"
+#include "shared_transfer_box_menu.h"
 #include "sound.h"
 #include "string_util.h"
 #include "strings.h"
@@ -72,6 +74,9 @@ enum {
     OPTION_WITHDRAW,
 #endif
     OPTION_MOVE_ITEMS,
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+    OPTION_TRANSFER_BOX,
+#endif
     OPTION_EXIT,
     OPTIONS_COUNT,
     OPTION_SELECT_MON
@@ -877,6 +882,9 @@ struct {
     [OPTION_DEPOSIT]    = {COMPOUND_STRING("DEPOSIT POKéMON"),  COMPOUND_STRING("Store POKéMON in your party in BOXES.")},
     [OPTION_MOVE_MONS]  = {COMPOUND_STRING("MOVE POKéMON"),     COMPOUND_STRING("Organize the POKéMON in BOXES and\nin your party.")},
     [OPTION_MOVE_ITEMS] = {COMPOUND_STRING("MOVE ITEMS"),       COMPOUND_STRING("Move items held by any POKéMON\nin a BOX or your party.")},
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+    [OPTION_TRANSFER_BOX] = {COMPOUND_STRING("TRANSFER BOX"),   COMPOUND_STRING("Move POKéMON between the two\nsave slots.")},
+#endif
     [OPTION_EXIT]       = {COMPOUND_STRING("SEE YA!"),          COMPOUND_STRING("Return to the previous menu.")}
 };
 
@@ -1588,6 +1596,16 @@ static void Task_PCMainMenu(u8 taskId)
                 AddTextPrinterParameterized2(0, FONT_NORMAL, gText_JustOnePkmn, 0, NULL, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
                 task->tState = STATE_ERROR_MSG;
             }
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+            else if (task->tInput == OPTION_TRANSFER_BOX && GameMode_GetActive() == GAME_MODE_NUZLOCKE)
+            {
+                static const u8 sTextUnavailableNuzlocke[] = _("The TRANSFER BOX is unavailable\nduring a Nuzlocke run.");
+                FillWindowPixelBuffer(0, PIXEL_FILL(1));
+                AddTextPrinterParameterized2(0, FONT_NORMAL, sTextUnavailableNuzlocke, 0, NULL,
+                                             TEXT_COLOR_DARK_GRAY, TEXT_COLOR_WHITE, TEXT_COLOR_LIGHT_GRAY);
+                task->tState = STATE_ERROR_MSG;
+            }
+#endif
             else
             {
                 // Enter PC
@@ -1631,6 +1649,11 @@ static void Task_PCMainMenu(u8 taskId)
         if (!gPaletteFade.active)
         {
             CleanupOverworldWindowsAndTilemaps();
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+            if (task->tInput == OPTION_TRANSFER_BOX)
+                StartSharedTransferBoxMenu();
+            else
+#endif
             EnterPokeStorage(task->tInput);
             RemoveWindow(task->tWindowId);
             DestroyTask(taskId);

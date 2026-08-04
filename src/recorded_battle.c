@@ -252,10 +252,14 @@ static u8 GetNextRecordedDataByte(u8 *data, u8 *idx, u8 *size)
 
 bool32 CanCopyRecordedBattleSaveData(void)
 {
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+    return FALSE;
+#else
     struct RecordedBattleSave *dst = AllocZeroed(sizeof(struct RecordedBattleSave));
     bool32 ret = CopyRecordedBattleFromSave(dst);
     Free(dst);
     return ret;
+#endif
 }
 
 static bool32 IsRecordedBattleSaveValid(struct RecordedBattleSave *save)
@@ -270,6 +274,7 @@ static bool32 IsRecordedBattleSaveValid(struct RecordedBattleSave *save)
     return TRUE;
 }
 
+#if !MODULE_SHARED_TRANSFER_BOX_ENABLED
 static bool32 RecordedBattleToSave(struct RecordedBattleSave *battleSave, struct RecordedBattleSave *saveSector)
 {
     memset(saveSector, 0, SECTOR_SIZE);
@@ -282,9 +287,13 @@ static bool32 RecordedBattleToSave(struct RecordedBattleSave *battleSave, struct
     else
         return TRUE;
 }
+#endif
 
 bool32 MoveRecordedBattleToSaveData(void)
 {
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+    return FALSE;
+#else
     s32 i, j;
     bool32 ret;
     struct RecordedBattleSave *battleSave, *savSection;
@@ -439,6 +448,7 @@ bool32 MoveRecordedBattleToSaveData(void)
     Free(battleSave);
     Free(savSection);
     return ret;
+#endif
 }
 
 static bool32 TryCopyRecordedBattleSaveData(struct RecordedBattleSave *dst, struct SaveSector *saveBuffer)

@@ -29,6 +29,7 @@
 #include "fldeff_misc.h"
 #include "follower_npc.h"
 #include "frontier_util.h"
+#include "game_mode.h"
 #include "gpu_regs.h"
 #include "graphics.h"
 #include "international_string_util.h"
@@ -53,6 +54,7 @@
 #include "pokemon_icon.h"
 #include "pokemon_jump.h"
 #include "pokemon_storage_system.h"
+#include "shared_transfer_box_menu.h"
 #include "qol.h"
 #include "pokemon_summary_screen.h"
 #include "pokerus.h"
@@ -1490,6 +1492,20 @@ void Task_HandleChooseMonInput(u8 taskId)
             return;
         }
 
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+        if (JOY_NEW(SELECT_BUTTON)
+         && GameMode_GetActive() != GAME_MODE_NUZLOCKE
+         && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
+         && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
+         && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON)
+        {
+            PlaySE(SE_SELECT);
+            sPartyMenuInternal->exitCallback = StartSharedTransferBoxMenuFromParty;
+            Task_ClosePartyMenu(taskId);
+            return;
+        }
+#endif
+
         switch (PartyMenuButtonHandler(slotPtr))
         {
         case A_BUTTON: // Selected mon
@@ -2821,13 +2837,24 @@ static void PartyMenuRemoveWindow(u8 *ptr)
 
 void DisplayPartyMenuStdMessage(u32 stringId)
 {
-    static const u8 sText_BoxShortcut[] = _("{R_BUTTON} BOX");
+    static const u8 sText_BoxShortcut[] = _("CHOOSE   {R_BUTTON} BOX");
+    static const u8 sText_TransferShortcut[] = _("CHOOSE   {SELECT_BUTTON} XFER");
+    static const u8 sText_BoxAndTransferShortcuts[] = _("CHOOSE  {SELECT_BUTTON} XFER  {R_BUTTON} BOX");
     u8 *windowPtr = &sPartyMenuInternal->windowId[1];
     bool32 showBoxShortcut = Qol_IsBoxShortcutEnabled()
                           && stringId == PARTY_MSG_CHOOSE_MON
                           && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
                           && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
                           && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON;
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+    bool32 showTransferShortcut = GameMode_GetActive() != GAME_MODE_NUZLOCKE
+                               && stringId == PARTY_MSG_CHOOSE_MON
+                               && gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
+                               && gPartyMenu.layout == PARTY_LAYOUT_SINGLE
+                               && gPartyMenu.action == PARTY_ACTION_CHOOSE_MON;
+#else
+    bool32 showTransferShortcut = FALSE;
+#endif
 
     if (*windowPtr != WINDOW_NONE)
         PartyMenuRemoveWindow(windowPtr);
@@ -2871,13 +2898,19 @@ void DisplayPartyMenuStdMessage(u32 stringId)
                 stringId = PARTY_MSG_NO_POKEMON;
         }
         DrawStdFrameWithCustomTileAndPalette(*windowPtr, FALSE, 0x4F, 13);
-        StringExpandPlaceholders(gStringVar4, sActionStringTable[stringId]);
-        AddTextPrinterParameterized(*windowPtr, FONT_NORMAL, gStringVar4, 0, 1, 0, 0);
-        if (showBoxShortcut)
+        if (showBoxShortcut || showTransferShortcut)
         {
-            AddTextPrinterParameterized(*windowPtr, FONT_NORMAL, sText_BoxShortcut,
-                                        GetStringRightAlignXOffset(FONT_NORMAL, sText_BoxShortcut, WindowWidthPx(*windowPtr) - 2),
-                                        1, 0, 0);
+            const u8 *shortcutText = showBoxShortcut && showTransferShortcut
+                                   ? sText_BoxAndTransferShortcuts
+                                   : showTransferShortcut ? sText_TransferShortcut : sText_BoxShortcut;
+            AddTextPrinterParameterized(*windowPtr, FONT_SMALL, shortcutText,
+                                        GetStringCenterAlignXOffset(FONT_SMALL, shortcutText, WindowWidthPx(*windowPtr)),
+                                        3, 0, 0);
+        }
+        else
+        {
+            StringExpandPlaceholders(gStringVar4, sActionStringTable[stringId]);
+            AddTextPrinterParameterized(*windowPtr, FONT_NORMAL, gStringVar4, 0, 1, 0, 0);
         }
         ScheduleBgCopyTilemapToVram(2);
     }
