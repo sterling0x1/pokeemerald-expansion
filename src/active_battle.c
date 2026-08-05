@@ -2,6 +2,8 @@
 #include "active_battle.h"
 #include "battle.h"
 #include "battle_interface.h"
+#include "battle_message.h"
+#include "bg.h"
 #include "main.h"
 #include "menu.h"
 #include "module_save.h"
@@ -22,6 +24,10 @@
 #define METER_HEIGHT 6
 #define OPENING_LOCK_FRAMES 6
 #define PROMPT_BG_COLOR 0xF
+#define DODGE_RING_CENTER_X 16
+#define DODGE_RING_CENTER_Y 16
+#define DODGE_RING_MAX_RADIUS 14
+#define DODGE_START_DELAY_FRAMES 24
 
 enum ActiveBattlePromptState
 {
@@ -45,14 +51,27 @@ struct ActiveBattlePrompt
     u8 target;
     u8 result;
     u8 type;
+    u8 windowId;
+    bool8 windowActive;
 };
 
 static EWRAM_DATA struct ActiveBattlePrompt sPrompt = {0};
 static const u8 sPromptText[] = _("CRITICAL TIMING");
 static const u8 sPromptControl[] = _("{R_BUTTON} STOP");
-static const u8 sDodgeText[] = _("DODGE!");
-static const u8 sDodgeControl[] = _("{R_BUTTON} EVADE");
+static const u8 sDodgeOverlayText[] = _("R");
 static const u8 sPromptTextColors[] = {PROMPT_BG_COLOR, 1, 6};
+static const u8 sDodgeTextColors[] = {TEXT_COLOR_TRANSPARENT, 1, 6};
+
+static const struct WindowTemplate sDodgeWindowTemplate =
+{
+    .bg = 0,
+    .tilemapLeft = 7,
+    .tilemapTop = 9,
+    .width = 4,
+    .height = 4,
+    .paletteNum = 0,
+    .baseBlock = 0x3A0,
+};
 
 static struct ActiveBattleSaveData *GetSaveData(void)
 {
@@ -213,12 +232,14 @@ static u16 GetCriticalTimeoutFrames(void)
 }
 
 static u8 GetDodgeSpeed(void);
+static u8 GetDodgeStepInterval(void);
 
 static u16 GetDodgeTimeoutFrames(void)
 {
     u8 speed = GetDodgeSpeed();
 
-    return (METER_WIDTH - 1 + speed - 1) / speed;
+    return DODGE_START_DELAY_FRAMES
+         + ((DODGE_RING_MAX_RADIUS + speed - 1) / speed) * GetDodgeStepInterval();
 }
 
 static u8 GetGoodRadius(void)
@@ -237,31 +258,29 @@ static u8 GetPerfectRadius(void)
 
 static u8 GetDodgeSpeed(void)
 {
-    return ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_STANDARD ? 5
-         : ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_HARD ? 7
-         : 9;
+    return ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_EXPERT ? 2 : 1;
+}
+
+static u8 GetDodgeStepInterval(void)
+{
+    return ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_STANDARD ? 2 : 1;
 }
 
 static u8 GetDodgeGoodRadius(void)
-{
-    return ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_STANDARD ? 8
-         : ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_HARD ? 7
-         : 5;
-}
-
-static u8 GetDodgePerfectRadius(void)
 {
     return ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_STANDARD ? 2
          : ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_HARD ? 1
          : 0;
 }
 
+static u8 GetDodgePerfectRadius(void)
+{
+    return 0;
+}
+
 static u8 GetDodgeTarget(void)
 {
-    u8 speed = GetDodgeSpeed();
-    u8 firstReachable = 24 + (((METER_WIDTH - 1) % speed + speed - (24 % speed)) % speed);
-
-    return firstReachable + (Random2() % 3) * speed;
+    return ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_EXPERT ? 4 : 5;
 }
 
 static bool32 IsFixedDamageMove(enum Move move)
@@ -309,37 +328,71 @@ static void DrawCriticalPrompt(void)
     CopyWindowToVram(B_WIN_MSG, COPYWIN_GFX);
 }
 
+static bool32 CreateDodgeOverlay(void)
+{
+    if (sPrompt.windowActive)
+        return TRUE;
+
+    sPrompt.windowId = AddWindow(&sDodgeWindowTemplate);
+    if (sPrompt.windowId == WINDOW_NONE)
+        return FALSE;
+    sPrompt.windowActive = TRUE;
+
+    FillWindowPixelBuffer(sPrompt.windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
+    PutWindowTilemap(sPrompt.windowId);
+    CopyWindowToVram(sPrompt.windowId, COPYWIN_FULL);
+    return TRUE;
+}
+
+static void DestroyDodgeOverlay(void)
+{
+    if (!sPrompt.windowActive)
+        return;
+
+    FillWindowPixelBuffer(sPrompt.windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
+    CopyWindowToVram(sPrompt.windowId, COPYWIN_GFX);
+    RemoveWindow(sPrompt.windowId);
+    sPrompt.windowActive = FALSE;
+}
+
+static void DrawDodgeRing(u8 radius, u8 color)
+{
+    s16 x = radius;
+    s16 y = 0;
+    s16 decision = 1 - x;
+
+    while (y <= x)
+    {
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X + x - 1, DODGE_RING_CENTER_Y + y - 1, 2, 2);
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X + y - 1, DODGE_RING_CENTER_Y + x - 1, 2, 2);
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X - y - 1, DODGE_RING_CENTER_Y + x - 1, 2, 2);
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X - x - 1, DODGE_RING_CENTER_Y + y - 1, 2, 2);
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X - x - 1, DODGE_RING_CENTER_Y - y - 1, 2, 2);
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X - y - 1, DODGE_RING_CENTER_Y - x - 1, 2, 2);
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X + y - 1, DODGE_RING_CENTER_Y - x - 1, 2, 2);
+        FillWindowPixelRect(sPrompt.windowId, PIXEL_FILL(color), DODGE_RING_CENTER_X + x - 1, DODGE_RING_CENTER_Y - y - 1, 2, 2);
+
+        y++;
+        if (decision <= 0)
+        {
+            decision += 2 * y + 1;
+        }
+        else
+        {
+            x--;
+            decision += 2 * (y - x) + 1;
+        }
+    }
+}
+
 static void DrawDodgePrompt(void)
 {
-    s16 shieldLeft = METER_X + sPrompt.target - GetDodgeGoodRadius();
-    s16 shieldWidth = GetDodgeGoodRadius() * 2 + 1;
-    s16 coreLeft = METER_X + sPrompt.target - GetDodgePerfectRadius();
-    s16 coreWidth = GetDodgePerfectRadius() * 2 + 1;
-    s16 threatX = METER_X + sPrompt.marker;
-
-    if (sPrompt.frame == 1)
-    {
-        u8 titleX = GetStringCenterAlignXOffset(FONT_SMALL_NARROWER, sDodgeText, 128) + 8;
-
-        FillWindowPixelBuffer(B_WIN_MSG, PIXEL_FILL(PROMPT_BG_COLOR));
-        AddTextPrinterParameterized4(B_WIN_MSG, FONT_SMALL_NARROWER, titleX, 2, 0, 0,
-                                     sPromptTextColors, TEXT_SKIP_DRAW, sDodgeText);
-        AddTextPrinterParameterized4(B_WIN_MSG, FONT_SMALL_NARROWER, 146, 2, 0, 0,
-                                     sPromptTextColors, TEXT_SKIP_DRAW, sDodgeControl);
-    }
-
-    // A fixed shield protects the left side while an arrow-shaped threat closes in from the right.
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(PROMPT_BG_COLOR), 0, 14, 208, 18);
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(TEXT_COLOR_LIGHT_GRAY), shieldLeft, 17, shieldWidth, 12);
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(TEXT_COLOR_GREEN), shieldLeft + 2, 19, shieldWidth - 4, 8);
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(TEXT_COLOR_WHITE), coreLeft, 17, coreWidth, 12);
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(TEXT_COLOR_LIGHT_GRAY), shieldLeft + shieldWidth + 4, 22,
-                        196 - (shieldLeft + shieldWidth + 4), 2);
-
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(TEXT_COLOR_RED), threatX, 22, 3, 2);
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(TEXT_COLOR_RED), threatX + 3, 20, 3, 6);
-    FillWindowPixelRect(B_WIN_MSG, PIXEL_FILL(TEXT_COLOR_RED), threatX + 6, 18, 3, 10);
-    CopyWindowToVram(B_WIN_MSG, COPYWIN_GFX);
+    FillWindowPixelBuffer(sPrompt.windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
+    DrawDodgeRing(sPrompt.target, TEXT_COLOR_GREEN);
+    DrawDodgeRing(sPrompt.marker, TEXT_COLOR_RED);
+    AddTextPrinterParameterized4(sPrompt.windowId, FONT_SMALL_NARROWER, 13, 9, 0, 0,
+                                 sDodgeTextColors, TEXT_SKIP_DRAW, sDodgeOverlayText);
+    CopyWindowToVram(sPrompt.windowId, COPYWIN_GFX);
 }
 
 static void ResolvePrompt(void)
@@ -370,6 +423,8 @@ bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, enum BattlerId t
 
         if (promptType == PROMPT_TYPE_NONE)
             return TRUE;
+        if (promptType == PROMPT_TYPE_DODGE && !CreateDodgeOverlay())
+            return TRUE;
         sPrompt.state = PROMPT_RUNNING;
         sPrompt.type = promptType;
         sPrompt.frame = 0;
@@ -382,7 +437,7 @@ bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, enum BattlerId t
         }
         else
         {
-            sPrompt.marker = METER_WIDTH - 1;
+            sPrompt.marker = DODGE_RING_MAX_RADIUS;
             sPrompt.target = GetDodgeTarget();
         }
         sPrompt.result = ACTIVE_BATTLE_CRIT_NONE;
@@ -398,8 +453,10 @@ bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, enum BattlerId t
     }
     else
     {
-        phase = sPrompt.frame * GetDodgeSpeed();
-        sPrompt.marker = phase < METER_WIDTH ? METER_WIDTH - 1 - phase : 0;
+        phase = sPrompt.frame > DODGE_START_DELAY_FRAMES
+              ? ((sPrompt.frame - DODGE_START_DELAY_FRAMES) / GetDodgeStepInterval()) * GetDodgeSpeed()
+              : 0;
+        sPrompt.marker = phase < DODGE_RING_MAX_RADIUS ? DODGE_RING_MAX_RADIUS - phase : 0;
         DrawDodgePrompt();
     }
 
@@ -436,10 +493,11 @@ s32 ActiveBattle_AdjustDamageForDodge(s32 damage)
 
 void ActiveBattle_FinishDamageCalc(void)
 {
-    if (sPrompt.state != PROMPT_IDLE)
+    if (sPrompt.state != PROMPT_IDLE && sPrompt.type == PROMPT_TYPE_CRITICAL)
+        BattlePutTextOnWindow(gText_EmptyString3, B_WIN_MSG);
+    else if (sPrompt.type == PROMPT_TYPE_DODGE)
     {
-        FillWindowPixelBuffer(B_WIN_MSG, PIXEL_FILL(PROMPT_BG_COLOR));
-        CopyWindowToVram(B_WIN_MSG, COPYWIN_GFX);
+        DestroyDodgeOverlay();
     }
     sPrompt.state = PROMPT_IDLE;
     sPrompt.type = PROMPT_TYPE_NONE;
