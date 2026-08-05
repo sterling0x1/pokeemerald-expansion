@@ -35,6 +35,9 @@ extern const struct ModuleDescriptor gOverworldFeaturesModuleDescriptor;
 #if MODULE_GAME_MODES_ENABLED
 extern const struct ModuleDescriptor gGameModesModuleDescriptor;
 #endif
+#if MODULE_ACTIVE_BATTLE_ENABLED
+extern const struct ModuleDescriptor gActiveBattleModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -70,5 +73,8 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_GAME_MODES_ENABLED
     [MODULE_ID_GAME_MODES] = &gGameModesModuleDescriptor,
+#endif
+#if MODULE_ACTIVE_BATTLE_ENABLED
+    [MODULE_ID_ACTIVE_BATTLE] = &gActiveBattleModuleDescriptor,
 #endif
 };

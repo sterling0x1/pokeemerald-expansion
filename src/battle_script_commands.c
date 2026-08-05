@@ -77,6 +77,7 @@
 #include "test/battle.h"
 #include "follower_npc.h"
 #include "load_save.h"
+#include "active_battle.h"
 
 // Helper for accessing command arguments and advancing gBattlescriptCurrInstr.
 //
@@ -1143,9 +1144,13 @@ static void Cmd_damagecalc(void)
     // Test if unableToUseMove check is needed
     if (gBattleStruct->calculatedDamageDone || gBattleStruct->unableToUseMove)
     {
+        ActiveBattle_FinishDamageCalc();
         gBattlescriptCurrInstr = cmd->nextInstr;
         return;
     }
+
+    if (!ActiveBattle_UpdateDamagePrompt(gBattlerAttacker, gBattlerTarget, gCurrentMove))
+        return;
 
     struct DamageContext ctx = {0};
     ctx.battlerAtk = gBattlerAttacker;
@@ -1179,7 +1184,10 @@ static void Cmd_damagecalc(void)
     {
         ctx.battlerDef = gBattlerTarget;
         SetDynamicMoveCategoryAndDamage(&ctx);
+        gBattleStruct->moveDamage[gBattlerTarget] = ActiveBattle_AdjustDamageForDodge(gBattleStruct->moveDamage[gBattlerTarget]);
     }
+
+    ActiveBattle_FinishDamageCalc();
 
     gBattlescriptCurrInstr = cmd->nextInstr;
 

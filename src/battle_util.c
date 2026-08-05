@@ -57,6 +57,7 @@
 #include "constants/weather.h"
 #include "constants/pokemon.h"
 #include "test/battle.h"
+#include "active_battle.h"
 
 static bool32 TryRemoveScreens(enum BattlerId battler);
 static bool32 IsUnnerveAbilityOnOpposingSide(enum BattlerId battler);
@@ -8086,6 +8087,14 @@ static bool32 IsCriticalHit(struct DamageContext *ctx)
         critChance = CalcCritChanceStageGen1(ctx);
     else
         critChance = CalcCritChanceStage(ctx);
+
+    if (critChance != CRITICAL_HIT_BLOCKED && GetConfig(B_CRIT_CHANCE) != GEN_1)
+    {
+        if (ActiveBattle_GetCriticalResult() == ACTIVE_BATTLE_CRIT_PERFECT)
+            critChance = CRITICAL_HIT_ALWAYS;
+        else if (ActiveBattle_GetCriticalResult() == ACTIVE_BATTLE_CRIT_GOOD && critChance >= 0)
+            critChance = min(critChance + 1, 4);
+    }
 
     if (critChance == CRITICAL_HIT_BLOCKED)
         isCrit = FALSE;

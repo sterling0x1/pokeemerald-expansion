@@ -20,13 +20,14 @@
 #include "config/modules.h"
 #include "constants/difficulty.h"
 #include "constants/rgb.h"
+#include "active_battle.h"
 
 #define OPTIONS_PER_PAGE 6
 #define OPTION_MENU_EXTENDED (MODULE_RANDOMIZER_ENABLED || MODULE_NUZLOCKE_ENABLED \
                            || MODULE_CHEATS_ENABLED || MODULE_QOL_ENABLED \
                            || MODULE_BATTLE_PACING_ENABLED || MODULE_PROGRESSION_ENABLED \
                            || MODULE_POKEMON_RULES_ENABLED || MODULE_DIFFICULTY_ENABLED \
-                           || MODULE_OVERWORLD_FEATURES_ENABLED)
+                           || MODULE_OVERWORLD_FEATURES_ENABLED || MODULE_ACTIVE_BATTLE_ENABLED)
 
 #define tSelection       data[0]
 #define tScrollTop       data[1]
@@ -63,6 +64,11 @@ enum OptionId
     OPT_FAST_INTRO,
     OPT_FAST_HP,
     OPT_FAST_EXP,
+#endif
+#if MODULE_ACTIVE_BATTLE_ENABLED
+    OPT_ACTIVE_CRITICALS,
+    OPT_ACTIVE_DODGING,
+    OPT_ACTIVE_TIMING,
 #endif
     OPT_MOVE_INFO,
     OPT_EFFECTIVENESS,
@@ -147,6 +153,11 @@ static const u8 *const sOptionNames[OPTION_COUNT] =
     [OPT_FAST_INTRO]          = COMPOUND_STRING("FAST INTRO"),
     [OPT_FAST_HP]             = COMPOUND_STRING("FAST HP BARS"),
     [OPT_FAST_EXP]            = COMPOUND_STRING("FAST EXP BARS"),
+#endif
+#if MODULE_ACTIVE_BATTLE_ENABLED
+    [OPT_ACTIVE_CRITICALS]    = COMPOUND_STRING("ACTIVE CRITICALS"),
+    [OPT_ACTIVE_DODGING]      = COMPOUND_STRING("ACTIVE DODGING"),
+    [OPT_ACTIVE_TIMING]       = COMPOUND_STRING("TIMING DIFFICULTY"),
 #endif
     [OPT_MOVE_INFO]           = COMPOUND_STRING("MOVE INFO"),
     [OPT_EFFECTIVENESS]       = COMPOUND_STRING("EFFECTIVENESS"),
@@ -241,6 +252,11 @@ static const enum OptionId sBattleOptions[] =
     OPT_FAST_INTRO,
     OPT_FAST_HP,
     OPT_FAST_EXP,
+#endif
+#if MODULE_ACTIVE_BATTLE_ENABLED
+    OPT_ACTIVE_CRITICALS,
+    OPT_ACTIVE_DODGING,
+    OPT_ACTIVE_TIMING,
 #endif
 };
 
@@ -384,6 +400,8 @@ static const u8 sTextFirst[]       = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}FIRST")
 static const u8 sTextAlways[]      = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}ALWAYS");
 static const u8 sTextEasy[]        = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}EASY");
 static const u8 sTextHard[]        = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}HARD");
+static const u8 sTextStandard[]    = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}STANDARD");
+static const u8 sTextExpert[]      = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}EXPERT");
 static const u8 sTextVisible[]     = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}VISIBLE");
 static const u8 sTextTraditional[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}GRASS");
 static const u8 sTextOdds8192[]    = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1/8192");
@@ -649,6 +667,16 @@ static const u8 *GetOptionValueText(u8 taskId, enum OptionId option)
         return gTasks[taskId].tBattleSceneOff ? sTextOff : sTextOn;
     case OPT_BATTLE_STYLE:
         return gTasks[taskId].tBattleStyle ? sTextSet : sTextShift;
+#if MODULE_ACTIVE_BATTLE_ENABLED
+    case OPT_ACTIVE_CRITICALS:
+        return ActiveBattle_AreCriticalsEnabled() ? sTextOn : sTextOff;
+    case OPT_ACTIVE_DODGING:
+        return ActiveBattle_IsDodgingEnabled() ? sTextOn : sTextOff;
+    case OPT_ACTIVE_TIMING:
+        return ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_STANDARD ? sTextStandard
+             : ActiveBattle_GetTimingDifficulty() == ACTIVE_BATTLE_TIMING_HARD ? sTextHard
+             : sTextExpert;
+#endif
     case OPT_RANDOM_WILD:
         return RandomizerUnlocked() ? (Randomizer_IsAllDataEnabled() ? sTextLocked : Randomizer_IsWildEnabled() ? sTextOn : sTextOff) : sTextLocked;
     case OPT_RANDOM_STARTERS:
@@ -857,6 +885,20 @@ case OPT_TEXT_SPEED:
     case OPT_BATTLE_STYLE:
         gTasks[taskId].tBattleStyle ^= 1;
         break;
+#if MODULE_ACTIVE_BATTLE_ENABLED
+    case OPT_ACTIVE_CRITICALS:
+        ActiveBattle_SetCriticalsEnabled(!ActiveBattle_AreCriticalsEnabled());
+        break;
+    case OPT_ACTIVE_DODGING:
+        ActiveBattle_SetDodgingEnabled(!ActiveBattle_IsDodgingEnabled());
+        break;
+    case OPT_ACTIVE_TIMING:
+        value = ActiveBattle_GetTimingDifficulty();
+        value = direction > 0 ? (value + 1) % ACTIVE_BATTLE_TIMING_COUNT
+                              : (value + ACTIVE_BATTLE_TIMING_COUNT - 1) % ACTIVE_BATTLE_TIMING_COUNT;
+        ActiveBattle_SetTimingDifficulty(value);
+        break;
+#endif
     case OPT_RANDOM_WILD:
         if (RandomizerUnlocked() && !Randomizer_IsAllDataEnabled())
             Randomizer_SetWildEnabled(!Randomizer_IsWildEnabled());
