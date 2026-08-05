@@ -14,8 +14,10 @@
 #define NUZLOCKE_SAVE_MAGIC 0x4E555A31
 
 static EWRAM_DATA bool8 sCanCatchPartyMon[PARTY_SIZE];
+static EWRAM_DATA bool8 sCatchConsumesLocation[PARTY_SIZE];
 static EWRAM_DATA bool8 sReplaceAreaCatch[PARTY_SIZE];
 static EWRAM_DATA u8 sCurrentEncounterMapSection;
+static EWRAM_DATA bool8 sCurrentEncounterIsStatic;
 static EWRAM_DATA bool8 sNextEncounterIsStatic;
 static EWRAM_DATA bool8 sGiftConsumesLocation;
 static EWRAM_DATA bool8 sGiftUsesStaticLocation;
@@ -185,7 +187,6 @@ void Nuzlocke_BeginWildEncounter(void)
 {
     bool32 isStaticEncounter = sNextEncounterIsStatic;
     bool32 locationUsed;
-    bool32 consumeLocation = FALSE;
     bool32 ignoreLocation = FALSE;
     u8 mapSection;
     u8 giftRule;
@@ -194,6 +195,7 @@ void Nuzlocke_BeginWildEncounter(void)
     for (i = 0; i < PARTY_SIZE; i++)
     {
         sCanCatchPartyMon[i] = TRUE;
+        sCatchConsumesLocation[i] = FALSE;
         sReplaceAreaCatch[i] = FALSE;
     }
     sNextEncounterIsStatic = FALSE;
@@ -213,6 +215,7 @@ void Nuzlocke_BeginWildEncounter(void)
 
     mapSection = GetCurrentRegionMapSectionId();
     sCurrentEncounterMapSection = mapSection;
+    sCurrentEncounterIsStatic = isStaticEncounter;
     locationUsed = !ignoreLocation && Nuzlocke_IsLocationUsed(isStaticEncounter, mapSection);
 
     for (i = 0; i < PARTY_SIZE; i++)
@@ -249,12 +252,8 @@ void Nuzlocke_BeginWildEncounter(void)
         sCanCatchPartyMon[i] = !locationUsed
                             && Nuzlocke_IsSpeciesAllowed(species)
                             && !IsDuplicateSpecies(species);
-        if (sCanCatchPartyMon[i] && !ignoreLocation)
-            consumeLocation = TRUE;
+        sCatchConsumesLocation[i] = sCanCatchPartyMon[i] && !ignoreLocation;
     }
-
-    if (consumeLocation)
-        Nuzlocke_SetLocationUsed(isStaticEncounter, mapSection);
 }
 
 void Nuzlocke_SetNextEncounterStatic(void)
@@ -276,7 +275,16 @@ void Nuzlocke_CommitCaughtMon(enum BattlerId battler)
 {
     u8 partyIndex = gBattlerPartyIndexes[battler];
 
-    if (partyIndex < PARTY_SIZE && sReplaceAreaCatch[partyIndex])
+    if (partyIndex >= PARTY_SIZE)
+        return;
+
+    if (sCatchConsumesLocation[partyIndex])
+    {
+        Nuzlocke_SetLocationUsed(sCurrentEncounterIsStatic, sCurrentEncounterMapSection);
+        sCatchConsumesLocation[partyIndex] = FALSE;
+    }
+
+    if (sReplaceAreaCatch[partyIndex])
     {
         RestrictPreviousAreaCatch(sCurrentEncounterMapSection);
         sReplaceAreaCatch[partyIndex] = FALSE;

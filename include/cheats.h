@@ -31,6 +31,7 @@ u8 Cheats_GetMax(enum CheatOption option);
 void Cheats_ResetDefaults(void);
 bool32 Cheats_WereUsed(void);
 u32 Cheats_ApplyMoneyMultiplier(u32 amount);
+u32 Cheats_ApplyExpMultiplier(u32 amount);
 u32 Cheats_ApplyCatchRate(u32 odds);
 u32 Cheats_GetHatchStepMultiplier(void);
 u32 Cheats_ApplyEVMultiplier(u32 amount);
@@ -45,6 +46,7 @@ static inline u8 Cheats_GetMax(enum CheatOption option) { return 0; }
 static inline void Cheats_ResetDefaults(void) {}
 static inline bool32 Cheats_WereUsed(void) { return FALSE; }
 static inline u32 Cheats_ApplyMoneyMultiplier(u32 amount) { return amount; }
+static inline u32 Cheats_ApplyExpMultiplier(u32 amount) { return amount; }
 static inline u32 Cheats_ApplyCatchRate(u32 odds) { return odds; }
 static inline u32 Cheats_GetHatchStepMultiplier(void) { return 1; }
 static inline u32 Cheats_ApplyEVMultiplier(u32 amount) { return amount; }

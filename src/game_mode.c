@@ -38,17 +38,33 @@ static struct GameModeSaveData *GetSaveData(void)
 
 static enum GameMode InferLegacyMode(void)
 {
-    if (ExtendedOptions_Get(EXT_OPT_NUZLOCKE))
+    if (GameMode_IsAvailable(GAME_MODE_NUZLOCKE) && ExtendedOptions_Get(EXT_OPT_NUZLOCKE))
         return GAME_MODE_NUZLOCKE;
-    if (ExtendedOptions_Get(EXT_OPT_RANDOM_ALL_DATA)
-     || (Randomizer_IsInitialized() && Randomizer_IsAllDataEnabled()))
+    if (GameMode_IsAvailable(GAME_MODE_CARNAGE)
+     && (ExtendedOptions_Get(EXT_OPT_RANDOM_ALL_DATA)
+      || (Randomizer_IsInitialized() && Randomizer_IsAllDataEnabled())))
         return GAME_MODE_CARNAGE;
     return GAME_MODE_VANILLA;
 }
 
+bool32 GameMode_IsAvailable(enum GameMode mode)
+{
+    switch (mode)
+    {
+    case GAME_MODE_VANILLA:
+        return TRUE;
+    case GAME_MODE_NUZLOCKE:
+        return MODULE_NUZLOCKE_ENABLED;
+    case GAME_MODE_CARNAGE:
+        return MODULE_RANDOMIZER_ENABLED;
+    default:
+        return FALSE;
+    }
+}
+
 void GameMode_SetPending(enum GameMode mode)
 {
-    sPendingMode = mode < GAME_MODE_COUNT ? mode : GAME_MODE_VANILLA;
+    sPendingMode = GameMode_IsAvailable(mode) ? mode : GAME_MODE_VANILLA;
 }
 
 enum GameMode GameMode_GetPending(void)
@@ -101,7 +117,7 @@ enum GameMode GameMode_GetActive(void)
 
     GameMode_LoadSave();
     data = GetSaveData();
-    return data != NULL && data->mode < GAME_MODE_COUNT ? data->mode : InferLegacyMode();
+    return data != NULL && GameMode_IsAvailable(data->mode) ? data->mode : InferLegacyMode();
 }
 
 const u8 *GameMode_GetName(enum GameMode mode)
@@ -176,6 +192,11 @@ void GameMode_LoadSave(void)
 void GameMode_SetPending(enum GameMode mode)
 {
     (void)mode;
+}
+
+bool32 GameMode_IsAvailable(enum GameMode mode)
+{
+    return mode == GAME_MODE_VANILLA;
 }
 
 enum GameMode GameMode_GetPending(void)

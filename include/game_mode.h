@@ -14,6 +14,7 @@ enum GameMode
 void GameMode_InitNewSave(void);
 void GameMode_LoadSave(void);
 void GameMode_SetPending(enum GameMode mode);
+bool32 GameMode_IsAvailable(enum GameMode mode);
 enum GameMode GameMode_GetPending(void);
 enum GameMode GameMode_GetActive(void);
 const u8 *GameMode_GetName(enum GameMode mode);

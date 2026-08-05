@@ -77,6 +77,7 @@ bool32 Cheats_WereUsed(void)
 }
 
 u32 Cheats_ApplyMoneyMultiplier(u32 amount) { return amount * (Cheats_Get(CHEAT_MONEY_MULTIPLIER) + 1); }
+u32 Cheats_ApplyExpMultiplier(u32 amount) { return amount * (Cheats_Get(CHEAT_EXP_MULTIPLIER) + 1); }
 u32 Cheats_ApplyCatchRate(u32 odds)
 {
     switch (Cheats_Get(CHEAT_CATCH_RATE))

@@ -13,6 +13,7 @@ const struct ModuleDescriptor gCheatsModuleDescriptor =
     .name = sModuleName,
     .moduleVersion = 1,
     .requiredEngineApiVersion = MODULE_ENGINE_API_VERSION,
+    .legacySaveSize = sizeof(struct CheatSaveData),
     .initNewSave = Cheats_Init,
     .loadSave = Cheats_EnsureInitialized,
 };

@@ -18,6 +18,9 @@ struct ModuleDescriptor
     u16 requiredEngineApiVersion;
     u16 saveVersion;
     u16 saveSize;
+    // Persistent bytes owned outside ModuleSaveStore during legacy migration.
+    u16 legacySaveSize;
+    u16 padding;
     u32 requiredModules;
     u32 optionalModules;
     ModuleLifecycleCallback initNewSave;

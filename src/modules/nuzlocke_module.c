@@ -13,6 +13,7 @@ const struct ModuleDescriptor gNuzlockeModuleDescriptor =
     .name = sModuleName,
     .moduleVersion = 1,
     .requiredEngineApiVersion = MODULE_ENGINE_API_VERSION,
+    .legacySaveSize = sizeof(struct NuzlockeSaveData),
     .initNewSave = Nuzlocke_InitRunData,
     .loadSave = Nuzlocke_EnsureRunData,
 };

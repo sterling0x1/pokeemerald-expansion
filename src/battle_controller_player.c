@@ -351,7 +351,7 @@ case 0: // Top left
     OpenCompactAttackerPicker(battler);
     return;
         case 1: // Top right
-            if (ExtendedOptions_Get(EXT_OPT_NUZLOCKE)
+            if (Nuzlocke_IsActive()
              && (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
              && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK))
              && (ExtendedOptions_Get(EXT_OPT_NUZLOCKE_BATTLE_ITEMS) == NUZLOCKE_BATTLE_ITEMS_BANNED

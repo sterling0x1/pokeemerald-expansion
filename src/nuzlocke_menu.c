@@ -174,7 +174,7 @@ static const u8 sDesc_LevelCaps[] = _("SOFT reduces EXP at badge caps. HARD\nsto
 #endif
 static const u8 sDesc_Continue[] = _("Accept these rules and continue to\nthe Randomizer Setup.");
 static const u8 sDesc_Permadeath[] = _("Fainted Pokémon cannot be used again.\nSend them to a death box or release.");
-static const u8 sDesc_Encounters[] = _("Allow only the first valid encounter\nin each named area, or disable limits.");
+static const u8 sDesc_Encounters[] = _("Allow one successful valid catch in\neach named area, or disable limits.");
 static const u8 sDesc_Dupes[] = _("Skip duplicates by species or family,\nor allow duplicate encounters.");
 static const u8 sDesc_Shiny[] = _("Shinies may consume, replace, or ignore\nan area's encounter limit.");
 static const u8 sDesc_Gifts[] = _("Gifts/statics may have a separate limit,\ncount for the area, or remain free.");

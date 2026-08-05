@@ -11236,7 +11236,7 @@ void ApplyExperienceMultipliers(s32 *expAmount, u8 expGetterMonId, u8 faintedBat
         *expAmount = value + 1;
     }
 
-    *expAmount *= ExtendedOptions_Get(EXT_OPT_EXP_MULTIPLIER) + 1;
+    *expAmount = Cheats_ApplyExpMultiplier(*expAmount);
 }
 
 void BS_ItemRestoreHP(void)

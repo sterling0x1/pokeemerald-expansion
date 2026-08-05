@@ -39,6 +39,7 @@ static void Task_ProcessInput(u8 taskId);
 static void Task_FadeOutStart(u8 taskId);
 static void Task_FadeOutBack(u8 taskId);
 static void DrawMenu(u8 taskId);
+static enum GameMode GetAdjacentAvailableMode(enum GameMode mode, bool32 forward);
 
 static const u8 sTextHeader[] = _("CHOOSE YOUR ADVENTURE");
 static const u8 sTextVanilla[] = _("VANILLA");
@@ -210,6 +211,7 @@ static void CB2_InitGameModeMenu(void)
 static void DrawMenu(u8 taskId)
 {
     u32 i;
+    u32 visibleRow = 0;
     u8 selection = gTasks[taskId].tSelection;
 
     FillWindowPixelBuffer(WIN_BODY, PIXEL_FILL(1));
@@ -218,14 +220,19 @@ static void DrawMenu(u8 taskId)
     {
         static const u8 sCursor[] = _("▶");
         const u8 *colors = i == selection ? sTextColorsSelected : sTextColorsNormal;
-        u8 y = i * 24 + 5;
+        u8 y;
+
+        if (!GameMode_IsAvailable(i))
+            continue;
+        y = visibleRow * 24 + 5;
 
         if (i == selection)
         {
-            FillWindowPixelRect(WIN_BODY, PIXEL_FILL(2), 0, i * 24 + 2, 94, 20);
+            FillWindowPixelRect(WIN_BODY, PIXEL_FILL(2), 0, visibleRow * 24 + 2, 94, 20);
             AddTextPrinterParameterized3(WIN_BODY, FONT_NORMAL, 4, y, colors, TEXT_SKIP_DRAW, sCursor);
         }
         AddTextPrinterParameterized3(WIN_BODY, FONT_NORMAL, 20, y, colors, TEXT_SKIP_DRAW, sModeNames[i]);
+        visibleRow++;
     }
     AddTextPrinterParameterized3(WIN_BODY, FONT_SMALL, 104, 3, sTextColorsDesc,
                                  TEXT_SKIP_DRAW, sModeTags[selection]);
@@ -235,6 +242,22 @@ static void DrawMenu(u8 taskId)
     AddTextPrinterParameterized3(WIN_BODY, FONT_SMALL, 104, 50, sTextColorsDesc,
                                  TEXT_SKIP_DRAW, sModeDescriptions[selection]);
     CopyWindowToVram(WIN_BODY, COPYWIN_FULL);
+}
+
+static enum GameMode GetAdjacentAvailableMode(enum GameMode mode, bool32 forward)
+{
+    u32 i;
+
+    for (i = 0; i < GAME_MODE_COUNT; i++)
+    {
+        if (forward)
+            mode = (mode + 1) % GAME_MODE_COUNT;
+        else
+            mode = mode == 0 ? GAME_MODE_COUNT - 1 : mode - 1;
+        if (GameMode_IsAvailable(mode))
+            return mode;
+    }
+    return GAME_MODE_VANILLA;
 }
 
 static void Task_FadeIn(u8 taskId)
@@ -247,13 +270,13 @@ static void Task_ProcessInput(u8 taskId)
 {
     if (JOY_NEW(DPAD_UP))
     {
-        gTasks[taskId].tSelection = gTasks[taskId].tSelection == 0 ? GAME_MODE_COUNT - 1 : gTasks[taskId].tSelection - 1;
+        gTasks[taskId].tSelection = GetAdjacentAvailableMode(gTasks[taskId].tSelection, FALSE);
         DrawMenu(taskId);
         PlaySE(SE_SELECT);
     }
     else if (JOY_NEW(DPAD_DOWN))
     {
-        gTasks[taskId].tSelection = (gTasks[taskId].tSelection + 1) % GAME_MODE_COUNT;
+        gTasks[taskId].tSelection = GetAdjacentAvailableMode(gTasks[taskId].tSelection, TRUE);
         DrawMenu(taskId);
         PlaySE(SE_SELECT);
     }

@@ -20,6 +20,8 @@ const struct ModuleDescriptor *ModuleManager_GetDescriptor(enum ModuleId id)
 bool32 ModuleManager_IsRegistryValid(void)
 {
     u32 i;
+    u32 chunkCount = 0;
+    u32 chunkBytes = 0;
 
     for (i = 0; i < MODULE_ID_COUNT; i++)
     {
@@ -34,8 +36,13 @@ bool32 ModuleManager_IsRegistryValid(void)
          || (module->requiredModules & ~((1u << MODULE_ID_COUNT) - 1)) != 0
          || (module->requiredModules & ~ModuleManager_GetEnabledMask()) != 0)
             return FALSE;
+        if (module->saveSize != 0)
+        {
+            chunkCount++;
+            chunkBytes += module->saveSize;
+        }
     }
-    return TRUE;
+    return chunkCount <= MODULE_SAVE_MAX_CHUNKS && chunkBytes <= MODULE_SAVE_DATA_CAPACITY;
 }
 
 static u32 ModuleManager_GetEnabledMask(void)
@@ -70,12 +77,22 @@ static void RunLifecycleCallbacks(bool32 newSave)
 
 void ModuleManager_InitNewSave(void)
 {
+    if (!ModuleManager_IsRegistryValid())
+    {
+        AGB_ASSERT(FALSE);
+        return;
+    }
     ModuleSave_InitNewSave();
     RunLifecycleCallbacks(TRUE);
 }
 
 void ModuleManager_LoadSave(void)
 {
+    if (!ModuleManager_IsRegistryValid())
+    {
+        AGB_ASSERT(FALSE);
+        return;
+    }
     ModuleSave_LoadSave();
     RunLifecycleCallbacks(FALSE);
 }

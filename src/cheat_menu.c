@@ -32,7 +32,6 @@ static void Task_ProcessInput(u8 taskId);
 static void Task_FadeOut(u8 taskId);
 static void DrawMenu(u8 taskId);
 static void DrawDescription(u8 taskId);
-static void HighlightSelection(u8 taskId);
 static void DrawBgWindowFrames(void);
 
 static const u8 sHeader[] = _("CHEAT MENU");
@@ -48,18 +47,21 @@ static const u8 sNames[CHEAT_COUNT + 1][24] =
     [CHEAT_COUNT]            = _("RESET TO DEFAULTS"),
 };
 
-static const u8 sOff[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}OFF");
-static const u8 sOn[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}ON");
-static const u8 s1x[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}1×");
-static const u8 s2x[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}2×");
-static const u8 s3x[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}3×");
-static const u8 s4x[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}4×");
-static const u8 sNormal[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}NORMAL");
-static const u8 sGuaranteed[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}GUARANTEED");
-static const u8 sInstant[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}INSTANT");
-static const u8 sHalf[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}HALF");
-static const u8 sFree[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}FREE");
-static const u8 sReset[] = _("{COLOR GREEN}{SHADOW LIGHT_GREEN}PRESS A");
+static const u8 sOff[] = _("OFF");
+static const u8 sOn[] = _("ON");
+static const u8 s1x[] = _("1×");
+static const u8 s2x[] = _("2×");
+static const u8 s3x[] = _("3×");
+static const u8 s4x[] = _("4×");
+static const u8 sNormal[] = _("NORMAL");
+static const u8 sGuaranteed[] = _("GUARANTEED");
+static const u8 sInstant[] = _("INSTANT");
+static const u8 sHalf[] = _("HALF");
+static const u8 sFree[] = _("FREE");
+static const u8 sReset[] = _("PRESS A");
+static const u8 sCursor[] = _("▶");
+
+static const u8 sTextColorsNormal[] = {TEXT_COLOR_WHITE, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_LIGHT_GRAY};
 
 static const u8 sDescriptions[CHEAT_COUNT + 1][80] =
 {
@@ -151,6 +153,8 @@ void CB2_InitCheatMenu(void)
         ChangeBgY(1, 0, BG_COORD_SET);
         InitWindows(sWindows);
         DeactivateAllTextPrinters();
+        SetGpuReg(REG_OFFSET_WIN0H, 0);
+        SetGpuReg(REG_OFFSET_WIN0V, 0);
         SetGpuReg(REG_OFFSET_WININ, WININ_WIN0_BG0);
         SetGpuReg(REG_OFFSET_WINOUT, WINOUT_WIN01_BG0 | WINOUT_WIN01_BG1 | WINOUT_WIN01_CLR);
         SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG0 | BLDCNT_EFFECT_DARKEN);
@@ -178,12 +182,14 @@ void CB2_InitCheatMenu(void)
         PutWindowTilemap(WIN_OPTIONS);
         PutWindowTilemap(WIN_DESCRIPTION);
         DrawBgWindowFrames();
-        AddTextPrinterParameterized(WIN_HEADER, FONT_NORMAL, sHeader, 8, 1, TEXT_SKIP_DRAW, NULL);
+        FillWindowPixelBuffer(WIN_HEADER, PIXEL_FILL(1));
+        AddTextPrinterParameterized(WIN_HEADER, FONT_NORMAL, sHeader,
+                                    GetStringCenterAlignXOffset(FONT_NORMAL, sHeader, 208), 1,
+                                    TEXT_SKIP_DRAW, NULL);
         CopyWindowToVram(WIN_HEADER, COPYWIN_FULL);
         taskId = CreateTask(Task_FadeIn, 0);
         DrawMenu(taskId);
         DrawDescription(taskId);
-        HighlightSelection(taskId);
         BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_BLACK);
         SetVBlankCallback(VBlankCB);
         SetMainCallback2(MainCB2);
@@ -199,13 +205,25 @@ static void Task_FadeIn(u8 taskId) { if (!gPaletteFade.active) gTasks[taskId].fu
 static void DrawMenu(u8 taskId)
 {
     u8 row;
+    u8 selectedRow = gTasks[taskId].tSelection - gTasks[taskId].tScroll;
+
     FillWindowPixelBuffer(WIN_OPTIONS, PIXEL_FILL(1));
     for (row = 0; row < VISIBLE_ROWS; row++)
     {
         u8 option = gTasks[taskId].tScroll + row;
         const u8 *value = GetValueText(option);
-        AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, sNames[option], 8, row * 16 + 1, TEXT_SKIP_DRAW, NULL);
-        AddTextPrinterParameterized(WIN_OPTIONS, FONT_NORMAL, value, GetStringRightAlignXOffset(FONT_NORMAL, value, 200), row * 16 + 1, TEXT_SKIP_DRAW, NULL);
+        bool32 selected = row == selectedRow;
+        u8 fontId = selected ? FONT_NORMAL : FONT_SMALL;
+        u8 y = row * 16 + (selected ? 1 : 3);
+
+        if (selected)
+            AddTextPrinterParameterized3(WIN_OPTIONS, FONT_NORMAL, 4, y, sTextColorsNormal,
+                                         TEXT_SKIP_DRAW, sCursor);
+        AddTextPrinterParameterized3(WIN_OPTIONS, fontId, 20, y, sTextColorsNormal,
+                                     TEXT_SKIP_DRAW, sNames[option]);
+        AddTextPrinterParameterized3(WIN_OPTIONS, fontId,
+                                     GetStringRightAlignXOffset(fontId, value, 200), y,
+                                     sTextColorsNormal, TEXT_SKIP_DRAW, value);
     }
     CopyWindowToVram(WIN_OPTIONS, COPYWIN_FULL);
 }
@@ -213,15 +231,11 @@ static void DrawMenu(u8 taskId)
 static void DrawDescription(u8 taskId)
 {
     FillWindowPixelBuffer(WIN_DESCRIPTION, PIXEL_FILL(1));
-    AddTextPrinterParameterized(WIN_DESCRIPTION, FONT_SMALL, sDescriptions[gTasks[taskId].tSelection], 8, 3, TEXT_SKIP_DRAW, NULL);
+    FillWindowPixelRect(WIN_DESCRIPTION, PIXEL_FILL(2), 4, 4, 2, 24);
+    AddTextPrinterParameterized(WIN_DESCRIPTION, FONT_SMALL,
+                                sDescriptions[gTasks[taskId].tSelection], 12, 3,
+                                TEXT_SKIP_DRAW, NULL);
     CopyWindowToVram(WIN_DESCRIPTION, COPYWIN_FULL);
-}
-
-static void HighlightSelection(u8 taskId)
-{
-    u8 row = gTasks[taskId].tSelection - gTasks[taskId].tScroll;
-    SetGpuReg(REG_OFFSET_WIN0H, WIN_RANGE(16, DISPLAY_WIDTH - 16));
-    SetGpuReg(REG_OFFSET_WIN0V, WIN_RANGE(row * 16 + 40, row * 16 + 56));
 }
 
 static void ChangeValue(u8 taskId, s8 direction)
@@ -248,7 +262,7 @@ static void Task_ProcessInput(u8 taskId)
     else if (JOY_NEW(A_BUTTON) && *selection == CHEAT_COUNT) { Cheats_ResetDefaults(); DrawMenu(taskId); DrawDescription(taskId); PlaySE(SE_SELECT); }
     else if (JOY_NEW(B_BUTTON)) { PlaySE(SE_SELECT); BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK); gTasks[taskId].func = Task_FadeOut; }
 
-    if (redraw) { PlaySE(SE_SELECT); DrawMenu(taskId); DrawDescription(taskId); HighlightSelection(taskId); }
+    if (redraw) { PlaySE(SE_SELECT); DrawMenu(taskId); DrawDescription(taskId); }
 }
 
 static void Task_FadeOut(u8 taskId)
