@@ -1,4 +1,5 @@
 #include "global.h"
+#include "active_battle.h"
 #include "battle_pacing.h"
 #include "extended_options.h"
 #include "nuzlocke.h"
@@ -1776,6 +1777,11 @@ static bool32 NativeBattleSpeed_CanRunExtraTick(void)
 
     // Link and recorded battles must remain deterministic between peers/playback.
     if (gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED | BATTLE_TYPE_RECORDED_LINK))
+        return FALSE;
+
+    // Timing prompts must advance exactly once per displayed frame, regardless
+    // of the selected battle simulation speed.
+    if (ActiveBattle_IsPromptActive())
         return FALSE;
 
     // Stop immediately if the battle callbacks have changed during this frame.
@@ -4211,7 +4217,7 @@ static bool32 ShouldChooseReserveAttacker(enum BattlerId battler)
                                      | BATTLE_TYPE_POKEDUDE;
 
     return IsOnPlayerSide(battler)
-        && !IsDoubleBattle()
+        //&& !IsDoubleBattle()
         && !(gBattleTypeFlags & unsupportedBattleTypes);
 }
 

@@ -374,10 +374,15 @@ static bool32 IsUnnerveAbilityOnOpposingSide(enum BattlerId battler)
 }
 
 // Functions
+//static bool32 IsUsingReserveAttacker(enum BattlerId battler)
+//{
+//    return IsOnPlayerSide(battler)
+//        && !IsDoubleBattle()
+//        && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler];
+//ß}
 static bool32 IsUsingReserveAttacker(enum BattlerId battler)
 {
     return IsOnPlayerSide(battler)
-        && !IsDoubleBattle()
         && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler];
 }
 

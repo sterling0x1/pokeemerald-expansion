@@ -42,6 +42,7 @@ bool32 ActiveBattle_IsDodgingEnabled(void);
 void ActiveBattle_SetDodgingEnabled(bool32 enabled);
 enum ActiveBattleTimingDifficulty ActiveBattle_GetTimingDifficulty(void);
 void ActiveBattle_SetTimingDifficulty(enum ActiveBattleTimingDifficulty difficulty);
+bool32 ActiveBattle_IsPromptActive(void);
 bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, enum BattlerId target, enum Move move);
 enum ActiveBattleCriticalResult ActiveBattle_GetCriticalResult(void);
 s32 ActiveBattle_AdjustDamageForDodge(s32 damage);
@@ -55,6 +56,7 @@ static inline bool32 ActiveBattle_IsDodgingEnabled(void) { return FALSE; }
 static inline void ActiveBattle_SetDodgingEnabled(bool32 enabled) {}
 static inline enum ActiveBattleTimingDifficulty ActiveBattle_GetTimingDifficulty(void) { return ACTIVE_BATTLE_TIMING_STANDARD; }
 static inline void ActiveBattle_SetTimingDifficulty(enum ActiveBattleTimingDifficulty difficulty) {}
+static inline bool32 ActiveBattle_IsPromptActive(void) { return FALSE; }
 static inline bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, enum BattlerId target, enum Move move) { return TRUE; }
 static inline enum ActiveBattleCriticalResult ActiveBattle_GetCriticalResult(void) { return ACTIVE_BATTLE_CRIT_NONE; }
 static inline s32 ActiveBattle_AdjustDamageForDodge(s32 damage) { return damage; }

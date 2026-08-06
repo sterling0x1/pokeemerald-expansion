@@ -109,7 +109,8 @@ static void TryMoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void MoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void DrawModernMoveSelectionPanels(void);
 static void OpenCompactAttackerPicker(enum BattlerId battler);
-static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex);
+//static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex);
+static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyIndex);
 static void HandleInputCompactAttackerPicker(enum BattlerId battler);
 static void DrawCompactAttackerPicker(enum BattlerId battler);
 static void DrawCompactAttackerSummary(enum BattlerId battler);
@@ -495,13 +496,43 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
     gBattlerControllerFuncs[battler] = HandleInputCompactAttackerPicker;
 }
 
-static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex)
+//static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex)
+//static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyIndex)
+//    return partyIndex < PARTY_SIZE
+//        && GetMonData(&gParties[B_TRAINER_PLAYER][partyIndex], MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE
+//        && Nuzlocke_IsMonUsable(&gParties[B_TRAINER_PLAYER][partyIndex]);
+//}
+static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyIndex)
 {
-    return partyIndex < PARTY_SIZE
-        && GetMonData(&gParties[B_TRAINER_PLAYER][partyIndex], MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE
-        && Nuzlocke_IsMonUsable(&gParties[B_TRAINER_PLAYER][partyIndex]);
-}
+    enum BattlerId otherBattler;
 
+    if (partyIndex >= PARTY_SIZE)
+        return FALSE;
+
+    if (GetMonData(&gParties[B_TRAINER_PLAYER][partyIndex],
+                   MON_DATA_SPECIES_OR_EGG) == SPECIES_NONE)
+        return FALSE;
+
+    if (!Nuzlocke_IsMonUsable(&gParties[B_TRAINER_PLAYER][partyIndex]))
+        return FALSE;
+
+    for (otherBattler = 0; otherBattler < gBattlersCount; otherBattler++)
+    {
+        if (otherBattler == battler || !IsOnPlayerSide(otherBattler))
+            continue;
+
+        // Do not select the Pokémon currently active in the partner position.
+        if (gBattlerPartyIndexes[otherBattler] == partyIndex)
+            return FALSE;
+
+        // Do not let both player battlers select the same reserve attacker.
+        if ((gBattleStruct->reserveAttackerSelectionReady & (1u << otherBattler))
+         && gBattleStruct->actingPartyIndexes[otherBattler] == partyIndex)
+            return FALSE;
+    }
+
+    return TRUE;
+}
 static void HandleInputCompactAttackerPicker(enum BattlerId battler)
 {
     u8 *cursor = &sCompactAttackerCursor[battler];
@@ -518,7 +549,8 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
     {
         struct Pokemon *mon = &gParties[B_TRAINER_PLAYER][*cursor];
 
-        if (!IsCompactAttackerSlotOccupied(*cursor)
+        //if (!IsCompactAttackerSlotOccupied(*cursor)
+        if (!IsCompactAttackerSlotOccupied(battler, *cursor)
          || GetMonData(mon, MON_DATA_HP) == 0
          || GetMonData(mon, MON_DATA_SPECIES_OR_EGG) == SPECIES_EGG)
         {
@@ -591,25 +623,25 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
             PlayerHandleChooseAction(battler);
         }
     }
-    else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1) && IsCompactAttackerSlotOccupied(*cursor - 1))
+    else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1) && IsCompactAttackerSlotOccupied(battler, *cursor - 1))
     {
         PlaySE(SE_SELECT);
         (*cursor)--;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_RIGHT) && !(*cursor & 1) && IsCompactAttackerSlotOccupied(*cursor + 1))
+    else if (JOY_NEW(DPAD_RIGHT) && !(*cursor & 1) && IsCompactAttackerSlotOccupied(battler, *cursor + 1))
     {
         PlaySE(SE_SELECT);
         (*cursor)++;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_UP) && *cursor >= 2 && IsCompactAttackerSlotOccupied(*cursor - 2))
+    else if (JOY_NEW(DPAD_UP) && *cursor >= 2 && IsCompactAttackerSlotOccupied(battler, *cursor - 2))
     {
         PlaySE(SE_SELECT);
         *cursor -= 2;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_DOWN) && *cursor < 4 && IsCompactAttackerSlotOccupied(*cursor + 2))
+    else if (JOY_NEW(DPAD_DOWN) && *cursor < 4 && IsCompactAttackerSlotOccupied(battler, *cursor + 2))
     {
         PlaySE(SE_SELECT);
         *cursor += 2;
