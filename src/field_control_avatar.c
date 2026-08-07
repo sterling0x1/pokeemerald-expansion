@@ -2,6 +2,7 @@
 #include "overworld_features.h"
 #include "battle_setup.h"
 #include "bike.h"
+#include "key_item_bar.h"
 #include "coord_event_weather.h"
 #include "daycare.h"
 #include "debug.h"
@@ -236,7 +237,7 @@ int ProcessPlayerFieldInput(struct FieldInput *input)
     if (input->tookStep && TryFindHiddenPokemon())
         return TRUE;
 
-    if (input->pressedSelectButton && UseRegisteredKeyItemOnField() == TRUE)
+    if (input->pressedSelectButton && TryOpenKeyItemBar())
         return TRUE;
 
     if (input->pressedRButton && TryStartDexNavSearch())
