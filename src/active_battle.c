@@ -182,11 +182,11 @@ static bool32 IsFixedDamageMove(enum Move move);
 
 static bool32 IsEligibleMove(enum BattlerId attacker, enum BattlerId target, enum Move move)
 {
-    const u32 excludedBattles = BATTLE_TYPE_DOUBLE | BATTLE_TYPE_LINK | BATTLE_TYPE_MULTI
-                              | BATTLE_TYPE_SAFARI | BATTLE_TYPE_FIRST_BATTLE | BATTLE_TYPE_CATCH_TUTORIAL
-                              | BATTLE_TYPE_INGAME_PARTNER | BATTLE_TYPE_RECORDED | BATTLE_TYPE_RECORDED_LINK
-                              | BATTLE_TYPE_TRAINER_HILL | BATTLE_TYPE_FRONTIER | BATTLE_TYPE_POKEDUDE
-                              | BATTLE_TYPE_RECORDED_IS_MASTER;
+const u32 excludedBattles = BATTLE_TYPE_LINK | BATTLE_TYPE_MULTI
+                          | BATTLE_TYPE_SAFARI | BATTLE_TYPE_FIRST_BATTLE | BATTLE_TYPE_CATCH_TUTORIAL
+                          | BATTLE_TYPE_INGAME_PARTNER | BATTLE_TYPE_RECORDED | BATTLE_TYPE_RECORDED_LINK
+                          | BATTLE_TYPE_TRAINER_HILL | BATTLE_TYPE_FRONTIER | BATTLE_TYPE_POKEDUDE
+                          | BATTLE_TYPE_RECORDED_IS_MASTER;
 
     if (gBattleTypeFlags & excludedBattles)
         return FALSE;
@@ -436,15 +436,21 @@ bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, enum BattlerId t
 
     if (sPrompt.state == PROMPT_RESOLVED)
         return TRUE;
-    if (sPrompt.state == PROMPT_IDLE)
-    {
-        u8 previousTarget = sPrompt.target;
-        enum ActiveBattlePromptType promptType = GetPromptType(attacker, target, move);
+if (sPrompt.state == PROMPT_IDLE)
+{
+    u8 previousTarget = sPrompt.target;
+    enum ActiveBattlePromptType promptType = GetPromptType(attacker, target, move);
+    enum BattlerId promptBattler;
 
-        if (promptType == PROMPT_TYPE_NONE)
-            return TRUE;
-        if (!CreatePromptOverlay(target))
-            return TRUE;
+    if (promptType == PROMPT_TYPE_NONE)
+        return TRUE;
+
+    promptBattler = promptType == PROMPT_TYPE_CRITICAL
+                  ? attacker
+                  : target;
+
+    if (!CreatePromptOverlay(promptBattler))
+        return TRUE;
         sPrompt.state = PROMPT_RUNNING;
         sPrompt.type = promptType;
         sPrompt.frame = 0;
