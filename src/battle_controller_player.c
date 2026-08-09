@@ -109,7 +109,6 @@ static void TryMoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void MoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void DrawModernMoveSelectionPanels(void);
 static void OpenCompactAttackerPicker(enum BattlerId battler);
-//static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex);
 static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyIndex);
 static void HandleInputCompactAttackerPicker(enum BattlerId battler);
 static void DrawCompactAttackerPicker(enum BattlerId battler);
@@ -347,10 +346,15 @@ static void HandleInputChooseAction(enum BattlerId battler)
 
         switch (gActionSelectionCursor[battler])
         {
-case 0: // Top left
-    sBlockCompactAUntilReleased[battler] = TRUE;
-    OpenCompactAttackerPicker(battler);
-    return;
+        case 0: // Top left
+            if (ExtendedOptions_Get(EXT_OPT_BENCH_ATTACKER))
+            {
+                sBlockCompactAUntilReleased[battler] = TRUE;
+                OpenCompactAttackerPicker(battler);
+                return;
+            }
+            BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_MOVE, 0);
+            break;
         case 1: // Top right
             if (Nuzlocke_IsActive()
              && (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
@@ -497,11 +501,6 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
 }
 
 //static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex)
-//static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyIndex)
-//    return partyIndex < PARTY_SIZE
-//        && GetMonData(&gParties[B_TRAINER_PLAYER][partyIndex], MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE
-//        && Nuzlocke_IsMonUsable(&gParties[B_TRAINER_PLAYER][partyIndex]);
-//}
 static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyIndex)
 {
     enum BattlerId otherBattler;
@@ -529,6 +528,14 @@ static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyInde
         if ((gBattleStruct->reserveAttackerSelectionReady & (1u << otherBattler))
          && gBattleStruct->actingPartyIndexes[otherBattler] == partyIndex)
             return FALSE;
+
+        // A reserve Pokemon committed to a charging, multi-turn, or recharge
+        // move must return to the battler that selected it.
+        if ((gBattleStruct->reserveAttackerRuntimeValid & (1u << partyIndex))
+         && gBattleStruct->reserveAttackerRuntimeOwners[partyIndex] == otherBattler
+         && (gBattleStruct->reserveAttackerRuntimeMons[partyIndex].volatiles.multipleTurns
+          || gBattleStruct->reserveAttackerRuntimeMons[partyIndex].volatiles.rechargeTimer > 0))
+            return FALSE;
     }
 
     return TRUE;
@@ -549,7 +556,6 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
     {
         struct Pokemon *mon = &gParties[B_TRAINER_PLAYER][*cursor];
 
-        //if (!IsCompactAttackerSlotOccupied(*cursor)
         if (!IsCompactAttackerSlotOccupied(battler, *cursor)
          || GetMonData(mon, MON_DATA_HP) == 0
          || GetMonData(mon, MON_DATA_SPECIES_OR_EGG) == SPECIES_EGG)

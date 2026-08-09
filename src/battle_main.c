@@ -4217,7 +4217,7 @@ static bool32 ShouldChooseReserveAttacker(enum BattlerId battler)
                                      | BATTLE_TYPE_POKEDUDE;
 
     return IsOnPlayerSide(battler)
-        //&& !IsDoubleBattle()
+        && ExtendedOptions_Get(EXT_OPT_BENCH_ATTACKER)
         && !(gBattleTypeFlags & unsupportedBattleTypes);
 }
 
@@ -4255,8 +4255,7 @@ static bool32 TrySelectLockedReserveAttacker(enum BattlerId battler)
 {
     u8 activePartyIndex;
 
-    // Reserve attackers are currently supported only for the player in singles.
-    if (!IsOnPlayerSide(battler) || IsDoubleBattle())
+    if (!ShouldChooseReserveAttacker(battler))
         return FALSE;
 
     activePartyIndex = gBattlerPartyIndexes[battler];
@@ -4270,6 +4269,11 @@ static bool32 TrySelectLockedReserveAttacker(enum BattlerId battler)
             continue;
 
         if (!(gBattleStruct->reserveAttackerRuntimeValid & (1u << partyIndex)))
+            continue;
+
+        // In doubles, a forced follow-up belongs to the battler that used
+        // the reserve Pokemon on its previous turn.
+        if (gBattleStruct->reserveAttackerRuntimeOwners[partyIndex] != battler)
             continue;
 
         runtimeMon = &gBattleStruct->reserveAttackerRuntimeMons[partyIndex];

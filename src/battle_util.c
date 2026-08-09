@@ -374,12 +374,6 @@ static bool32 IsUnnerveAbilityOnOpposingSide(enum BattlerId battler)
 }
 
 // Functions
-//static bool32 IsUsingReserveAttacker(enum BattlerId battler)
-//{
-//    return IsOnPlayerSide(battler)
-//        && !IsDoubleBattle()
-//        && gBattleStruct->actingPartyIndexes[battler] != gBattlerPartyIndexes[battler];
-//ß}
 static bool32 IsUsingReserveAttacker(enum BattlerId battler)
 {
     return IsOnPlayerSide(battler)
@@ -438,6 +432,8 @@ static void RestoreReserveAttackerAction(enum BattlerId battler)
 
         gBattleStruct->reserveAttackerRuntimeMons[partyIndex] =
             gBattleMons[battler];
+
+        gBattleStruct->reserveAttackerRuntimeOwners[partyIndex] = battler;
 
         gBattleStruct->reserveAttackerLockedMoves[partyIndex] =
             gLockedMoves[battler];

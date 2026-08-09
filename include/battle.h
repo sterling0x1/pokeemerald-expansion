@@ -603,6 +603,7 @@ struct BattleStruct
     // Persistent runtime state for off-field reserve attackers.
     struct BattlePokemon reserveAttackerRuntimeMons[PARTY_SIZE];
     u8 reserveAttackerRuntimeValid;
+    u8 reserveAttackerRuntimeOwners[PARTY_SIZE];
     u16 reserveAttackerLockedMoves[PARTY_SIZE];
     u8 monToSwitchIntoId[MAX_BATTLERS_COUNT];
     u8 battlerPartyOrders[MAX_BATTLERS_COUNT][PARTY_SIZE / 2];
