@@ -13,11 +13,14 @@ a custom `pokeemerald-expansion` project built on
 - extended options menu and cheat menu
 - exp and money multipliers, fast exp, fast hp, instant text, and other qol settings
 - modular feature configuration for major custom systems
-- modern battle ui and bench attacker system
+- modern battle ui and bench attacker system (bench attacker x0.5 damage)
 - active battle critical-hit and dodge timing
 - floating damage and healing numbers
 - key-item quick-access bar
 - pc/party box shortcuts and quick pokémon movement
+- floating damage/healing numbers 
+
+
 
 ## development status
 
