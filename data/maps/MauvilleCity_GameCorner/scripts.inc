@@ -707,19 +707,19 @@ MauvilleCity_GameCorner_EventScript_ChooseTMPrize::
 	end
 	
 MauvilleCity_GameCorner_EventScript_ChooseNewPrize::
-	@ multichoice 12, 0, MULTI_GAMECORNER_NEW, FALSE
+	multichoice 12, 0, MULTI_GAME_CORNER_NEW_PRIZES, FALSE
 	switch VAR_RESULT
 	case 0, MauvilleCity_GameCorner_EventScript_RareCandy
 	case 1, MauvilleCity_GameCorner_EventScript_SunStone
 	case 2, MauvilleCity_GameCorner_EventScript_MoonStone
 	case 3, MauvilleCity_GameCorner_EventScript_ChoiceBand
 	case 4, MauvilleCity_GameCorner_EventScript_BrightPowder
-	case 7, MauvilleCity_GameCorner_EventScript_CancelTMSelect
+	case 5, MauvilleCity_GameCorner_EventScript_CancelTMSelect
 	goto MauvilleCity_GameCorner_EventScript_CancelTMSelect
 	end	
 
 MauvilleCity_GameCorner_EventScript_ChooseNewPrize2::
-	@ multichoice 12, 0, MULTI_GAMECORNER_NEW2, FALSE
+	multichoice 12, 0, MULTI_GAME_CORNER_NEW_PRIZES_2, FALSE
 	switch VAR_RESULT
 	case 0, MauvilleCity_GameCorner_EventScript_FireStone
 	case 1, MauvilleCity_GameCorner_EventScript_ThunderStone

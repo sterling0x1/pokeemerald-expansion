@@ -1,6 +1,7 @@
 #include "global.h"
 #include "bg.h"
 #include "coins.h"
+#include "cheats.h"
 #include "data.h"
 #include "decompress.h"
 #include "decoration.h"
@@ -163,6 +164,22 @@ struct ShopData
     u16 currentItemId;
     struct GridMenu *gridItems;
 };
+
+// The current decompression API handles compressed palettes through a caller
+// buffer. The original shop implementation used helpers removed upstream.
+static EWRAM_DATA u16 sShopPaletteBuffer[16];
+
+static void LoadShopBgPalette(const u32 *src, u16 offset)
+{
+    DecompressDataWithHeaderWram(src, sShopPaletteBuffer);
+    LoadPalette(sShopPaletteBuffer, offset, PLTT_SIZE_4BPP);
+}
+
+static void LoadShopSpritePalette(const u32 *src, u16 tag)
+{
+    DecompressDataWithHeaderWram(src, sShopPaletteBuffer);
+    LoadSpritePaletteWithTag(sShopPaletteBuffer, tag);
+}
 
 struct Seller
 {
@@ -441,11 +458,6 @@ static const struct SpriteSheet sDefaultCursor_SpriteSheet = {
     .tag = GFXTAG_CURSOR,
 };
 
-static const struct CompressedSpritePalette sDefaultCursor_SpritePalette = {
-    .data = sNewShopMenu_DefaultMenuPal,
-    .tag = PALTAG_CURSOR,
-};
-
 static const union AnimCmd sCursorAnim[] =
 {
     ANIMCMD_FRAME(0, 30),
@@ -636,7 +648,7 @@ static void SetShopItemsForSale(const u16 *items)
 
 static void InitShopItemsForSale(void)
 {
-    u32 i = 0, j = 0;
+    u32 i = 0;
     u16 *itemList;
     u16 *itemPriceList;
 
@@ -651,8 +663,6 @@ static void InitShopItemsForSale(void)
         *itemList = sMartInfo.itemSource[i];
         i++;
         itemList++;
-        j++;
-
         if (sMartInfo.martType == NEW_SHOP_TYPE_VARIABLE)
         {
             *itemPriceList = sMartInfo.itemSource[i];
@@ -1105,20 +1115,20 @@ static void BuyMenuDecompressBgGraphics(void)
         else // if (IsMartTypeMoney(sMartInfo.martType))
             DecompressAndCopyTileDataToVram(2, sNewShopMenu_DefaultMenuGfx, 0, DEFAULT_MENU_TILE_OFFSET, 0);
         DecompressAndCopyTileDataToVram(2, sNewShopMenu_DefaultScrollGfx, 0, 0, 0);
-        LZDecompressWram(sNewShopMenu_DefaultMenuTilemap, sShopData->tilemapBuffers[0]);
-        LZDecompressWram(sNewShopMenu_DefaultScrollTilemap, sShopData->tilemapBuffers[1]);
-        LoadCompressedPalette(sNewShopMenu_DefaultMenuPal, BG_PLTT_ID(0), PLTT_SIZE_4BPP);
-        LoadCompressedPalette(sNewShopMenu_DefaultMenuPal, BG_PLTT_ID(1), PLTT_SIZE_4BPP);
+        DecompressDataWithHeaderWram(sNewShopMenu_DefaultMenuTilemap, sShopData->tilemapBuffers[0]);
+        DecompressDataWithHeaderWram(sNewShopMenu_DefaultScrollTilemap, sShopData->tilemapBuffers[1]);
+        LoadShopBgPalette(sNewShopMenu_DefaultMenuPal, BG_PLTT_ID(0));
+        LoadShopBgPalette(sNewShopMenu_DefaultMenuPal, BG_PLTT_ID(1));
         return;
     }
     DecompressAndCopyTileDataToVram(2, Shop_GetSellerGraphics(SELLER_GFX_MENU_GFX), 0, sSellers[i].menuTileOffset != 0 ? sSellers[i].menuTileOffset : DEFAULT_MENU_TILE_OFFSET, 0);
     DecompressAndCopyTileDataToVram(2, Shop_GetSellerGraphics(SELLER_GFX_SCROLL_GFX), 0, 0, 0);
 
-    LZDecompressWram(Shop_GetSellerGraphics(SELLER_GFX_MENU_MAP), sShopData->tilemapBuffers[0]);
-    LZDecompressWram(Shop_GetSellerGraphics(SELLER_GFX_SCROLL_MAP), sShopData->tilemapBuffers[1]);
+    DecompressDataWithHeaderWram(Shop_GetSellerGraphics(SELLER_GFX_MENU_MAP), sShopData->tilemapBuffers[0]);
+    DecompressDataWithHeaderWram(Shop_GetSellerGraphics(SELLER_GFX_SCROLL_MAP), sShopData->tilemapBuffers[1]);
 
-    LoadCompressedPalette(Shop_GetSellerGraphics(SELLER_GFX_MENU_PAL), BG_PLTT_ID(0), PLTT_SIZE_4BPP);
-    LoadCompressedPalette(Shop_GetSellerGraphics(SELLER_GFX_SCROLL_PAL), BG_PLTT_ID(1), PLTT_SIZE_4BPP);
+    LoadShopBgPalette(Shop_GetSellerGraphics(SELLER_GFX_MENU_PAL), BG_PLTT_ID(0));
+    LoadShopBgPalette(Shop_GetSellerGraphics(SELLER_GFX_SCROLL_PAL), BG_PLTT_ID(1));
 }
 
 static inline void SpawnWindow(u8 winId)
@@ -1166,9 +1176,8 @@ static inline u32 BuyMenuGetItemPrice(u32 id)
     {
         case NEW_SHOP_TYPE_DECOR ... NEW_SHOP_TYPE_DECOR2:
             return gDecorations[sMartInfo.itemList[id]].price;
-        default:
-            return GetItemPrice(sMartInfo.itemList[id]);
-        // custom
+        case NEW_SHOP_TYPE_NORMAL:
+            return Cheats_ApplyMartPrice(GetItemPrice(sMartInfo.itemList[id]) >> IsPokeNewsActive(POKENEWS_SLATEPORT));
         case NEW_SHOP_TYPE_VARIABLE:
             return SearchItemListForPrice(sMartInfo.itemList[id]);
         case NEW_SHOP_TYPE_COINS:
@@ -1179,6 +1188,8 @@ static inline u32 BuyMenuGetItemPrice(u32 id)
         case NEW_SHOP_TYPE_OUTFIT:
             return GetOutfitPrice(sMartInfo.itemList[id]);
     #endif // MUDSKIP_OUTFIT_SYSTEM
+        default:
+            return GetItemPrice(sMartInfo.itemList[id]);
     }
 }
 
@@ -1264,20 +1275,15 @@ static bool32 LoadSellerCursor(void)
         .size = 64*64*2,
         .tag = GFXTAG_CURSOR,
     };
-    struct CompressedSpritePalette pal = {
-        .data = Shop_GetSellerGraphics(SELLER_GFX_CURSOR_PAL),
-        .tag = PALTAG_CURSOR
-    };
-
     if (gSpecialVar_LastTalked == 0 || i == 0)
     {
         LoadSpriteSheet(&sDefaultCursor_SpriteSheet);
-        LoadCompressedSpritePalette(&sDefaultCursor_SpritePalette);
+        LoadShopSpritePalette(sNewShopMenu_DefaultMenuPal, PALTAG_CURSOR);
         return FALSE;
     }
 
     LoadSpriteSheet(&gfx);
-    LoadCompressedSpritePalette(&pal);
+    LoadShopSpritePalette(Shop_GetSellerGraphics(SELLER_GFX_CURSOR_PAL), PALTAG_CURSOR);
     return TRUE;
 }
 
@@ -1779,7 +1785,7 @@ static void BuyMenuSubtractMoney(u8 taskId)
 
 static void Task_ReturnToItemListWaitMsg(u8 taskId)
 {
-    if (!IsTextPrinterActive(WIN_ITEM_DESCRIPTION))
+    if (!IsTextPrinterActiveOnWindow(WIN_ITEM_DESCRIPTION))
     {
         if (JOY_NEW(A_BUTTON | B_BUTTON))
         {
@@ -1798,7 +1804,7 @@ static void Task_ReturnToItemListAfterItemPurchase(u8 taskId)
 
     if (GetItemPocket(sShopData->currentItemId) == POCKET_POKE_BALLS)
     {
-        if (IsTextPrinterActive(WIN_ITEM_DESCRIPTION))
+        if (IsTextPrinterActiveOnWindow(WIN_ITEM_DESCRIPTION))
         {
             return;
         }
