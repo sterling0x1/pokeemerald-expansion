@@ -18,6 +18,9 @@
 #define MODULE_GAME_MODES_ENABLED TRUE
 #define MODULE_ACTIVE_BATTLE_ENABLED TRUE
 #define MODULE_KEY_ITEM_DOCK_ENABLED TRUE
+// Applies a 50% final-damage penalty to successful Bench Attacker moves.
+// Set FALSE to keep Bench Attacker available at full damage.
+#define MODULE_BENCH_ATTACKER_HALF_DAMAGE_ENABLED TRUE
 
 // Claims special flash sector 31 when enabled. Recorded Battle persistence is
 // unavailable, but the normal two save slots are not resized or reinterpreted.

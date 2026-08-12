@@ -1135,6 +1135,15 @@ static inline void SetDynamicMoveCategoryAndDamage(struct DamageContext *ctx)
 {
     SetDynamicMoveCategory(gBattlerAttacker, ctx->battlerDef, gCurrentMove);
     gBattleStruct->moveDamage[ctx->battlerDef] = CalculateMoveDamage(ctx);
+
+    // A Bench Attacker borrows the active battler's turn without taking the
+    // field. Its successful damaging moves deal half their normal final damage.
+    // Keep the standard one-damage minimum so a hit can never become a miss.
+#if MODULE_BENCH_ATTACKER_HALF_DAMAGE_ENABLED
+    if ((gBattleStruct->reserveAttackerActive & (1u << gBattlerAttacker))
+     && gBattleStruct->moveDamage[ctx->battlerDef] > 1)
+        gBattleStruct->moveDamage[ctx->battlerDef] /= 2;
+#endif
 }
 
 static void Cmd_damagecalc(void)
@@ -1545,6 +1554,9 @@ static void Cmd_healthbarupdate(void)
             s32 damage = min(gBattleStruct->moveDamage[battler], 10000);
             BtlController_EmitHealthBarUpdate(battler, B_COMM_TO_CONTROLLER, damage);
             MarkBattlerForControllerExec(battler);
+            if (damage > 0)
+                ActiveBattle_ShowDamageNumber(battler, min(damage, gBattleMons[battler].hp),
+                                               gSpecialStatuses[battler].criticalHit);
             if (IsOnPlayerSide(battler) && damage > 0)
                 gBattleResults.playerMonWasDamaged = TRUE;
         }

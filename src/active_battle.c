@@ -8,12 +8,16 @@
 #include "menu.h"
 #include "module_save.h"
 #include "move.h"
+#include "palette.h"
 #include "random.h"
 #include "international_string_util.h"
+#include "string_util.h"
+#include "task.h"
 #include "text.h"
 #include "window.h"
 #include "constants/battle.h"
 #include "constants/moves.h"
+#include "constants/rgb.h"
 
 #if MODULE_ACTIVE_BATTLE_ENABLED
 
@@ -29,6 +33,9 @@
 #define DODGE_RING_MAX_RADIUS 14
 #define DODGE_START_DELAY_FRAMES 24
 #define PROMPT_BLANK_TILE 0x39F
+#define DAMAGE_NUMBER_FRAMES 28
+#define DAMAGE_NUMBER_BASE_BLOCK 0x3B0
+#define DAMAGE_NUMBER_PALETTE 15
 
 enum ActiveBattlePromptState
 {
@@ -58,11 +65,34 @@ struct ActiveBattlePrompt
     u8 windowTop;
 };
 
+struct ActiveBattleDamageNumber
+{
+    u8 windowId;
+    bool8 active;
+    u8 left;
+    u8 top;
+};
+
 static EWRAM_DATA struct ActiveBattlePrompt sPrompt = {0};
+static EWRAM_DATA struct ActiveBattleDamageNumber sDamageNumber = {0};
 static const u8 sDodgeOverlayText[] = _("R");
 static const u8 sCriticalOverlayText[] = _("CRIT");
+static const u8 sDamageMinusText[] = _("-");
+static const u8 sHealPlusText[] = _("+");
 static const u8 sDodgeTextColors[] = {TEXT_COLOR_TRANSPARENT, 1, 6};
+static const u8 sDamageNumberColors[] = {TEXT_COLOR_TRANSPARENT, TEXT_COLOR_RED, TEXT_COLOR_DARK_GRAY};
+static const u8 sCriticalDamageNumberColors[] = {TEXT_COLOR_TRANSPARENT, TEXT_COLOR_LIGHT_RED, TEXT_COLOR_DARK_GRAY};
+static const u8 sHealNumberColors[] = {TEXT_COLOR_TRANSPARENT, TEXT_COLOR_LIGHT_GREEN, TEXT_COLOR_DARK_GRAY};
 static const u32 sPromptBlankTile[8] = {0};
+// Dedicated palette so damage numbers can use a true gold critical color
+// without altering the battle message window's standard text palette.
+static const u16 sDamageNumberPalette[16] =
+{
+    RGB_BLACK,      RGB_WHITE,      RGB(10, 5, 0),  RGB(18, 18, 18),
+    RGB(31, 4, 4),  RGB(31, 24, 2), RGB(8, 20, 8),  RGB(18, 31, 12),
+    RGB(6, 10, 31), RGB(14, 22, 31), RGB_WHITE,     RGB_WHITE,
+    RGB_WHITE,      RGB(18, 26, 31), RGB(8, 20, 22), RGB(10, 18, 31),
+};
 
 static const struct WindowTemplate sPromptWindowTemplate =
 {
@@ -74,6 +104,19 @@ static const struct WindowTemplate sPromptWindowTemplate =
     .paletteNum = 0,
     .baseBlock = 0x3A0,
 };
+
+static const struct WindowTemplate sDamageNumberWindowTemplate =
+{
+    .bg = 0,
+    .tilemapLeft = 0,
+    .tilemapTop = 0,
+    .width = 5,
+    .height = 2,
+    .paletteNum = DAMAGE_NUMBER_PALETTE,
+    .baseBlock = DAMAGE_NUMBER_BASE_BLOCK,
+};
+
+static void Task_FloatDamageNumber(u8 taskId);
 
 static struct ActiveBattleSaveData *GetSaveData(void)
 {
@@ -524,6 +567,89 @@ void ActiveBattle_FinishDamageCalc(void)
     sPrompt.state = PROMPT_IDLE;
     sPrompt.type = PROMPT_TYPE_NONE;
     sPrompt.result = ACTIVE_BATTLE_CRIT_NONE;
+}
+
+static void DestroyDamageNumber(void)
+{
+    if (!sDamageNumber.active)
+        return;
+
+    ClearWindowTilemap(sDamageNumber.windowId);
+    ScheduleBgCopyTilemapToVram(0);
+    RemoveWindow(sDamageNumber.windowId);
+    sDamageNumber.active = FALSE;
+}
+
+static void Task_FloatDamageNumber(u8 taskId)
+{
+    struct Task *task = &gTasks[taskId];
+
+    if (++task->data[0] >= DAMAGE_NUMBER_FRAMES)
+    {
+        DestroyDamageNumber();
+        DestroyTask(taskId);
+        return;
+    }
+}
+
+static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCritical, bool32 isHealing)
+{
+    struct WindowTemplate template = sDamageNumberWindowTemplate;
+    u8 text[8];
+    s16 spriteLeft;
+    s16 spriteRight;
+    s16 spriteTop;
+    s16 x;
+    s16 y;
+    u8 taskId;
+
+    if (amount == 0 || battler >= gBattlersCount)
+        return;
+
+    if (FuncIsActiveTask(Task_FloatDamageNumber))
+        DestroyTask(FindTaskIdByFunc(Task_FloatDamageNumber));
+    DestroyDamageNumber();
+
+    spriteLeft = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_LEFT);
+    spriteRight = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_RIGHT);
+    spriteTop = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_TOP);
+    x = (spriteLeft + spriteRight) / 2 - 20;
+    y = spriteTop - 20;
+    x = max(0, min(x, 200));
+    y = max(8, min(y, 112));
+    template.tilemapLeft = x / 8;
+    template.tilemapTop = y / 8;
+
+    sDamageNumber.windowId = AddWindow(&template);
+    if (sDamageNumber.windowId == WINDOW_NONE)
+        return;
+
+    sDamageNumber.active = TRUE;
+    sDamageNumber.left = template.tilemapLeft;
+    sDamageNumber.top = template.tilemapTop;
+    FillWindowPixelBuffer(sDamageNumber.windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
+    LoadPalette(sDamageNumberPalette, BG_PLTT_ID(DAMAGE_NUMBER_PALETTE), sizeof(sDamageNumberPalette));
+    StringCopy(text, isHealing ? sHealPlusText : sDamageMinusText);
+    ConvertIntToDecimalStringN(text + 1, amount, STR_CONV_MODE_LEFT_ALIGN, 4);
+    AddTextPrinterParameterized4(sDamageNumber.windowId, FONT_SMALL_NARROWER, 3, 2, 0, 0,
+                                 isHealing ? sHealNumberColors
+                                           : isCritical ? sCriticalDamageNumberColors : sDamageNumberColors,
+                                 TEXT_SKIP_DRAW, text);
+    PutWindowTilemap(sDamageNumber.windowId);
+    CopyWindowToVram(sDamageNumber.windowId, COPYWIN_FULL);
+
+    taskId = CreateTask(Task_FloatDamageNumber, 1);
+    gTasks[taskId].data[0] = 0;
+}
+
+void ActiveBattle_ShowDamageNumber(enum BattlerId battler, u16 damage, bool32 isCritical)
+{
+    ShowFloatingNumber(battler, damage, isCritical, FALSE);
+}
+
+void ActiveBattle_ShowHealNumber(enum BattlerId battler, u16 healing)
+{
+    ShowFloatingNumber(battler, healing, FALSE, TRUE);
 }
 
 #endif // MODULE_ACTIVE_BATTLE_ENABLED

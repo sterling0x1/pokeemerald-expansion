@@ -47,6 +47,7 @@ bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, enum BattlerId t
 enum ActiveBattleCriticalResult ActiveBattle_GetCriticalResult(void);
 s32 ActiveBattle_AdjustDamageForDodge(s32 damage);
 void ActiveBattle_FinishDamageCalc(void);
+void ActiveBattle_ShowDamageNumber(enum BattlerId battler, u16 damage, bool32 isCritical);
 #else
 static inline void ActiveBattle_InitNewSave(void) {}
 static inline void ActiveBattle_LoadSave(void) {}
@@ -61,6 +62,7 @@ static inline bool32 ActiveBattle_UpdateDamagePrompt(enum BattlerId attacker, en
 static inline enum ActiveBattleCriticalResult ActiveBattle_GetCriticalResult(void) { return ACTIVE_BATTLE_CRIT_NONE; }
 static inline s32 ActiveBattle_AdjustDamageForDodge(s32 damage) { return damage; }
 static inline void ActiveBattle_FinishDamageCalc(void) {}
+static inline void ActiveBattle_ShowDamageNumber(enum BattlerId battler, u16 damage, bool32 isCritical) {}
 #endif
 
 #endif // GUARD_ACTIVE_BATTLE_H
