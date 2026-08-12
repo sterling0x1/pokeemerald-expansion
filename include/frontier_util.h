@@ -43,5 +43,9 @@ u8 GetFrontierEnemyMonLevel(enum FrontierLevelMode lvlMode);
 s32 GetHighestLevelInPlayerParty(void);
 u16 FacilityClassToGraphicsId(u8 facilityClass);
 void ShowBattleFrontierCaughtBannedSpecies(void);
+u16 GetBattlePoints(void);
+bool8 IsEnoughBattlePoints(u16 cost);
+void SetBattlePoints(u16 pointAmount);
+bool8 RemoveBattlePoints(u16 toSub);
 
 #endif // GUARD_FRONTIER_UTIL_H

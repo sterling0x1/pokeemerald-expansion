@@ -86,4 +86,6 @@
 // Naming Screen
 #define AUTO_LOWERCASE_KEYBOARD      GEN_LATEST  // Starting in GEN_6, after entering the first uppercase character, the keyboard switches to lowercase letters.
 
+// Modern shop interface.
+#define MUDSKIP_SHOP_UI
 #endif // GUARD_CONFIG_GENERAL_H
