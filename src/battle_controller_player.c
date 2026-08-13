@@ -58,6 +58,10 @@ static const u8 sCompactMoveTextColors[] = {TEXT_COLOR_TRANSPARENT, 13, 15};
 #define COMPACT_ARROW_GREEN 6
 #define COMPACT_ARROW_GRAY  11
 static bool8 sUsingCompactMoveList;
+// This screen can be open for either player battler in a double battle.
+// Keep its return destination per battler so one battler's move screen never
+// changes how the other battler's picker completes.
+static bool8 sCompactAttackerPickerFromMoveList[MAX_BATTLERS_COUNT];
 static bool8 sUsingModernActionMenu;
 static u8 sCompactAttackerCursor[MAX_BATTLERS_COUNT];
 static u8 sCompactAttackerNames[PARTY_SIZE][POKEMON_NAME_BUFFER_SIZE];
@@ -494,6 +498,7 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
     // Compact panels live on the third battle-background page, just like the move screen.
     gBattle_BG0_X = 0;
     gBattle_BG0_Y = DISPLAY_HEIGHT * 2;
+    sCompactAttackerPickerFromMoveList[battler] = sUsingCompactMoveList;
     sCompactAttackerCursor[battler] = gBattlerPartyIndexes[battler];
     DrawModernMoveSelectionPanels();
     DrawCompactAttackerPicker(battler);
@@ -525,8 +530,10 @@ static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyInde
             return FALSE;
 
         // Do not let both player battlers select the same reserve attacker.
-        if ((gBattleStruct->reserveAttackerSelectionReady & (1u << otherBattler))
-         && gBattleStruct->actingPartyIndexes[otherBattler] == partyIndex)
+        // The engine clears reserveAttackerSelectionReady immediately after
+        // opening that battler's move menu, but its party assignment remains
+        // in effect until the turn is complete.
+        if (gBattleStruct->actingPartyIndexes[otherBattler] == partyIndex)
             return FALSE;
 
         // A reserve Pokemon committed to a charging, multi-turn, or recharge
@@ -572,7 +579,7 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
         gMoveSelectionCursor[battler] = 0;
         gMultiUsePlayerCursor = GetOppositeBattler(battler);
 
-        if (sUsingCompactMoveList)
+        if (sCompactAttackerPickerFromMoveList[battler])
         {
             // We returned here from the move selector.
             // The engine is already waiting for the selected move, so do not
@@ -580,6 +587,7 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
             // and reopen the existing move-selection command locally.
             LoadCompactMoveInfoForAttacker(battler, mon);
             sBlockCompactAUntilReleased[battler] = TRUE;
+            sCompactAttackerPickerFromMoveList[battler] = FALSE;
             PlayerHandleChooseMove(battler);
             return;
         }
@@ -607,10 +615,11 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
         gMoveSelectionCursor[battler] = 0;
         gMultiUsePlayerCursor = GetOppositeBattler(battler);
 
-        if (sUsingCompactMoveList)
+        if (sCompactAttackerPickerFromMoveList[battler])
         {
             // We arrived from the move selector. Properly cancel the engine's
             // pending choose-move command.
+            sCompactAttackerPickerFromMoveList[battler] = FALSE;
             sUsingCompactMoveList = FALSE;
 
             BtlController_EmitTwoReturnValues(
