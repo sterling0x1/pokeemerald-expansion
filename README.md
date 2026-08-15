@@ -5,23 +5,26 @@ a custom `pokeemerald-expansion` project built on
 
 ## current features
 
-- vanilla, nuzlocke, and carnage game modes
-- two save slots with a shared pokémon transfer box
-- new game randomiser with persistent seeds
-- carnage mode randomisation
-- nuzlocke presets, custom rules, level caps, and fainted-pokémon handling
-- extended options menu and cheat menu
-- exp and money multipliers, fast exp, fast hp, instant text, and other qol settings
-- modular feature configuration for major custom systems
-- modern battle ui and bench attacker system (bench attacker x0.5 damage)
-- active battle critical-hit and dodge timing
+- vanilla, nuzlocke and carnage game modes
+- two independent save slots with a shared pokémon transfer box
+- new game randomiser with persistent seeds and in-game rerolling
+- nuzlocke presets, custom rules, level caps and fainted-pokémon handling
+- carnage-exclusive randomisation, including pokémon levels
+- modular options, cheat, qol, progression, difficulty and overworld systems
+- modern battle ui with the bench attacker system
+- active critical-hit and dodge timing
 - floating damage and healing numbers
-- key-item quick-access bar
-- pc/party box shortcuts and quick pokémon movement
-- floating damage/healing numbers 
+- modern shop ui and expanded game corner
+- key-item quick-access dock
+- party and box shortcuts with quick pokémon movement
 
+## project information
 
+- [full feature list](FEATURES.md)
+- [project changelog](CHANGELOG.md)
+- [credits](CREDITS.md)
 
 ## development status
 
-this is an active development build. some newer features and unusual battle/save scenarios still need wider testing.
+this is an active development build. newer features and unusual battle, game-mode
+and save combinations still need wider testing.

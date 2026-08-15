@@ -1,7 +1,15 @@
 # What features are included?
+
 ## Table of Contents
-- [What features are included?](#what-features-are-included)
-  - [Table of Contents](#table-of-contents)
+- [Custom project features](#custom-project-features)
+  - [Game modes and saves](#game-modes-and-saves)
+  - [Randomizer](#randomizer)
+  - [Battle systems](#battle-systems)
+  - [Menus and controls](#menus-and-controls)
+  - [Progression and quality of life](#progression-and-quality-of-life)
+  - [Game Corner and shops](#game-corner-and-shops)
+  - [Modular architecture](#modular-architecture)
+- [Upstream pokeemerald-expansion features](#upstream-pokeemerald-expansion-features)
   - [Configuration files](#configuration-files)
   - [Upgraded Battle Engine](#upgraded-battle-engine)
   - [Full Trainer customization](#full-trainer-customization)
@@ -10,6 +18,69 @@
   - [Engine improvements](#engine-improvements)
   - [Overworld improvements](#overworld-improvements)
   - [Developer tools](#developer-tools)
+
+## Custom project features
+
+### Game modes and saves
+
+- **Vanilla:** the standard Hoenn adventure with optional project settings.
+- **Nuzlocke:** a separate New Game mode with presets, custom rules, level caps, encounter limits, fainted-Pokémon handling and Nuzlocke-specific save protection.
+- **Carnage:** an exclusive randomizer mode with locked randomizer settings and randomized Pokémon levels.
+- **Two save slots:** two independent full saves selectable from the main menu.
+- **Shared Transfer Box:** an optional shared Pokémon box between supported save slots, with transfer confirmation and Nuzlocke restrictions.
+
+### Randomizer
+
+- Persistent save-specific seeds with in-game seed rerolling.
+- Separate controls for wild Pokémon, trainers, starters, gifts, static encounters, items, moves, abilities and evolutions.
+- Randomizer-aware starters, encounters, trainers and Move Relearner handling.
+- Module-safe defaults that restore normal game data when the Randomizer module is disabled.
+
+### Battle systems
+
+- **Modern Battle UI:** compact command and move-selection presentation with reusable scripted-battle support.
+- **Bench Attacker:** reserve party Pokémon can contribute attacks, including double-battle support and optional half damage.
+- **Active Battle:** R-button critical-hit and dodge timing that runs independently from battle-speed settings.
+- Floating damage numbers and green healing numbers.
+- Modern battle cursors and improved party/move selector behaviour.
+- Trainer-battle escape support with safe rematches.
+
+### Menus and controls
+
+- Extended scrolling Options Menu with modular pages and L/R indicators.
+- Modular Cheat Menu with EXP, money, catch-rate, hatch-speed, EV, Mart-price and Infinite Repel controls.
+- Icon-based Start Menu.
+- Key Item Dock with scrolling, selection enlargement, item names and direct activation.
+- R-button shortcut from the party selector to the PC.
+- L-button quick pick-up, drop and party replacement in the PC.
+
+### Progression and quality of life
+
+- Configurable EXP and money multipliers.
+- Fast EXP, Fast HP, Faster Intro and text-speed options.
+- Modular Difficulty API with Easy, Normal and Hard settings.
+- Independent Level Cap and Pokémon Rules modules.
+- Modular overworld and quality-of-life settings with vanilla-safe defaults.
+
+### Game Corner and shops
+
+- Expanded Mauville Game Corner with Gacha and additional minigames.
+- Modern Shop UI with seller graphics and improved item presentation.
+- Normal, variable-price, coin, Battle Point and decoration shop support.
+- Cheat-price and Free Shop compatibility.
+
+### Modular architecture
+
+- Major custom systems are registered through the project module manager.
+- Modules can hide their menus and disable their runtime hooks independently.
+- Disabled modules fall back to vanilla or upstream Expansion behaviour.
+- Current modules cover game modes, randomization, Nuzlocke, cheats, QoL, battle pacing, progression, Pokémon rules, difficulty, overworld features, Game Corner, Shop UI, Key Item Dock, Shared Transfer Box and Bench Attacker damage.
+
+For milestone-by-milestone changes, see the [project changelog](CHANGELOG.md).
+
+---
+
+## Upstream pokeemerald-expansion features
 
 ## Configuration files
 A lot of features listed below can be turned off as desired. Check which ones in these files
