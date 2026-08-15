@@ -4042,6 +4042,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
              && !gSpecialStatuses[gBattlerAttacker].attackerInParty
              && !IsAbilityOnSide(gBattlerAttacker, ABILITY_AROMA_VEIL)
              && gChosenMove != MOVE_STRUGGLE
+             && GetActiveGimmick(gBattlerAttacker) != GIMMICK_DYNAMAX
              && RandomPercentage(RNG_CURSED_BODY, 30))
             {
                 gBattleMons[gBattlerAttacker].volatiles.disabledMove = gChosenMove;
@@ -7953,8 +7954,11 @@ static inline s32 DoFutureSightAttackDamageCalc(struct DamageContext *ctx)
     ctx->isCrit = IsCriticalHit(ctx);
 
     if (ctx->typeEffectivenessModifier == UQ_4_12(0.0))
+	{
+		FreeRestoreBattleMons(savedBattleMons);
         return 0;
-
+	}
+	
     s32 dmg = DoMoveDamageCalc(ctx);
 
     FreeRestoreBattleMons(savedBattleMons);
@@ -8428,8 +8432,11 @@ uq4_12_t CalcTypeEffectivenessMultiplier(struct DamageContext *ctx)
         modifier = CalcTypeEffectivenessMultiplierInternal(ctx, modifier);
         if (GetMoveEffect(ctx->move) == EFFECT_TWO_TYPED_MOVE && !ctx->isAnticipation)
         {
+            enum Type primaryType = ctx->moveType;
+
             ctx->moveType = GetMoveArgType(ctx->move);
             modifier = CalcTypeEffectivenessMultiplierInternal(ctx, modifier);
+            ctx->moveType = primaryType;
         }
     }
 
