@@ -1535,9 +1535,15 @@ static void Cmd_healthbarupdate(void)
     switch (cmd->updateState)
     {
     case PASSIVE_HP_UPDATE:
-        BtlController_EmitHealthBarUpdate(battler, B_COMM_TO_CONTROLLER, min(gBattleStruct->passiveHpUpdate[battler], 10000));
+    {
+        s32 hpUpdate = min(gBattleStruct->passiveHpUpdate[battler], 10000);
+
+        BtlController_EmitHealthBarUpdate(battler, B_COMM_TO_CONTROLLER, hpUpdate);
         MarkBattlerForControllerExec(battler);
+        if (hpUpdate < 0)
+            ActiveBattle_ShowHealNumber(battler, min(-hpUpdate, gBattleMons[battler].maxHP - gBattleMons[battler].hp));
         break;
+    }
     case MOVE_DAMAGE_HP_UPDATE:
         if (IsDoubleSpreadMove())
         {
@@ -1559,6 +1565,8 @@ static void Cmd_healthbarupdate(void)
             if (damage > 0)
                 ActiveBattle_ShowDamageNumber(battler, min(damage, gBattleMons[battler].hp),
                                                gSpecialStatuses[battler].criticalHit);
+            else if (damage < 0)
+                ActiveBattle_ShowHealNumber(battler, min(-damage, gBattleMons[battler].maxHP - gBattleMons[battler].hp));
             if (IsOnPlayerSide(battler) && damage > 0)
                 gBattleResults.playerMonWasDamaged = TRUE;
         }

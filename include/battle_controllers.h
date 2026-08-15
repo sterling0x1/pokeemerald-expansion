@@ -414,6 +414,7 @@ void Task_PlayerController_RestoreBgmAfterCry(u8 taskId);
 void ActionSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum);
 void ActionSelectionDestroyCursorAt(u8 cursorPosition);
 void InitMoveSelectionsVarsAndStrings(enum BattlerId battler);
+void DrawModernActionMenuForScriptedBattle(enum BattlerId battler);
 void MoveSelectionCreateCursorAt(u8 cursorPos, u8 arg1);
 void MoveSelectionDestroyCursorAt(u8 cursorPosition);
 void PlayerHandleChooseMove(enum BattlerId battler);

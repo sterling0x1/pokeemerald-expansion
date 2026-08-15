@@ -36,6 +36,7 @@ struct ActiveBattleSaveData
 #if MODULE_ACTIVE_BATTLE_ENABLED
 void ActiveBattle_InitNewSave(void);
 void ActiveBattle_LoadSave(void);
+void ActiveBattle_ResetBattleState(void);
 bool32 ActiveBattle_AreCriticalsEnabled(void);
 void ActiveBattle_SetCriticalsEnabled(bool32 enabled);
 bool32 ActiveBattle_IsDodgingEnabled(void);
@@ -48,9 +49,11 @@ enum ActiveBattleCriticalResult ActiveBattle_GetCriticalResult(void);
 s32 ActiveBattle_AdjustDamageForDodge(s32 damage);
 void ActiveBattle_FinishDamageCalc(void);
 void ActiveBattle_ShowDamageNumber(enum BattlerId battler, u16 damage, bool32 isCritical);
+void ActiveBattle_ShowHealNumber(enum BattlerId battler, u16 healing);
 #else
 static inline void ActiveBattle_InitNewSave(void) {}
 static inline void ActiveBattle_LoadSave(void) {}
+static inline void ActiveBattle_ResetBattleState(void) {}
 static inline bool32 ActiveBattle_AreCriticalsEnabled(void) { return FALSE; }
 static inline void ActiveBattle_SetCriticalsEnabled(bool32 enabled) {}
 static inline bool32 ActiveBattle_IsDodgingEnabled(void) { return FALSE; }
@@ -63,6 +66,7 @@ static inline enum ActiveBattleCriticalResult ActiveBattle_GetCriticalResult(voi
 static inline s32 ActiveBattle_AdjustDamageForDodge(s32 damage) { return damage; }
 static inline void ActiveBattle_FinishDamageCalc(void) {}
 static inline void ActiveBattle_ShowDamageNumber(enum BattlerId battler, u16 damage, bool32 isCritical) {}
+static inline void ActiveBattle_ShowHealNumber(enum BattlerId battler, u16 healing) {}
 #endif
 
 #endif // GUARD_ACTIVE_BATTLE_H

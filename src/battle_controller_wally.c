@@ -168,8 +168,8 @@ static void WallyHandleActions(enum BattlerId battler)
         if (--gBattleStruct->wallyWaitFrames == 0)
         {
             PlaySE(SE_SELECT);
-            ActionSelectionDestroyCursorAt(0);
-            ActionSelectionCreateCursorAt(1, 0);
+            gActionSelectionCursor[battler] = B_ACTION_USE_ITEM;
+            DrawModernActionMenuForScriptedBattle(battler);
             gBattleStruct->wallyWaitFrames = B_WAIT_TIME_LONG;
             gBattleStruct->wallyBattleState++;
         }
@@ -306,17 +306,8 @@ static void HandleChooseActionAfterDma3(enum BattlerId battler)
 
 static void WallyHandleChooseAction(enum BattlerId battler)
 {
-    s32 i;
-
     gBattlerControllerFuncs[battler] = HandleChooseActionAfterDma3;
-    BattlePutTextOnWindow(gText_BattleMenu, B_WIN_ACTION_MENU);
-
-    for (i = 0; i < 4; i++)
-        ActionSelectionDestroyCursorAt(i);
-
-    ActionSelectionCreateCursorAt(gActionSelectionCursor[battler], 0);
-    BattleStringExpandPlaceholdersToDisplayedString(gText_WhatWillWallyDo);
-    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_ACTION_PROMPT);
+    DrawModernActionMenuForScriptedBattle(battler);
 }
 
 static void WallyHandleChooseMove(enum BattlerId battler)

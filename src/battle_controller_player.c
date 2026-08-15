@@ -57,7 +57,10 @@ static const u8 sCompactMoveTextColors[] = {TEXT_COLOR_TRANSPARENT, 13, 15};
 #define COMPACT_ARROW_RED   1
 #define COMPACT_ARROW_GREEN 6
 #define COMPACT_ARROW_GRAY  11
-static bool8 sUsingCompactMoveList;
+// Both player controllers can be choosing commands at the same time in a
+// double battle. Keep compact-menu state per battler so opening one battler's
+// action menu cannot overwrite the other battler's move/picker state.
+static bool8 sUsingCompactMoveList[MAX_BATTLERS_COUNT];
 // This screen can be open for either player battler in a double battle.
 // Keep its return destination per battler so one battler's move screen never
 // changes how the other battler's picker completes.
@@ -351,7 +354,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
         switch (gActionSelectionCursor[battler])
         {
         case 0: // Top left
-            if (ExtendedOptions_Get(EXT_OPT_BENCH_ATTACKER))
+            if (CanChooseReserveAttacker(battler))
             {
                 sBlockCompactAUntilReleased[battler] = TRUE;
                 OpenCompactAttackerPicker(battler);
@@ -498,11 +501,20 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
     // Compact panels live on the third battle-background page, just like the move screen.
     gBattle_BG0_X = 0;
     gBattle_BG0_Y = DISPLAY_HEIGHT * 2;
-    sCompactAttackerPickerFromMoveList[battler] = sUsingCompactMoveList;
+    sCompactAttackerPickerFromMoveList[battler] = sUsingCompactMoveList[battler];
     sCompactAttackerCursor[battler] = gBattlerPartyIndexes[battler];
     DrawModernMoveSelectionPanels();
     DrawCompactAttackerPicker(battler);
     gBattlerControllerFuncs[battler] = HandleInputCompactAttackerPicker;
+}
+
+static bool32 IsCompactAttackerSlotNavigable(u8 partyIndex)
+{
+    if (partyIndex >= PARTY_SIZE)
+        return FALSE;
+
+    return GetMonData(&gParties[B_TRAINER_PLAYER][partyIndex],
+                      MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE;
 }
 
 //static bool32 IsCompactAttackerSlotOccupied(u8 partyIndex)
@@ -525,15 +537,12 @@ static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyInde
         if (otherBattler == battler || !IsOnPlayerSide(otherBattler))
             continue;
 
-        // Do not select the Pokémon currently active in the partner position.
-        if (gBattlerPartyIndexes[otherBattler] == partyIndex)
-            return FALSE;
-
-        // Do not let both player battlers select the same reserve attacker.
-        // The engine clears reserveAttackerSelectionReady immediately after
-        // opening that battler's move menu, but its party assignment remains
-        // in effect until the turn is complete.
-        if (gBattleStruct->actingPartyIndexes[otherBattler] == partyIndex)
+        // Do not let both player battlers reserve the same attacker this turn.
+        // Use explicit selection-phase ownership: actingPartyIndexes can still
+        // contain the partner's value from the previous turn until that
+        // battler reaches its own turn-start state.
+        if ((gBattleStruct->reserveAttackerTurnCommitted & (1u << otherBattler))
+         && gBattleStruct->actingPartyIndexes[otherBattler] == partyIndex)
             return FALSE;
 
         // A reserve Pokemon committed to a charging, multi-turn, or recharge
@@ -575,6 +584,7 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
 
         gBattleStruct->actingPartyIndexes[battler] = *cursor;
         gBattleStruct->reserveAttackerSelectionReady |= 1u << battler;
+        gBattleStruct->reserveAttackerTurnCommitted |= 1u << battler;
 
         gMoveSelectionCursor[battler] = 0;
         gMultiUsePlayerCursor = GetOppositeBattler(battler);
@@ -611,6 +621,8 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
 
         gBattleStruct->reserveAttackerSelectionReady &=
             ~(1u << battler);
+        gBattleStruct->reserveAttackerTurnCommitted &=
+            ~(1u << battler);
 
         gMoveSelectionCursor[battler] = 0;
         gMultiUsePlayerCursor = GetOppositeBattler(battler);
@@ -620,7 +632,7 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
             // We arrived from the move selector. Properly cancel the engine's
             // pending choose-move command.
             sCompactAttackerPickerFromMoveList[battler] = FALSE;
-            sUsingCompactMoveList = FALSE;
+            sUsingCompactMoveList[battler] = FALSE;
 
             BtlController_EmitTwoReturnValues(
                 battler,
@@ -638,25 +650,25 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
             PlayerHandleChooseAction(battler);
         }
     }
-    else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1) && IsCompactAttackerSlotOccupied(battler, *cursor - 1))
+    else if (JOY_NEW(DPAD_LEFT) && (*cursor & 1) && IsCompactAttackerSlotNavigable(*cursor - 1))
     {
         PlaySE(SE_SELECT);
         (*cursor)--;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_RIGHT) && !(*cursor & 1) && IsCompactAttackerSlotOccupied(battler, *cursor + 1))
+    else if (JOY_NEW(DPAD_RIGHT) && !(*cursor & 1) && IsCompactAttackerSlotNavigable(*cursor + 1))
     {
         PlaySE(SE_SELECT);
         (*cursor)++;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_UP) && *cursor >= 2 && IsCompactAttackerSlotOccupied(battler, *cursor - 2))
+    else if (JOY_NEW(DPAD_UP) && *cursor >= 2 && IsCompactAttackerSlotNavigable(*cursor - 2))
     {
         PlaySE(SE_SELECT);
         *cursor -= 2;
         DrawCompactAttackerPicker(battler);
     }
-    else if (JOY_NEW(DPAD_DOWN) && *cursor < 4 && IsCompactAttackerSlotOccupied(battler, *cursor + 2))
+    else if (JOY_NEW(DPAD_DOWN) && *cursor < 4 && IsCompactAttackerSlotNavigable(*cursor + 2))
     {
         PlaySE(SE_SELECT);
         *cursor += 2;
@@ -869,6 +881,13 @@ static void DrawModernActionMenu(enum BattlerId battler)
     PutWindowTilemap(B_WIN_ACTION_PROMPT);
     CopyWindowToVram(B_WIN_ACTION_PROMPT, COPYWIN_FULL);
     CopyBgTilemapBufferToVram(0);
+}
+
+void DrawModernActionMenuForScriptedBattle(enum BattlerId battler)
+{
+    sUsingCompactMoveList[battler] = FALSE;
+    sUsingModernActionMenu = TRUE;
+    DrawModernActionMenu(battler);
 }
 
 static void LoadCompactMoveInfoForAttacker(enum BattlerId battler, struct Pokemon *mon)
@@ -1305,7 +1324,7 @@ void HandleInputChooseMove(enum BattlerId battler)
     {
         PlaySE(SE_SELECT);
         gBattleStruct->gimmick.playerSelect = FALSE;
-if (sUsingCompactMoveList)
+if (sUsingCompactMoveList[battler])
 {
     gBattleStruct->zmove.viewing = FALSE;
 
@@ -1453,7 +1472,7 @@ static void ReloadMoveNames(enum BattlerId battler)
 {
     if (gBattleStruct->zmove.viable && !gBattleStruct->zmove.viewing)
     {
-        sUsingCompactMoveList = FALSE;
+        sUsingCompactMoveList[battler] = FALSE;
         struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
         MoveSelectionDisplayZMove(GetUsableZMove(battler, moveInfo->moves[gMoveSelectionCursor[battler]]), battler);
     }
@@ -1461,7 +1480,7 @@ static void ReloadMoveNames(enum BattlerId battler)
     {
         gBattleStruct->zmove.viewing = FALSE;
         MoveSelectionDestroyCursorAt(battler);
-        sUsingCompactMoveList = TRUE;
+        sUsingCompactMoveList[battler] = TRUE;
         MoveSelectionDisplayMoveNames(battler);
         MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
         if (B_SHOW_EFFECTIVENESS)
@@ -2217,7 +2236,7 @@ static void MoveSelectionDisplayMoveNames(enum BattlerId battler)
 
 static void MoveSelectionDisplayPPString(enum BattlerId battler)
 {
-    if (sUsingCompactMoveList)
+    if (sUsingCompactMoveList[battler])
         return;
 
     StringCopy(gDisplayedStringBattle, gText_MoveInterfacePP);
@@ -2229,7 +2248,7 @@ static void MoveSelectionDisplayPPNumber(enum BattlerId battler)
     u8 *txtPtr;
     struct ChooseMoveStruct *moveInfo;
 
-    if (sUsingCompactMoveList || gBattleResources->bufferA[battler][2] == TRUE) // check if we didn't want to display pp number
+    if (sUsingCompactMoveList[battler] || gBattleResources->bufferA[battler][2] == TRUE) // check if we didn't want to display pp number
         return;
 
     SetPPNumbersPaletteInMoveSelection(battler);
@@ -2245,7 +2264,7 @@ static void MoveSelectionDisplayMoveType(enum BattlerId battler)
 {
     u8 *txtPtr, *end;
 
-    if (sUsingCompactMoveList)
+    if (sUsingCompactMoveList[battler])
         return;
     enum Species speciesId = gBattleMons[battler].species;
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
@@ -2298,7 +2317,7 @@ static void TryMoveSelectionDisplayMoveDescription(enum BattlerId battler)
 
 static void MoveSelectionDisplayMoveDescription(enum BattlerId battler)
 {
-    if (sUsingCompactMoveList)
+    if (sUsingCompactMoveList[battler])
     {
         DrawCompactMoveInfo(battler);
         return;
@@ -2473,11 +2492,22 @@ static void DrawCompactMoveInfo(enum BattlerId battler)
     CopyWindowToVram(B_WIN_MOVE_DESCRIPTION, COPYWIN_FULL);
 }
 
+static bool32 IsAnyCompactMoveListActive(void)
+{
+    for (enum BattlerId battler = 0; battler < gBattlersCount; battler++)
+    {
+        if (sUsingCompactMoveList[battler])
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
 void MoveSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum)
 {
     u16 src[2];
 
-    if (sUsingCompactMoveList)
+    if (IsAnyCompactMoveListActive())
         return;
 
     src[0] = baseTileNum + 1;
@@ -2491,7 +2521,7 @@ void MoveSelectionDestroyCursorAt(u8 cursorPosition)
 {
     u16 src[2];
 
-    if (sUsingCompactMoveList)
+    if (IsAnyCompactMoveListActive())
         return;
 
     src[0] = 0x1016;
@@ -2693,7 +2723,7 @@ static void PlayerHandleChooseAction(enum BattlerId battler)
     s32 i;
 
     // The normal command screen replaces the compact move/picker screen.
-    sUsingCompactMoveList = FALSE;
+    sUsingCompactMoveList[battler] = FALSE;
     sUsingModernActionMenu = TRUE;
     gBattlerControllerFuncs[battler] = HandleChooseActionAfterDma3;
     BattleTv_ClearExplosionFaintCause();
@@ -2777,7 +2807,7 @@ void InitMoveSelectionsVarsAndStrings(enum BattlerId battler)
 {
     DrawModernMoveSelectionPanels();
     LoadTypeIcons(battler);
-    sUsingCompactMoveList = TRUE;
+    sUsingCompactMoveList[battler] = TRUE;
     DrawCompactMoveList(battler);
     gMultiUsePlayerCursor = GetOppositeBattler(battler);
     MoveSelectionCreateCursorAt(gMoveSelectionCursor[battler], 0);
@@ -3189,7 +3219,7 @@ static void MoveSelectionDisplayMoveEffectiveness(u32 foeEffectiveness, enum Bat
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
     u8 *txtPtr;
 
-    if (sUsingCompactMoveList)
+    if (sUsingCompactMoveList[battler])
         return;
 
     txtPtr = StringCopy(gDisplayedStringBattle, gText_MoveInterfacePP);

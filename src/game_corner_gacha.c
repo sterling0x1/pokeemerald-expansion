@@ -45,6 +45,9 @@
 #include "pokemon_storage_system.h"
 #include "string_util.h"
 #include "field_specials.h"
+#include "game_mode.h"
+#include "nuzlocke.h"
+#include "randomizer.h"
 
 enum
 {
@@ -84,6 +87,8 @@ enum {
     SPR_CREDIT_DIG_100,
     SPR_CREDIT_DIG_1000,
 };
+
+#define GACHA_GIFT_KEY 0x47414348
 
 enum {
     GACHA_BASIC = 1,
@@ -2680,7 +2685,8 @@ void DeterminePokemonRarityAndNewStatus(void)
             } while (IsNotValidUnownedSpecies(species));  // Continue if owned (IsNotValidUnownedSpecies returns TRUE)
 
             // If we've broken out of the loop, we have a new Pokémon
-            sGacha->CalculatedSpecies = species;  // Store the species of the new Pokémon
+            sGacha->CalculatedSpecies = Randomizer_GetGiftStaticSpecies(species,
+                GACHA_GIFT_KEY ^ ((u32)sGacha->GachaId << 16) ^ species);
             break;  // Exit the loop after finding a new Pokémon
         }
         else
@@ -2710,7 +2716,8 @@ void DeterminePokemonRarityAndNewStatus(void)
             } while (IsNotValidOwnedSpecies(species));  // Continue if not owned
 
             // If we've broken out of the loop, we have an owned Pokémon
-            sGacha->CalculatedSpecies = species;  // Store the species of the owned Pokémon
+            sGacha->CalculatedSpecies = Randomizer_GetGiftStaticSpecies(species,
+                GACHA_GIFT_KEY ^ ((u32)sGacha->GachaId << 16) ^ species);
             break;  // Exit the loop after finding an owned Pokémon
         }
     }
@@ -3170,11 +3177,19 @@ static void GachaMain(u8 taskId)
     case STATE_POKEBALL_ARRIVE_WAIT:        
         if (gSprites[sGacha->bouncingPokeballSpriteId].callback == SpriteCallbackDummy)
         {
-            CreateRandomMon(&gParties[B_TRAINER_OPPONENT_A][0], sGacha->CalculatedSpecies, GetSpeciesGachaLevel());
+            u8 giftLevel = GameMode_RandomizeGiftLevel(GetSpeciesGachaLevel(),
+                GACHA_GIFT_KEY ^ ((u32)sGacha->GachaId << 16) ^ sGacha->CalculatedSpecies);
+
+            CreateRandomMon(&gParties[B_TRAINER_OPPONENT_A][0], sGacha->CalculatedSpecies, giftLevel);
+            Nuzlocke_PrepareGiftMon(&gParties[B_TRAINER_OPPONENT_A][0]);
             gSpecialVar_Result = GiveCapturedMonToPlayer(&gParties[B_TRAINER_OPPONENT_A][0]);
+            Nuzlocke_CommitGiftMon(gSpecialVar_Result != MON_CANT_GIVE);
             VarSet(VAR_TEMP_TRANSFERRED_SPECIES, sGacha->CalculatedSpecies);
-            GetSetPokedexFlag(SpeciesToNationalPokedexNum(sGacha->CalculatedSpecies), FLAG_SET_SEEN);
-            HandleSetPokedexFlag(SpeciesToNationalPokedexNum(sGacha->CalculatedSpecies), FLAG_SET_CAUGHT, GetMonData(&gParties[B_TRAINER_OPPONENT_A][0], MON_DATA_PERSONALITY));
+            if (gSpecialVar_Result != MON_CANT_GIVE)
+            {
+                GetSetPokedexFlag(SpeciesToNationalPokedexNum(sGacha->CalculatedSpecies), FLAG_SET_SEEN);
+                HandleSetPokedexFlag(SpeciesToNationalPokedexNum(sGacha->CalculatedSpecies), FLAG_SET_CAUGHT, GetMonData(&gParties[B_TRAINER_OPPONENT_A][0], MON_DATA_PERSONALITY));
+            }
             LoadPalette(GetMonFrontSpritePal(&gParties[B_TRAINER_OPPONENT_A][0]), OBJ_PLTT_ID(2), PLTT_SIZE_4BPP);
             SetMultiuseSpriteTemplateToPokemon(sGacha->CalculatedSpecies, B_POSITION_OPPONENT_LEFT);
             sGacha->monSpriteId = CreateMonPicSprite_Affine(sGacha->CalculatedSpecies, GetMonData(&gParties[B_TRAINER_OPPONENT_A][0], MON_DATA_IS_SHINY), GetMonData(&gParties[B_TRAINER_OPPONENT_A][0], MON_DATA_PERSONALITY), MON_PIC_AFFINE_FRONT, 120, 60, 14, TAG_NONE);
@@ -3336,4 +3351,3 @@ static void InitGachaScreen(void)
             break;
     }
 }
-

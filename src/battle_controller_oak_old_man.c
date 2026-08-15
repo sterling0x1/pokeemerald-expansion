@@ -179,7 +179,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
             PlaySE(SE_SELECT);
             ActionSelectionDestroyCursorAt(gActionSelectionCursor[battler]);
             gActionSelectionCursor[battler] ^= 1;
-            ActionSelectionCreateCursorAt(gActionSelectionCursor[battler], 0);
+            DrawModernActionMenuForScriptedBattle(battler);
         }
     }
     else if (JOY_NEW(DPAD_RIGHT))
@@ -189,7 +189,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
             PlaySE(SE_SELECT);
             ActionSelectionDestroyCursorAt(gActionSelectionCursor[battler]);
             gActionSelectionCursor[battler] ^= 1;
-            ActionSelectionCreateCursorAt(gActionSelectionCursor[battler], 0);
+            DrawModernActionMenuForScriptedBattle(battler);
         }
     }
     else if (JOY_NEW(DPAD_UP))
@@ -199,7 +199,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
             PlaySE(SE_SELECT);
             ActionSelectionDestroyCursorAt(gActionSelectionCursor[battler]);
             gActionSelectionCursor[battler] ^= 2;
-            ActionSelectionCreateCursorAt(gActionSelectionCursor[battler], 0);
+            DrawModernActionMenuForScriptedBattle(battler);
         }
     }
     else if (JOY_NEW(DPAD_DOWN))
@@ -209,7 +209,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
             PlaySE(SE_SELECT);
             ActionSelectionDestroyCursorAt(gActionSelectionCursor[battler]);
             gActionSelectionCursor[battler] ^= 2;
-            ActionSelectionCreateCursorAt(gActionSelectionCursor[battler], 0);
+            DrawModernActionMenuForScriptedBattle(battler);
         }
     }
     else if (JOY_NEW(B_BUTTON))
@@ -252,8 +252,8 @@ static void SimulateInputChooseAction(enum BattlerId battler)
         {
             // Move cursor to BAG
             PlaySE(SE_SELECT);
-            ActionSelectionDestroyCursorAt(0);
-            ActionSelectionCreateCursorAt(1, 0);
+            gActionSelectionCursor[battler] = B_ACTION_USE_ITEM;
+            DrawModernActionMenuForScriptedBattle(battler);
             gBattleStruct->simulatedInputState2 = 64;
             ++gBattleStruct->simulatedInputState0;
         }
@@ -771,22 +771,9 @@ static void HandleChooseActionAfterDma3(enum BattlerId battler)
 
 static void OakOldManHandleChooseAction(enum BattlerId battler)
 {
-    s32 i;
-
     gBattlerControllerFuncs[battler] = HandleChooseActionAfterDma3;
     BattlePutTextOnWindow(gText_EmptyString3, B_WIN_MSG);
-    BattlePutTextOnWindow(gText_BattleMenu, B_WIN_ACTION_MENU);
-    for (i = 0; i < MAX_MON_MOVES; ++i)
-        ActionSelectionDestroyCursorAt((u8)i);
-    ActionSelectionCreateCursorAt(gActionSelectionCursor[battler], 0);
-    if (gBattleTypeFlags & BATTLE_TYPE_FIRST_BATTLE)
-    {
-        PREPARE_MON_NICK_BUFFER(gBattleTextBuff1, battler, gBattlerPartyIndexes[battler]);
-        BattleStringExpandPlaceholdersToDisplayedString(gText_WhatWillPkmnDo);
-    }
-    else
-        BattleStringExpandPlaceholdersToDisplayedString(gText_WhatWillOldManDo);
-    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_ACTION_PROMPT);
+    DrawModernActionMenuForScriptedBattle(battler);
 }
 
 static void OakHandleChooseMove_WaitDma3(enum BattlerId battler)

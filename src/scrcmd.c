@@ -2560,6 +2560,7 @@ bool8 ScrCmd_pokemart(struct ScriptContext *ctx)
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_HARDWARE);
 
+#if MODULE_MODERN_SHOP_UI_ENABLED
     switch (shopType)
     {
     case NEW_SHOP_PRICE_TYPE_VARIABLE:
@@ -2575,6 +2576,12 @@ bool8 ScrCmd_pokemart(struct ScriptContext *ctx)
         NewShop_CreatePokemartMenu(ptr);
         break;
     }
+#else
+    // The vanilla shop has one price source. Custom coin/point/variable marts
+    // therefore fall back to an ordinary money mart when the UI module is off.
+    (void)shopType;
+    CreatePokemartMenu(ptr);
+#endif
     ScriptContext_Stop();
     return TRUE;
 }
@@ -2585,7 +2592,11 @@ bool8 ScrCmd_pokemartdecoration(struct ScriptContext *ctx)
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_HARDWARE);
 
+#if MODULE_MODERN_SHOP_UI_ENABLED
     NewShop_CreateDecorationShop1Menu(ptr);
+#else
+    CreateDecorationShop1Menu(ptr);
+#endif
     ScriptContext_Stop();
     return TRUE;
 }
@@ -2597,7 +2608,11 @@ bool8 ScrCmd_pokemartdecoration2(struct ScriptContext *ctx)
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_HARDWARE);
 
+#if MODULE_MODERN_SHOP_UI_ENABLED
     NewShop_CreateDecorationShop2Menu(ptr);
+#else
+    CreateDecorationShop2Menu(ptr);
+#endif
     ScriptContext_Stop();
     return TRUE;
 }

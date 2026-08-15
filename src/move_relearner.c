@@ -22,6 +22,7 @@
 #include "party_menu.h"
 #include "pokemon_storage_system.h"
 #include "pokemon_summary_screen.h"
+#include "randomizer.h"
 #include "script.h"
 #include "sound.h"
 #include "sprite.h"
@@ -739,10 +740,36 @@ static void RemoveScrollArrows(void)
 static void CreateLearnableMovesList(void)
 {
     s32 i;
+    u32 numFilteredMoves = 0;
 
     struct BoxPokemon *boxmon = GetSelectedBoxMonFromPcOrParty();
     if (gRelearnMode == RELEARN_MODE_SCRIPT || sRelearnTypes[gMoveRelearnerState].isActive())
         sMoveRelearnerStruct->numMenuChoices = sRelearnTypes[gMoveRelearnerState].getMoves(boxmon, sMoveRelearnerStruct->movesToLearn);
+
+    // Move randomization is normally applied when a move is given. Apply the
+    // same deterministic mapping here so the relearner displays what will
+    // actually be learned, and remove mapped duplicates/already-known moves.
+    for (i = 0; i < sMoveRelearnerStruct->numMenuChoices; i++)
+    {
+        enum Move move = Randomizer_GetMove(sMoveRelearnerStruct->movesToLearn[i], 0);
+        bool32 alreadyInList = FALSE;
+
+        if (BoxMonKnowsMove(boxmon, move))
+            continue;
+
+        for (u32 j = 0; j < numFilteredMoves; j++)
+        {
+            if (sMoveRelearnerStruct->movesToLearn[j] == move)
+            {
+                alreadyInList = TRUE;
+                break;
+            }
+        }
+
+        if (!alreadyInList)
+            sMoveRelearnerStruct->movesToLearn[numFilteredMoves++] = move;
+    }
+    sMoveRelearnerStruct->numMenuChoices = numFilteredMoves;
 
     if (P_SORT_MOVES)
         SortMovesAlphabetically(sMoveRelearnerStruct->movesToLearn, sMoveRelearnerStruct->numMenuChoices);

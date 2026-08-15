@@ -606,6 +606,7 @@ struct BattleStruct
     u8 actingPartyIndexes[MAX_BATTLERS_COUNT];
     u8 reserveAttackerActive; // Bitfield: a battler is temporarily using its selected reserve attacker.
     u8 reserveAttackerSelectionReady; // Bitfield: the in-battle attacker grid has already selected a party slot.
+    u8 reserveAttackerTurnCommitted; // Bitfield: this battler has reserved actingPartyIndexes for the current selection phase.
     u8 reserveAttackerSavedPartyIndexes[MAX_BATTLERS_COUNT];
     struct BattlePokemon reserveAttackerSavedBattleMons[MAX_BATTLERS_COUNT];
     // Persistent runtime state for off-field reserve attackers.
@@ -1154,6 +1155,8 @@ static inline bool32 IsOnPlayerSide(enum BattlerId battler)
 {
     return GetBattlerSide(battler) == B_SIDE_PLAYER;
 }
+
+bool32 CanChooseReserveAttacker(enum BattlerId battler);
 
 static inline bool32 IsBattlerAlly(enum BattlerId battlerAtk, enum BattlerId battlerDef)
 {
