@@ -125,6 +125,10 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/e
 This project follows the [all-contributors](https://github.com/all-contributors/allcontributors.org) specification. Contributions of any kind welcome!
 
 ## Other Credits
+### Integrated Feature Credits:
+- Expanded Game Corner and Gacha system by [agsmgmaster64](https://github.com/agsmgmaster64), integrated from the [gacha-expansion feature branch](https://github.com/agsmgmaster64/worldlinkdeluxe-ame/tree/gacha-expansion)
+- Modern Shop UI by [mudskipper13](https://github.com/mudskipper13) and feature branch contributors, integrated from the [new-shop-ui-rhh feature branch](https://github.com/agsmgmaster64/worldlinkdeluxe-ame/tree/feature/new-shop-ui-rhh)
+
 ### Mega Evolution Overworld Sprite Credits:
 - [princess-phoenix](https://www.deviantart.com/princess-phoenix)
 - [larryturbo](https://www.deviantart.com/larryturbo)
