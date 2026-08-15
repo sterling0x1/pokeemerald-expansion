@@ -14,8 +14,6 @@ merges.
 - Added a compact evolution indicator showing levels remaining or the general evolution method.
 - Added safe cleanup for the new selector status sprites.
 - Fixed the Poké Ball quick shortcut showing an invalid item after the final ball was used.
-- Prevented the empty quick shortcut from causing an `ITEM_NONE` assertion and fake throw.
-- Restored normal quick-shortcut selection when valid Poké Balls remain.
 
 ### Project maintenance
 
