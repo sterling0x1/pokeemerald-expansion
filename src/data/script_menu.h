@@ -942,6 +942,23 @@ static const struct MenuAction sMultichoiceList_GameCornerBattleItemPrizes[] = {
     {sText_NoThanks}
 };
 
+static const struct MenuAction sMultichoiceList_GameCornerNewPrizes[] = {
+    {COMPOUND_STRING("RARE CANDY{CLEAR_TO 75}{FONT_SMALL}4,000 COINS")},
+    {COMPOUND_STRING("SUN STONE{CLEAR_TO 78}{FONT_SMALL}2,000 COINS")},
+    {COMPOUND_STRING("MOON STONE{CLEAR_TO 73}{FONT_SMALL}2,000 COINS")},
+    {COMPOUND_STRING("CHOICE BAND{CLEAR_TO 71}{FONT_SMALL}4,500 COINS")},
+    {COMPOUND_STRING("BRIGHTPOWDER{CLEAR_TO 65}{FONT_SMALL}4,500 COINS")},
+    {sText_NoThanks}
+};
+
+static const struct MenuAction sMultichoiceList_GameCornerNewPrizes2[] = {
+    {COMPOUND_STRING("FIRE STONE{CLEAR_TO 75}{FONT_SMALL}2,000 COINS")},
+    {COMPOUND_STRING("THUNDER STONE{CLEAR_TO 63}{FONT_SMALL}2,000 COINS")},
+    {COMPOUND_STRING("WATER STONE{CLEAR_TO 70}{FONT_SMALL}2,000 COINS")},
+    {COMPOUND_STRING("LEAF STONE{CLEAR_TO 75}{FONT_SMALL}2,000 COINS")},
+    {sText_NoThanks}
+};
+
 static const struct MenuAction sMultichoiceList_DeptStoreElevator[] = {
     {COMPOUND_STRING("5F")},
     {COMPOUND_STRING("4F")},
@@ -1266,6 +1283,8 @@ static const struct MultichoiceListStruct sMultichoiceLists[] =
     [MULTI_GAME_CORNER_POKEMON_PRIZES] = MULTICHOICE(sMultichoiceList_GameCornerPokemonPrizes),
     [MULTI_GAME_CORNER_TMPRIZES]           = MULTICHOICE(sMultichoiceList_GameCornerTMPrizes),
     [MULTI_GAME_CORNER_BATTLE_ITEM_PRIZES] = MULTICHOICE(sMultichoiceList_GameCornerBattleItemPrizes),
+    [MULTI_GAME_CORNER_NEW_PRIZES]         = MULTICHOICE(sMultichoiceList_GameCornerNewPrizes),
+    [MULTI_GAME_CORNER_NEW_PRIZES_2]       = MULTICHOICE(sMultichoiceList_GameCornerNewPrizes2),
     [MULTI_DEPT_STORE_ELEVATOR]            = MULTICHOICE(sMultichoiceList_DeptStoreElevator),
     [MULTI_GAME_CORNER_COIN_PURCHASE_COUNTER] = MULTICHOICE(sMultichoiceList_GameCornerCoinPurchaseCounter),
     [MULTI_LINKED_DIRECT_UNION]         = MULTICHOICE(sMultichoiceList_LinkedDirectUnion),

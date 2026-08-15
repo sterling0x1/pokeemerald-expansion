@@ -74,7 +74,7 @@ struct ActiveBattleDamageNumber
 };
 
 static EWRAM_DATA struct ActiveBattlePrompt sPrompt = {0};
-static EWRAM_DATA struct ActiveBattleDamageNumber sDamageNumber = {0};
+static EWRAM_DATA struct ActiveBattleDamageNumber sDamageNumbers[MAX_BATTLERS_COUNT] = {0};
 static const u8 sDodgeOverlayText[] = _("R");
 static const u8 sCriticalOverlayText[] = _("CRIT");
 static const u8 sDamageMinusText[] = _("-");
@@ -164,6 +164,12 @@ void ActiveBattle_LoadSave(void)
     }
 }
 
+void ActiveBattle_ResetBattleState(void)
+{
+    memset(&sPrompt, 0, sizeof(sPrompt));
+    memset(sDamageNumbers, 0, sizeof(sDamageNumbers));
+}
+
 bool32 ActiveBattle_AreCriticalsEnabled(void)
 {
     struct ActiveBattleSaveData *data;
@@ -228,7 +234,7 @@ static bool32 IsEligibleMove(enum BattlerId attacker, enum BattlerId target, enu
 const u32 excludedBattles = BATTLE_TYPE_LINK | BATTLE_TYPE_MULTI
                           | BATTLE_TYPE_SAFARI | BATTLE_TYPE_FIRST_BATTLE | BATTLE_TYPE_CATCH_TUTORIAL
                           | BATTLE_TYPE_INGAME_PARTNER | BATTLE_TYPE_RECORDED | BATTLE_TYPE_RECORDED_LINK
-                          | BATTLE_TYPE_TRAINER_HILL | BATTLE_TYPE_FRONTIER | BATTLE_TYPE_POKEDUDE
+                          | BATTLE_TYPE_TRAINER_HILL | BATTLE_TYPE_POKEDUDE
                           | BATTLE_TYPE_RECORDED_IS_MASTER;
 
     if (gBattleTypeFlags & excludedBattles)
@@ -237,7 +243,7 @@ const u32 excludedBattles = BATTLE_TYPE_LINK | BATTLE_TYPE_MULTI
         return FALSE;
     if (GetMoveCategory(move) == DAMAGE_CATEGORY_STATUS || GetMovePower(move) == 0)
         return FALSE;
-    if (IsSpreadMove(GetBattlerMoveTargetType(attacker, move)) || IsMultiHitMove(move))
+    if (IsSpreadMove(GetBattlerMoveTargetType(attacker, move)))
         return FALSE;
     if (IsFixedDamageMove(move))
         return FALSE;
@@ -569,15 +575,21 @@ void ActiveBattle_FinishDamageCalc(void)
     sPrompt.result = ACTIVE_BATTLE_CRIT_NONE;
 }
 
-static void DestroyDamageNumber(void)
+static void DestroyDamageNumber(enum BattlerId battler)
 {
-    if (!sDamageNumber.active)
+    struct ActiveBattleDamageNumber *number;
+
+    if (battler >= MAX_BATTLERS_COUNT)
         return;
 
-    ClearWindowTilemap(sDamageNumber.windowId);
+    number = &sDamageNumbers[battler];
+    if (!number->active)
+        return;
+
+    ClearWindowTilemap(number->windowId);
     ScheduleBgCopyTilemapToVram(0);
-    RemoveWindow(sDamageNumber.windowId);
-    sDamageNumber.active = FALSE;
+    RemoveWindow(number->windowId);
+    number->active = FALSE;
 }
 
 static void Task_FloatDamageNumber(u8 taskId)
@@ -586,7 +598,7 @@ static void Task_FloatDamageNumber(u8 taskId)
 
     if (++task->data[0] >= DAMAGE_NUMBER_FRAMES)
     {
-        DestroyDamageNumber();
+        DestroyDamageNumber(task->data[1]);
         DestroyTask(taskId);
         return;
     }
@@ -602,13 +614,26 @@ static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCrit
     s16 x;
     s16 y;
     u8 taskId;
+    u8 oldTaskId;
+    struct ActiveBattleDamageNumber *number;
 
     if (amount == 0 || battler >= gBattlersCount)
         return;
+    if (GetTaskCount() >= NUM_TASKS)
+        return;
 
-    if (FuncIsActiveTask(Task_FloatDamageNumber))
-        DestroyTask(FindTaskIdByFunc(Task_FloatDamageNumber));
-    DestroyDamageNumber();
+    number = &sDamageNumbers[battler];
+    for (oldTaskId = 0; oldTaskId < NUM_TASKS; oldTaskId++)
+    {
+        if (gTasks[oldTaskId].isActive
+         && gTasks[oldTaskId].func == Task_FloatDamageNumber
+         && gTasks[oldTaskId].data[1] == battler)
+        {
+            DestroyTask(oldTaskId);
+            break;
+        }
+    }
+    DestroyDamageNumber(battler);
 
     spriteLeft = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_LEFT);
     spriteRight = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_RIGHT);
@@ -619,27 +644,29 @@ static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCrit
     y = max(8, min(y, 112));
     template.tilemapLeft = x / 8;
     template.tilemapTop = y / 8;
+    template.baseBlock = DAMAGE_NUMBER_BASE_BLOCK + battler * template.width * template.height;
 
-    sDamageNumber.windowId = AddWindow(&template);
-    if (sDamageNumber.windowId == WINDOW_NONE)
+    number->windowId = AddWindow(&template);
+    if (number->windowId == WINDOW_NONE)
         return;
 
-    sDamageNumber.active = TRUE;
-    sDamageNumber.left = template.tilemapLeft;
-    sDamageNumber.top = template.tilemapTop;
-    FillWindowPixelBuffer(sDamageNumber.windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
+    number->active = TRUE;
+    number->left = template.tilemapLeft;
+    number->top = template.tilemapTop;
+    FillWindowPixelBuffer(number->windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
     LoadPalette(sDamageNumberPalette, BG_PLTT_ID(DAMAGE_NUMBER_PALETTE), sizeof(sDamageNumberPalette));
     StringCopy(text, isHealing ? sHealPlusText : sDamageMinusText);
     ConvertIntToDecimalStringN(text + 1, amount, STR_CONV_MODE_LEFT_ALIGN, 4);
-    AddTextPrinterParameterized4(sDamageNumber.windowId, FONT_SMALL_NARROWER, 3, 2, 0, 0,
+    AddTextPrinterParameterized4(number->windowId, FONT_SMALL_NARROWER, 3, 2, 0, 0,
                                  isHealing ? sHealNumberColors
                                            : isCritical ? sCriticalDamageNumberColors : sDamageNumberColors,
                                  TEXT_SKIP_DRAW, text);
-    PutWindowTilemap(sDamageNumber.windowId);
-    CopyWindowToVram(sDamageNumber.windowId, COPYWIN_FULL);
+    PutWindowTilemap(number->windowId);
+    CopyWindowToVram(number->windowId, COPYWIN_FULL);
 
     taskId = CreateTask(Task_FloatDamageNumber, 1);
     gTasks[taskId].data[0] = 0;
+    gTasks[taskId].data[1] = battler;
 }
 
 void ActiveBattle_ShowDamageNumber(enum BattlerId battler, u16 damage, bool32 isCritical)

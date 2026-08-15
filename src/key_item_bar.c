@@ -203,8 +203,12 @@ static void DestroyKeyItemBarSprites(void)
 
 bool32 TryOpenKeyItemBar(void)
 {
+    u8 taskId;
+
     // Prevent duplicate instances if Select is processed twice.
     if (FindTaskIdByFunc(Task_KeyItemBarWaitForInput) != TASK_NONE)
+        return FALSE;
+    if (GetTaskCount() >= NUM_TASKS)
         return FALSE;
 
     FreezeObjectEvents();
@@ -214,7 +218,7 @@ bool32 TryOpenKeyItemBar(void)
 
     CreateDockNameWindow();
     CreateKeyItemBarSprites();
-    CreateTask(Task_KeyItemBarWaitForInput, 0x50);
+    taskId = CreateTask(Task_KeyItemBarWaitForInput, 0x50);
     PlaySE(SE_WIN_OPEN);
 
     return TRUE;
@@ -293,13 +297,26 @@ static void UseSelectedKeyItem(u8 taskId)
 {
     u8 itemTaskId;
     enum Item itemId = sKeyItemBarItemIds[sKeyItemBarSelected];
+    TaskFunc itemUseFunc = GetItemFieldFunc(itemId);
+
+    if (itemUseFunc == NULL)
+    {
+        PlaySE(SE_FAILURE);
+        return;
+    }
+
+    if (GetTaskCount() >= NUM_TASKS)
+    {
+        PlaySE(SE_FAILURE);
+        return;
+    }
+    itemTaskId = CreateTask(itemUseFunc, 8);
 
     // Keep the player locked: Key Item field-use tasks expect the same state as
     // the normal Select-button shortcut and will release it when they finish.
     DestroyKeyItemBarSprites();
     RemoveDockNameWindow();
     gSpecialVar_ItemId = itemId;
-    itemTaskId = CreateTask(GetItemFieldFunc(itemId), 8);
     gTasks[itemTaskId].data[3] = TRUE;
 
     DestroyTask(taskId);

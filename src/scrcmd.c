@@ -63,10 +63,12 @@
 #include "list_menu.h"
 #include "malloc.h"
 #include "battle.h"
+#include "new_shop.h"
 #include "constants/comparison_operators.h"
 #include "constants/event_objects.h"
 #include "constants/map_types.h"
 #include "constants/party_menu.h"
+#include "constants/new_shop.h"
 
 typedef u16 (*SpecialFunc)(void);
 typedef void (*NativeFunc)(struct ScriptContext *ctx);
@@ -2554,10 +2556,32 @@ bool8 ScrCmd_dowildbattle(struct ScriptContext *ctx)
 bool8 ScrCmd_pokemart(struct ScriptContext *ctx)
 {
     const void *ptr = (void *)ScriptReadWord(ctx);
+    u16 shopType = ScriptReadHalfword(ctx);
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_HARDWARE);
 
+#if MODULE_MODERN_SHOP_UI_ENABLED
+    switch (shopType)
+    {
+    case NEW_SHOP_PRICE_TYPE_VARIABLE:
+        NewShop_CreateVariablePokemartMenu(ptr);
+        break;
+    case NEW_SHOP_PRICE_TYPE_COINS:
+        NewShop_CreateCoinPokemartMenu(ptr);
+        break;
+    case NEW_SHOP_PRICE_TYPE_POINTS:
+        NewShop_CreatePointsPokemartMenu(ptr);
+        break;
+    default:
+        NewShop_CreatePokemartMenu(ptr);
+        break;
+    }
+#else
+    // The vanilla shop has one price source. Custom coin/point/variable marts
+    // therefore fall back to an ordinary money mart when the UI module is off.
+    (void)shopType;
     CreatePokemartMenu(ptr);
+#endif
     ScriptContext_Stop();
     return TRUE;
 }
@@ -2568,19 +2592,27 @@ bool8 ScrCmd_pokemartdecoration(struct ScriptContext *ctx)
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_HARDWARE);
 
+#if MODULE_MODERN_SHOP_UI_ENABLED
+    NewShop_CreateDecorationShop1Menu(ptr);
+#else
     CreateDecorationShop1Menu(ptr);
+#endif
     ScriptContext_Stop();
     return TRUE;
 }
 
-// Changes clerk dialogue slightly from above. See MART_TYPE_DECOR2
+// Changes clerk dialogue slightly from above. See NEW_SHOP_TYPE_DECOR2
 bool8 ScrCmd_pokemartdecoration2(struct ScriptContext *ctx)
 {
     const void *ptr = (void *)ScriptReadWord(ctx);
 
     Script_RequestEffects(SCREFF_V1 | SCREFF_HARDWARE);
 
+#if MODULE_MODERN_SHOP_UI_ENABLED
+    NewShop_CreateDecorationShop2Menu(ptr);
+#else
     CreateDecorationShop2Menu(ptr);
+#endif
     ScriptContext_Stop();
     return TRUE;
 }
@@ -3421,5 +3453,21 @@ bool8 ScrCmd_getbraillestringwidth(struct ScriptContext * ctx)
         msg = (u8 *)ctx->data[0];
 
     gSpecialVar_0x8004 = GetStringWidth(FONT_BRAILLE, msg, -1);
+    return FALSE;
+}
+
+bool8 ScrCmd_signmsg(struct ScriptContext *ctx)
+{
+    Script_RequestEffects(SCREFF_V1);
+
+    gMsgIsSignPost = TRUE;
+    return FALSE;
+}
+
+bool8 ScrCmd_normalmsg(struct ScriptContext *ctx)
+{
+    Script_RequestEffects(SCREFF_V1);
+
+    gMsgIsSignPost = FALSE;
     return FALSE;
 }

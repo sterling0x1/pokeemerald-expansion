@@ -18,6 +18,14 @@
 gSpecials::
 .endif
 	def_special HealPlayerParty
+	def_special StartBlackJack
+	def_special StartGacha
+	def_special StartBlockStacker
+	def_special StartDerby
+	def_special GetNewDerby
+	def_special StartSnake
+	def_special StartFlappyBird
+	def_special Special_ViewVoltorbFlip
 	def_special SetCableClubWarp
 	def_special DoCableClubWarp, waitstate=1
 	def_special ReturnFromLinkRoom, waitstate=1
@@ -214,7 +222,7 @@ gSpecials::
 	def_special ChooseSendDaycareMon, waitstate=1
 	def_special ShowDaycareLevelMenu, waitstate=1
 	def_special GetNumLevelsGainedFromDaycare
-	def_special GetDaycareCost
+	def_special GetDaycareCostAndPrepareString
 	def_special TakePokemonFromDaycare
 	def_special ScriptHatchMon
 	def_special EggHatch, waitstate=1

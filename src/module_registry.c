@@ -38,6 +38,21 @@ extern const struct ModuleDescriptor gGameModesModuleDescriptor;
 #if MODULE_ACTIVE_BATTLE_ENABLED
 extern const struct ModuleDescriptor gActiveBattleModuleDescriptor;
 #endif
+#if MODULE_KEY_ITEM_DOCK_ENABLED
+extern const struct ModuleDescriptor gKeyItemDockModuleDescriptor;
+#endif
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+extern const struct ModuleDescriptor gSharedTransferBoxModuleDescriptor;
+#endif
+#if MODULE_BENCH_ATTACKER_HALF_DAMAGE_ENABLED
+extern const struct ModuleDescriptor gBenchAttackerDamageModuleDescriptor;
+#endif
+#if MODULE_MODERN_SHOP_UI_ENABLED
+extern const struct ModuleDescriptor gModernShopUiModuleDescriptor;
+#endif
+#if MODULE_GAME_CORNER_ENABLED
+extern const struct ModuleDescriptor gGameCornerModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -76,5 +91,20 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_ACTIVE_BATTLE_ENABLED
     [MODULE_ID_ACTIVE_BATTLE] = &gActiveBattleModuleDescriptor,
+#endif
+#if MODULE_KEY_ITEM_DOCK_ENABLED
+    [MODULE_ID_KEY_ITEM_DOCK] = &gKeyItemDockModuleDescriptor,
+#endif
+#if MODULE_SHARED_TRANSFER_BOX_ENABLED
+    [MODULE_ID_SHARED_TRANSFER_BOX] = &gSharedTransferBoxModuleDescriptor,
+#endif
+#if MODULE_BENCH_ATTACKER_HALF_DAMAGE_ENABLED
+    [MODULE_ID_BENCH_ATTACKER_DAMAGE] = &gBenchAttackerDamageModuleDescriptor,
+#endif
+#if MODULE_MODERN_SHOP_UI_ENABLED
+    [MODULE_ID_MODERN_SHOP_UI] = &gModernShopUiModuleDescriptor,
+#endif
+#if MODULE_GAME_CORNER_ENABLED
+    [MODULE_ID_GAME_CORNER] = &gGameCornerModuleDescriptor,
 #endif
 };

@@ -104,6 +104,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/e
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Liamjd14"><img src="https://avatars.githubusercontent.com/u/175732139?v=4?s=100" width="100px;" alt="Liam"/><br /><sub><b>Liam</b></sub></a><br /><a href="https://github.com/rh-hideout/pokeemerald-expansion/commits?author=Liamjd14" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Gastly92"><img src="https://avatars.githubusercontent.com/u/262681076?v=4?s=100" width="100px;" alt="Gastly92"/><br /><sub><b>Gastly92</b></sub></a><br /><a href="https://github.com/rh-hideout/pokeemerald-expansion/commits?author=Gastly92" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/montmoguri"><img src="https://avatars.githubusercontent.com/u/202215938?v=4?s=100" width="100px;" alt="Montblanc"/><br /><sub><b>Montblanc</b></sub></a><br /><a href="#design-montmoguri" title="Design">🎨</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Black-Fragrant"><img src="https://avatars.githubusercontent.com/u/105663910?v=4?s=100" width="100px;" alt="Black-Fragrant"/><br /><sub><b>Black-Fragrant</b></sub></a><br /><a href="#design-Black-Fragrant" title="Design">🎨</a></td>
     </tr>
   </tbody>
   <tfoot>
@@ -124,6 +125,10 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/e
 This project follows the [all-contributors](https://github.com/all-contributors/allcontributors.org) specification. Contributions of any kind welcome!
 
 ## Other Credits
+### Integrated Feature Credits:
+- Expanded Game Corner and Gacha system by [agsmgmaster64](https://github.com/agsmgmaster64), integrated from the [gacha-expansion feature branch](https://github.com/agsmgmaster64/worldlinkdeluxe-ame/tree/gacha-expansion)
+- Modern Shop UI by [mudskipper13](https://github.com/mudskipper13) and feature branch contributors, integrated from the [new-shop-ui-rhh feature branch](https://github.com/agsmgmaster64/worldlinkdeluxe-ame/tree/feature/new-shop-ui-rhh)
+
 ### Mega Evolution Overworld Sprite Credits:
 - [princess-phoenix](https://www.deviantart.com/princess-phoenix)
 - [larryturbo](https://www.deviantart.com/larryturbo)

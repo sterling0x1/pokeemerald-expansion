@@ -235,6 +235,25 @@ static struct BoxPokemon *LearnMove_GetBoxMonFromTaskData(u8 partyIndex)
 #define recoverPP     gTasks[taskId].data[3]
 // MoveLearnUI does not contain a waitMessage function and LearnMove assumes the calling task will wait when a printer is active
 // Remember to update Task_LearnMove is you wish to change to an explicit waitMessage system
+static u16 GiveDisplayedRelearnerMoveToBoxMon(struct BoxPokemon *boxmon, enum Move learnedMove)
+{
+    for (u32 i = 0; i < MAX_MON_MOVES; i++)
+    {
+        enum Move existingMove = GetBoxMonData(boxmon, MON_DATA_MOVE1 + i);
+
+        if (existingMove == MOVE_NONE)
+        {
+            u32 pp = GetMovePP(learnedMove);
+            SetBoxMonData(boxmon, MON_DATA_MOVE1 + i, &learnedMove);
+            SetBoxMonData(boxmon, MON_DATA_PP1 + i, &pp);
+            return learnedMove;
+        }
+        if (existingMove == learnedMove)
+            return MON_ALREADY_KNOWS_MOVE;
+    }
+    return MON_HAS_MAX_MOVES;
+}
+
 s32 LearnMove(const struct MoveLearnUI *ui, u8 taskId)
 {
     struct BoxPokemon *boxmon = LearnMove_GetBoxMonFromTaskData(partyIndex);
@@ -271,10 +290,26 @@ s32 LearnMove(const struct MoveLearnUI *ui, u8 taskId)
             return LEARN_MOVE_END;
         }
     case LEARN_MOVE:
-        if (GiveMoveToBoxMon(boxmon, move) != MON_HAS_MAX_MOVES)
+    {
+        // The relearner menu has already converted randomized choices to the
+        // exact move shown to the player. Other tutors still use the standard
+        // low-level function, which performs that conversion itself.
+        u16 result = gRelearnMode != RELEARN_MODE_NONE
+                   ? GiveDisplayedRelearnerMoveToBoxMon(boxmon, move)
+                   : GiveMoveToBoxMon(boxmon, move);
+
+        if (result == MON_ALREADY_KNOWS_MOVE)
+        {
+            GetBoxMonNickname(boxmon, gStringVar1);
+            StringCopy(gStringVar2, GetMoveName(move));
+            gSpecialVar_Result = FALSE;
+            ui->printMessage(gText_PkmnAlreadyKnows);
+            return LEARN_MOVE_END;
+        }
+        if (result != MON_HAS_MAX_MOVES)
             return LEARNED_MOVE_1;
-        else
-            return ASK_REPLACEMENT_1;
+        return ASK_REPLACEMENT_1;
+    }
     case ASK_REPLACEMENT_1:
         GetBoxMonNickname(boxmon, gStringVar1);
         StringCopy(gStringVar2, GetMoveName(move));

@@ -18,6 +18,15 @@
 #define MODULE_GAME_MODES_ENABLED TRUE
 #define MODULE_ACTIVE_BATTLE_ENABLED TRUE
 #define MODULE_KEY_ITEM_DOCK_ENABLED TRUE
+#define MODULE_MODERN_SHOP_UI_ENABLED TRUE
+#define MODULE_GAME_CORNER_ENABLED TRUE
+
+// Legacy compatibility name used by the imported Modern Shop UI. This must
+// live here rather than general.h: global.h reads general.h before TRUE/FALSE
+// are defined by the GBA headers.
+#if MODULE_MODERN_SHOP_UI_ENABLED
+#define MUDSKIP_SHOP_UI
+#endif
 // Applies a 50% final-damage penalty to successful Bench Attacker moves.
 // Set FALSE to keep Bench Attacker available at full damage.
 #define MODULE_BENCH_ATTACKER_HALF_DAMAGE_ENABLED TRUE
