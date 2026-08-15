@@ -2852,6 +2852,12 @@ bool32 CanThrowLastUsedBall(void)
         return FALSE;
     if (gBattleTypeFlags & (BATTLE_TYPE_TRAINER | BATTLE_TYPE_FRONTIER))
         return FALSE;
+    // Never pass ITEM_NONE (or corrupt item data) into the bag functions.
+    // SanitizeBagItemId deliberately asserts on invalid item IDs.
+    if (gBallToDisplay == ITEM_NONE || gBallToDisplay >= ITEMS_COUNT)
+        return FALSE;
+    if (GetItemPocket(gBallToDisplay) != POCKET_POKE_BALLS)
+        return FALSE;
     if (!CheckBagHasItem(gBallToDisplay, 1))
         return FALSE;
 
@@ -2862,8 +2868,14 @@ void TryAddLastUsedBallItemSprites(void)
 {
     if (B_LAST_USED_BALL == FALSE)
         return;
-    if (gLastThrownBall == 0
-      || (gLastThrownBall != 0 && !CheckBagHasItem(gLastThrownBall, 1)))
+    if (gLastThrownBall != ITEM_NONE
+     && gLastThrownBall < ITEMS_COUNT
+     && GetItemPocket(gLastThrownBall) == POCKET_POKE_BALLS
+     && CheckBagHasItem(gLastThrownBall, 1))
+    {
+        gBallToDisplay = gLastThrownBall;
+    }
+    else
     {
         // we're out of the last used ball, so just set it to the first ball in the bag
         u16 firstBall;
@@ -2872,6 +2884,7 @@ void TryAddLastUsedBallItemSprites(void)
         CompactItemsInBagPocket(POCKET_POKE_BALLS);
 
         firstBall = GetBagItemId(POCKET_POKE_BALLS, 0);
+        gBallToDisplay = ITEM_NONE;
         if (firstBall > ITEM_NONE)
             gBallToDisplay = firstBall;
     }
@@ -3058,9 +3071,20 @@ void TryRestoreLastUsedBall(void)
         return;
 
     if (gBattleStruct->ballSpriteIds[0] != MAX_SPRITES)
+    {
+        // The displayed ball may have been consumed since these sprites were
+        // created. Only validate after the shortcut has been initialised.
+        if (!CanThrowLastUsedBall())
+        {
+            TryHideOrRestoreLastUsedBall(0);
+            return;
+        }
         TryHideOrRestoreLastUsedBall(1);
+    }
     else
+    {
         TryAddLastUsedBallItemSprites();
+    }
 }
 
 static void SpriteCB_LastUsedBallBounce(struct Sprite *sprite)

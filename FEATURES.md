@@ -40,9 +40,11 @@
 
 - **Modern Battle UI:** compact command and move-selection presentation with reusable scripted-battle support.
 - **Bench Attacker:** reserve party Pokémon can contribute attacks, including double-battle support and optional half damage.
+- Compact Bench Attacker summaries with status badges and evolution information.
 - **Active Battle:** R-button critical-hit and dodge timing that runs independently from battle-speed settings.
 - Floating damage numbers and green healing numbers.
 - Modern battle cursors and improved party/move selector behaviour.
+- Safe Poké Ball quick access that hides itself when no valid ball remains.
 - Trainer-battle escape support with safe rematches.
 
 ### Menus and controls

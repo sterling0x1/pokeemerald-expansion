@@ -69,6 +69,7 @@ static bool8 sUsingModernActionMenu;
 static u8 sCompactAttackerCursor[MAX_BATTLERS_COUNT];
 static u8 sCompactAttackerNames[PARTY_SIZE][POKEMON_NAME_BUFFER_SIZE];
 static bool8 sBlockCompactAUntilReleased[MAX_BATTLERS_COUNT];
+static EWRAM_DATA u8 sCompactAttackerStatusSpriteIds[MAX_BATTLERS_COUNT];
 
 // Ordered so double-battle comparisons can keep the strongest visible result.
 enum
@@ -120,6 +121,9 @@ static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyInde
 static void HandleInputCompactAttackerPicker(enum BattlerId battler);
 static void DrawCompactAttackerPicker(enum BattlerId battler);
 static void DrawCompactAttackerSummary(enum BattlerId battler);
+static void DrawCompactEvolutionIndicator(struct Pokemon *mon, enum Species species);
+static void UpdateCompactAttackerStatusSprite(enum BattlerId battler, struct Pokemon *mon);
+static void DestroyCompactAttackerStatusSprite(enum BattlerId battler);
 static void LoadCompactMoveInfoForAttacker(enum BattlerId battler, struct Pokemon *mon);
 static void FormatCompactAttackerName(u8 *dst, struct Pokemon *mon);
 static void DrawModernActionMenu(enum BattlerId battler);
@@ -503,6 +507,10 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
     gBattle_BG0_Y = DISPLAY_HEIGHT * 2;
     sCompactAttackerPickerFromMoveList[battler] = sUsingCompactMoveList[battler];
     sCompactAttackerCursor[battler] = gBattlerPartyIndexes[battler];
+    // Battle sprites are reset between battles, so initialise this picker-owned
+    // slot before its first use rather than relying on non-zero EWRAM data.
+    sCompactAttackerStatusSpriteIds[battler] = SPRITE_NONE;
+    LoadPartyMenuAilmentGfx();
     DrawModernMoveSelectionPanels();
     DrawCompactAttackerPicker(battler);
     gBattlerControllerFuncs[battler] = HandleInputCompactAttackerPicker;
@@ -581,6 +589,7 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
         }
 
         PlaySE(SE_SELECT);
+        DestroyCompactAttackerStatusSprite(battler);
 
         gBattleStruct->actingPartyIndexes[battler] = *cursor;
         gBattleStruct->reserveAttackerSelectionReady |= 1u << battler;
@@ -615,6 +624,7 @@ static void HandleInputCompactAttackerPicker(enum BattlerId battler)
     else if (JOY_NEW(B_BUTTON))
     {
         PlaySE(SE_SELECT);
+        DestroyCompactAttackerStatusSprite(battler);
 
         gBattleStruct->actingPartyIndexes[battler] =
             gBattlerPartyIndexes[battler];
@@ -733,6 +743,7 @@ static void DrawCompactAttackerSummary(enum BattlerId battler)
 
     if (species == SPECIES_NONE || species == SPECIES_EGG)
     {
+        DestroyCompactAttackerStatusSprite(battler);
         AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 8, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, sEmpty);
         return;
@@ -748,6 +759,7 @@ static void DrawCompactAttackerSummary(enum BattlerId battler)
     *dst = EOS;
     AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 0, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+    UpdateCompactAttackerStatusSprite(battler, mon);
 
     type1 = GetSpeciesType(species, 0);
     type2 = GetSpeciesType(species, 1);
@@ -779,6 +791,131 @@ static void DrawCompactAttackerSummary(enum BattlerId battler)
         *dst = EOS;
         AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 18, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+    }
+
+    DrawCompactEvolutionIndicator(mon, species);
+}
+
+static void DrawCompactEvolutionIndicator(struct Pokemon *mon, enum Species species)
+{
+    static const u8 sEvo[] = _("EVO");
+    static const u8 sLv[] = _(" LV");
+    static const u8 sReady[] = _("READY");
+    static const u8 sItem[] = _("ITEM");
+    static const u8 sTrade[] = _("TRADE");
+    static const u8 sSpecial[] = _("SPEC");
+    static const u8 sFinal[] = _("FINAL");
+    const struct Evolution *evolutions = GetSpeciesEvolutions(species);
+    const u8 *methodText = sFinal;
+    u16 nearestLevel = 0xFFFF;
+    u8 level = GetMonData(mon, MON_DATA_LEVEL);
+    bool32 hasItemEvolution = FALSE;
+    bool32 hasTradeEvolution = FALSE;
+    bool32 hasSpecialEvolution = FALSE;
+    u8 text[12];
+    u8 *dst;
+
+    if (evolutions != NULL)
+    {
+        for (u32 i = 0; evolutions[i].method != EVOLUTIONS_END; i++)
+        {
+            if (SanitizeSpeciesId(evolutions[i].targetSpecies) == SPECIES_NONE)
+                continue;
+
+            switch (evolutions[i].method)
+            {
+            case EVO_LEVEL:
+            case EVO_LEVEL_BATTLE_ONLY:
+                if (evolutions[i].param != 0 && evolutions[i].param < nearestLevel)
+                    nearestLevel = evolutions[i].param;
+                else if (evolutions[i].param == 0)
+                    hasSpecialEvolution = TRUE;
+                break;
+            case EVO_ITEM:
+                hasItemEvolution = TRUE;
+                break;
+            case EVO_TRADE:
+                hasTradeEvolution = TRUE;
+                break;
+            case EVO_NONE:
+            case EVO_SPLIT_FROM_EVO:
+                break;
+            default:
+                hasSpecialEvolution = TRUE;
+                break;
+            }
+        }
+    }
+
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 66, 10, 0, 0,
+                                 sCompactMoveTextColors, TEXT_SKIP_DRAW, sEvo);
+
+    if (nearestLevel != 0xFFFF)
+    {
+        if (nearestLevel <= level)
+        {
+            methodText = sReady;
+        }
+        else
+        {
+            dst = ConvertIntToDecimalStringN(text, nearestLevel - level, STR_CONV_MODE_LEFT_ALIGN, 2);
+            dst = StringAppend(dst, sLv);
+            *dst = EOS;
+            methodText = text;
+        }
+    }
+    else if (hasItemEvolution)
+    {
+        methodText = sItem;
+    }
+    else if (hasTradeEvolution)
+    {
+        methodText = sTrade;
+    }
+    else if (hasSpecialEvolution)
+    {
+        methodText = sSpecial;
+    }
+
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 66, 20, 0, 0,
+                                 sCompactMoveTextColors, TEXT_SKIP_DRAW, methodText);
+}
+
+static void UpdateCompactAttackerStatusSprite(enum BattlerId battler, struct Pokemon *mon)
+{
+    u8 ailment = GetMonAilment(mon);
+    u8 spriteId = sCompactAttackerStatusSpriteIds[battler];
+
+    if (ailment == AILMENT_NONE || ailment == AILMENT_PKRS)
+    {
+        DestroyCompactAttackerStatusSprite(battler);
+        return;
+    }
+
+    if (spriteId == SPRITE_NONE)
+    {
+        // The compact summary occupies x 136-231 and y 120-151 on screen.
+        // The stock 32x8 status badge sits neatly against its upper-right edge.
+        spriteId = CreateSprite(&gSpriteTemplate_StatusIcons, 214, 124, 0);
+        if (spriteId == MAX_SPRITES)
+            return;
+
+        sCompactAttackerStatusSpriteIds[battler] = spriteId;
+        gSprites[spriteId].oam.priority = 0;
+    }
+
+    StartSpriteAnim(&gSprites[spriteId], ailment - 1);
+    gSprites[spriteId].invisible = FALSE;
+}
+
+static void DestroyCompactAttackerStatusSprite(enum BattlerId battler)
+{
+    u8 spriteId = sCompactAttackerStatusSpriteIds[battler];
+
+    if (spriteId != SPRITE_NONE)
+    {
+        DestroySprite(&gSprites[spriteId]);
+        sCompactAttackerStatusSpriteIds[battler] = SPRITE_NONE;
     }
 }
 

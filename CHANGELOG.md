@@ -6,8 +6,23 @@ merges.
 
 ## Unreleased
 
-- Added source credits for the expanded Game Corner and Gacha system.
-- Added source credits for the modern Shop UI.
+## 2.9.7 - 2026-08-15
+
+### Battle UI
+
+- Added status badges to the compact Bench Attacker Pokémon selector.
+- Added a compact evolution indicator showing levels remaining or the general evolution method.
+- Added safe cleanup for the new selector status sprites.
+- Fixed the Poké Ball quick shortcut showing an invalid item after the final ball was used.
+- Prevented the empty quick shortcut from causing an `ITEM_NONE` assertion and fake throw.
+- Restored normal quick-shortcut selection when valid Poké Balls remain.
+
+### Project maintenance
+
+- Integrated the latest upstream Expansion changes and fixes.
+- Added source credits for the expanded Game Corner, Gacha system and modern Shop UI.
+- Enabled compressed overworld graphics to reduce ROM usage.
+- Removed obsolete packaged plugin copies that duplicated systems already present in the project.
 
 ## 2.9.6 - 2026-08-15
 
