@@ -17,6 +17,7 @@
 #include "extended_options.h"
 #include "item.h"
 #include "item_menu.h"
+#include "item_use.h"
 #include "link.h"
 #include "main.h"
 #include "nuzlocke.h"
@@ -70,6 +71,16 @@ static u8 sCompactAttackerCursor[MAX_BATTLERS_COUNT];
 static u8 sCompactAttackerNames[PARTY_SIZE][POKEMON_NAME_BUFFER_SIZE];
 static bool8 sBlockCompactAUntilReleased[MAX_BATTLERS_COUNT];
 static EWRAM_DATA u8 sCompactAttackerStatusSpriteIds[MAX_BATTLERS_COUNT];
+#if MODULE_BATTLE_BAG_ENABLED
+static u8 sBattleBagCursor[MAX_BATTLERS_COUNT];
+static u8 sBattleBagPocketPos[MAX_BATTLERS_COUNT];
+static u8 sBattleBagListTop[MAX_BATTLERS_COUNT];
+static bool8 sBattleBagBrowsingItems[MAX_BATTLERS_COUNT];
+static bool8 sBattleBagPocketEmpty[MAX_BATTLERS_COUNT];
+static bool8 sBattleBagBlockAUntilReleased[MAX_BATTLERS_COUNT];
+static bool8 sBattleBagItemPending[MAX_BATTLERS_COUNT];
+static enum Item sBattleBagPendingItem[MAX_BATTLERS_COUNT];
+#endif
 
 // Ordered so double-battle comparisons can keep the strongest visible result.
 enum
@@ -127,6 +138,11 @@ static void DestroyCompactAttackerStatusSprite(enum BattlerId battler);
 static void LoadCompactMoveInfoForAttacker(enum BattlerId battler, struct Pokemon *mon);
 static void FormatCompactAttackerName(u8 *dst, struct Pokemon *mon);
 static void DrawModernActionMenu(enum BattlerId battler);
+#if MODULE_BATTLE_BAG_ENABLED
+static void OpenBattleBagMenu(enum BattlerId battler);
+static void HandleInputBattleBagMenu(enum BattlerId battler);
+static void DrawBattleBagMenu(enum BattlerId battler);
+#endif
 static void WaitForMonSelection(enum BattlerId battler);
 static void CompleteWhenChoseItem(enum BattlerId battler);
 static void Task_LaunchLvlUpAnim(u8);
@@ -377,7 +393,12 @@ static void HandleInputChooseAction(enum BattlerId battler)
                 PlaySE(SE_BOO);
                 return;
             }
+#if MODULE_BATTLE_BAG_ENABLED
+            OpenBattleBagMenu(battler);
+            return;
+#else
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_ITEM, 0);
+#endif
             break;
         case 2: // Bottom left
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_SWITCH, 0);
@@ -1019,6 +1040,376 @@ static void DrawModernActionMenu(enum BattlerId battler)
     CopyWindowToVram(B_WIN_ACTION_PROMPT, COPYWIN_FULL);
     CopyBgTilemapBufferToVram(0);
 }
+
+#if MODULE_BATTLE_BAG_ENABLED
+enum
+{
+    BATTLE_BAG_ITEMS,
+    BATTLE_BAG_BALLS,
+    BATTLE_BAG_BERRIES,
+    BATTLE_BAG_COUNT,
+};
+
+static enum Pocket GetBattleBagPocket(enum BattlerId battler)
+{
+    static const enum Pocket sPockets[BATTLE_BAG_COUNT] =
+    {
+        [BATTLE_BAG_ITEMS] = POCKET_ITEMS,
+        [BATTLE_BAG_BALLS] = POCKET_POKE_BALLS,
+        [BATTLE_BAG_BERRIES] = POCKET_BERRIES,
+    };
+
+    return sPockets[sBattleBagCursor[battler]];
+}
+
+static u32 GetBattleBagPocketCapacity(enum Pocket pocket)
+{
+    switch (pocket)
+    {
+    case POCKET_ITEMS:
+        return BAG_ITEMS_COUNT;
+    case POCKET_POKE_BALLS:
+        return BAG_POKEBALLS_COUNT;
+    case POCKET_BERRIES:
+        return BAG_BERRIES_COUNT;
+    default:
+        return 0;
+    }
+}
+
+static enum Item GetBattleBagItemAt(enum BattlerId battler, u8 pocketPos)
+{
+    enum Item item = GetBagItemId(GetBattleBagPocket(battler), pocketPos);
+
+    if (item == ITEM_NONE || GetItemBattleUsage(item) == 0)
+        return ITEM_NONE;
+    return item;
+}
+
+static bool8 SeekBattleBagItem(enum BattlerId battler, s32 direction)
+{
+    u32 capacity = GetBattleBagPocketCapacity(GetBattleBagPocket(battler));
+    s32 position = sBattleBagPocketPos[battler];
+
+    for (u32 i = 0; i < capacity; i++)
+    {
+        position += direction;
+        if (position < 0)
+            position = capacity - 1;
+        else if ((u32)position >= capacity)
+            position = 0;
+
+        if (GetBattleBagItemAt(battler, position) != ITEM_NONE)
+        {
+            sBattleBagPocketPos[battler] = position;
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+static u32 GetBattleBagUsableItemCount(enum BattlerId battler)
+{
+    u32 count = 0;
+    u32 capacity = GetBattleBagPocketCapacity(GetBattleBagPocket(battler));
+
+    for (u32 i = 0; i < capacity; i++)
+    {
+        if (GetBattleBagItemAt(battler, i) != ITEM_NONE)
+            count++;
+    }
+    return count;
+}
+
+static u32 GetBattleBagItemOrdinal(enum BattlerId battler, u8 pocketPos)
+{
+    u32 ordinal = 0;
+
+    for (u32 i = 0; i < pocketPos; i++)
+    {
+        if (GetBattleBagItemAt(battler, i) != ITEM_NONE)
+            ordinal++;
+    }
+    return ordinal;
+}
+
+static u8 GetBattleBagPocketPosFromOrdinal(enum BattlerId battler, u32 ordinal)
+{
+    u32 capacity = GetBattleBagPocketCapacity(GetBattleBagPocket(battler));
+
+    for (u32 i = 0, current = 0; i < capacity; i++)
+    {
+        if (GetBattleBagItemAt(battler, i) == ITEM_NONE)
+            continue;
+        if (current++ == ordinal)
+            return i;
+    }
+    return 0;
+}
+
+static void KeepBattleBagSelectionVisible(enum BattlerId battler)
+{
+    u32 ordinal = GetBattleBagItemOrdinal(battler, sBattleBagPocketPos[battler]);
+
+    if (ordinal < sBattleBagListTop[battler])
+        sBattleBagListTop[battler] = ordinal;
+    else if (ordinal >= sBattleBagListTop[battler] + 3)
+        sBattleBagListTop[battler] = ordinal - 2;
+}
+
+static const u8 *PrepareBattleBagDescription(enum Item item)
+{
+    u32 lineBreaks = 0;
+
+    StringCopy(gStringVar4, GetItemDescription(item));
+    StripLineBreaks(gStringVar4);
+    BreakStringAutomatic(gStringVar4, WindowWidthPx(B_WIN_ACTION_PROMPT) - 2, 2,
+                         FONT_SMALL_NARROWER, HIDE_SCROLL_PROMPT);
+
+    for (u32 i = 0; gStringVar4[i] != EOS; i++)
+    {
+        if (gStringVar4[i] == CHAR_NEWLINE && ++lineBreaks == 2)
+        {
+            gStringVar4[i] = EOS;
+            break;
+        }
+    }
+    return gStringVar4;
+}
+
+static bool8 OpenBattleBagPocket(enum BattlerId battler)
+{
+    sBattleBagPocketPos[battler] = 0;
+    sBattleBagListTop[battler] = 0;
+    if (GetBattleBagItemAt(battler, 0) == ITEM_NONE && !SeekBattleBagItem(battler, 1))
+    {
+        sBattleBagPocketEmpty[battler] = TRUE;
+        sBattleBagBrowsingItems[battler] = TRUE;
+        PlaySE(SE_BOO);
+        return TRUE;
+    }
+
+    sBattleBagPocketEmpty[battler] = FALSE;
+    sBattleBagBrowsingItems[battler] = TRUE;
+    return TRUE;
+}
+
+static void OpenBattleBagMenu(enum BattlerId battler)
+{
+    switch (gBagPosition.pocket)
+    {
+    case POCKET_POKE_BALLS:
+        sBattleBagCursor[battler] = BATTLE_BAG_BALLS;
+        break;
+    case POCKET_BERRIES:
+        sBattleBagCursor[battler] = BATTLE_BAG_BERRIES;
+        break;
+    default:
+        sBattleBagCursor[battler] = BATTLE_BAG_ITEMS;
+        break;
+    }
+
+    sBattleBagBrowsingItems[battler] = FALSE;
+    sBattleBagPocketEmpty[battler] = FALSE;
+    sBattleBagBlockAUntilReleased[battler] = TRUE;
+    DrawBattleBagMenu(battler);
+    gBattlerControllerFuncs[battler] = HandleInputBattleBagMenu;
+}
+
+static void HandleInputBattleBagMenu(enum BattlerId battler)
+{
+    u8 oldCursor = sBattleBagCursor[battler];
+
+    if (sBattleBagBlockAUntilReleased[battler])
+    {
+        if (!JOY_HELD(A_BUTTON))
+            sBattleBagBlockAUntilReleased[battler] = FALSE;
+        return;
+    }
+
+    if (sBattleBagBrowsingItems[battler])
+    {
+        if (JOY_NEW(DPAD_UP))
+        {
+            SeekBattleBagItem(battler, -1);
+            KeepBattleBagSelectionVisible(battler);
+            PlaySE(SE_SELECT);
+            DrawBattleBagMenu(battler);
+        }
+        else if (JOY_NEW(DPAD_DOWN))
+        {
+            SeekBattleBagItem(battler, 1);
+            KeepBattleBagSelectionVisible(battler);
+            PlaySE(SE_SELECT);
+            DrawBattleBagMenu(battler);
+        }
+        else if (JOY_NEW(A_BUTTON))
+        {
+            enum Item item = GetBattleBagItemAt(battler, sBattleBagPocketPos[battler]);
+            struct Pokemon *mon = GetBattlerMon(battler);
+
+            if (sBattleBagPocketEmpty[battler])
+            {
+                PlaySE(SE_BOO);
+                return;
+            }
+
+            gPartyMenu.slotId = gBattlerPartyIndexes[battler];
+            if (item == ITEM_NONE || CannotUseItemsInBattle(item, mon))
+            {
+                PlaySE(SE_BOO);
+                return;
+            }
+
+            PlaySE(SE_SELECT);
+            gBagPosition.pocket = GetBattleBagPocket(battler);
+            gSpecialVar_ItemId = item;
+            gBattleStruct->itemPartyIndex[battler] = gBattlerPartyIndexes[battler];
+            sBattleBagPendingItem[battler] = item;
+            sBattleBagItemPending[battler] = TRUE;
+            sUsingModernActionMenu = FALSE;
+            BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_ITEM, 0);
+            BtlController_Complete(battler);
+        }
+        else if (JOY_NEW(B_BUTTON))
+        {
+            PlaySE(SE_SELECT);
+            sBattleBagBrowsingItems[battler] = FALSE;
+            DrawBattleBagMenu(battler);
+        }
+        return;
+    }
+
+    if (JOY_NEW(DPAD_UP))
+        sBattleBagCursor[battler] = BATTLE_BAG_ITEMS;
+    else if (JOY_NEW(DPAD_LEFT))
+        sBattleBagCursor[battler] = BATTLE_BAG_BALLS;
+    else if (JOY_NEW(DPAD_RIGHT))
+        sBattleBagCursor[battler] = BATTLE_BAG_BERRIES;
+    else if (JOY_NEW(A_BUTTON))
+    {
+        if (OpenBattleBagPocket(battler))
+        {
+            PlaySE(SE_SELECT);
+            DrawBattleBagMenu(battler);
+        }
+        return;
+    }
+    else if (JOY_NEW(B_BUTTON))
+    {
+        PlaySE(SE_SELECT);
+        TryRestoreLastUsedBall();
+        sUsingModernActionMenu = TRUE;
+        DrawModernActionMenu(battler);
+        gBattlerControllerFuncs[battler] = HandleInputChooseAction;
+        return;
+    }
+
+    if (oldCursor != sBattleBagCursor[battler])
+    {
+        PlaySE(SE_SELECT);
+        DrawBattleBagMenu(battler);
+    }
+}
+
+static void DrawBattleBagMenu(enum BattlerId battler)
+{
+    static const u8 sCursor[] = _("{RIGHT_ARROW}");
+    static const u8 sBlank[] = _(" ");
+    static const u8 sItems[] = _("ITEMS");
+    static const u8 sBalls[] = _("BALLS");
+    static const u8 sBerries[] = _("BERRIES");
+    static const u8 sTitle[] = _("BATTLE BAG");
+    static const u8 sHint[] = _("A:SELECT  B:BACK");
+    static const u8 sQuantitySeparator[] = _(" ×");
+    static const u8 sNoUsableItems[] = _("NO USABLE ITEMS");
+    static const u8 *const sLabels[BATTLE_BAG_COUNT] =
+    {
+        [BATTLE_BAG_ITEMS] = sItems,
+        [BATTLE_BAG_BALLS] = sBalls,
+        [BATTLE_BAG_BERRIES] = sBerries,
+    };
+    static const u8 sWindows[BATTLE_BAG_COUNT] =
+    {
+        [BATTLE_BAG_ITEMS] = B_WIN_ACTION_MENU,
+        [BATTLE_BAG_BALLS] = B_WIN_ACTION_MENU,
+        [BATTLE_BAG_BERRIES] = B_WIN_ACTION_MENU,
+    };
+    static const u8 sX[BATTLE_BAG_COUNT] = {26, 0, 46};
+    static const u8 sY[BATTLE_BAG_COUNT] = {0, 14, 14};
+    u8 *dst;
+
+    HandleBattleWindow(0, 34, 29, 39, WINDOW_CLEAR);
+    HandleBattleWindow(0, 34, 13, 39, 0);
+    HandleBattleWindow(14, 34, 29, 39, 0);
+
+    FillWindowPixelBuffer(B_WIN_ACTION_MENU, PIXEL_FILL(0xE));
+    FillWindowPixelBuffer(B_WIN_ACTION_PROMPT, PIXEL_FILL(0xE));
+
+    if (sBattleBagBrowsingItems[battler])
+    {
+        if (sBattleBagPocketEmpty[battler])
+        {
+            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 8, 8, 0, 0,
+                                         sCompactMoveTextColors, TEXT_SKIP_DRAW, sNoUsableItems);
+        }
+        else
+        {
+            enum Item item = GetBattleBagItemAt(battler, sBattleBagPocketPos[battler]);
+            struct ItemSlot slot = GetBagItemIdAndQuantity(GetBattleBagPocket(battler), sBattleBagPocketPos[battler]);
+            u32 itemCount = GetBattleBagUsableItemCount(battler);
+            u32 selectedOrdinal = GetBattleBagItemOrdinal(battler, sBattleBagPocketPos[battler]);
+
+            for (u32 row = 0; row < 3 && sBattleBagListTop[battler] + row < itemCount; row++)
+            {
+                u32 ordinal = sBattleBagListTop[battler] + row;
+                u8 pocketPos = GetBattleBagPocketPosFromOrdinal(battler, ordinal);
+                enum Item rowItem = GetBattleBagItemAt(battler, pocketPos);
+
+                dst = StringCopy(gDisplayedStringBattle, ordinal == selectedOrdinal ? sCursor : sBlank);
+                CopyItemName(rowItem, gStringVar1);
+                StringAppend(dst, gStringVar1);
+                AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 0, row * 10, 0, 0,
+                                             sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+            }
+
+            ConvertIntToDecimalStringN(gStringVar2, slot.quantity, STR_CONV_MODE_LEFT_ALIGN, 3);
+            dst = StringCopy(gDisplayedStringBattle, sQuantitySeparator);
+            StringAppend(dst, gStringVar2);
+            AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER,
+                                         WindowWidthPx(B_WIN_ACTION_PROMPT)
+                                         - GetStringWidth(FONT_SMALL_NARROWER, gDisplayedStringBattle, 0),
+                                         0, 0, 0,
+                                         sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+            AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 10, 0, 0,
+                                         sCompactMoveTextColors, TEXT_SKIP_DRAW, PrepareBattleBagDescription(item));
+        }
+    }
+    else
+    {
+        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 0, 0, 0,
+                                     sCompactMoveTextColors, TEXT_SKIP_DRAW, sTitle);
+        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 22, 0, 0,
+                                     sCompactMoveTextColors, TEXT_SKIP_DRAW, sHint);
+
+        for (u32 i = 0; i < BATTLE_BAG_COUNT; i++)
+        {
+            dst = StringCopy(gDisplayedStringBattle, i == sBattleBagCursor[battler] ? sCursor : sBlank);
+            StringAppend(dst, sLabels[i]);
+            AddTextPrinterParameterized4(sWindows[i], FONT_SMALL_NARROWER, sX[i], sY[i], 0, 0,
+                                         sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+        }
+    }
+
+    ScrollWindow(B_WIN_ACTION_MENU, 0, 2, PIXEL_FILL(0xE));
+    ScrollWindow(B_WIN_ACTION_PROMPT, 0, 2, PIXEL_FILL(0xE));
+    PutWindowTilemap(B_WIN_ACTION_MENU);
+    CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
+    PutWindowTilemap(B_WIN_ACTION_PROMPT);
+    CopyWindowToVram(B_WIN_ACTION_PROMPT, COPYWIN_FULL);
+    CopyBgTilemapBufferToVram(0);
+}
+#endif // MODULE_BATTLE_BAG_ENABLED
 
 void DrawModernActionMenuForScriptedBattle(enum BattlerId battler)
 {
@@ -3035,12 +3426,34 @@ static void PlayerHandleChooseItem(enum BattlerId battler)
 {
     s32 i;
 
-    BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 0x10, RGB_BLACK);
-    gBattlerControllerFuncs[battler] = OpenBagAndChooseItem;
     gBattlerInMenuId = battler;
 
     for (i = 0; i < ARRAY_COUNT(gBattlePartyCurrentOrder); i++)
         gBattlePartyCurrentOrder[i] = gBattleResources->bufferA[battler][1 + i];
+
+#if MODULE_BATTLE_BAG_ENABLED
+    if (sBattleBagItemPending[battler])
+    {
+        enum Item item = sBattleBagPendingItem[battler];
+
+        sBattleBagItemPending[battler] = FALSE;
+        sBattleBagPendingItem[battler] = ITEM_NONE;
+        gSpecialVar_ItemId = item;
+
+        if (!GetItemImportance(item)
+         && !(B_TRY_CATCH_TRAINER_BALL >= GEN_4
+           && GetItemBattleUsage(item) == EFFECT_ITEM_THROW_BALL
+           && (gBattleTypeFlags & BATTLE_TYPE_TRAINER)))
+            RemoveBagItem(item, 1);
+
+        BtlController_EmitOneReturnValue(battler, B_COMM_TO_ENGINE, item);
+        BtlController_Complete(battler);
+        return;
+    }
+#endif
+
+    BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 0x10, RGB_BLACK);
+    gBattlerControllerFuncs[battler] = OpenBagAndChooseItem;
 }
 
 static void PlayerHandleChoosePokemon(enum BattlerId battler)

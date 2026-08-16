@@ -20,6 +20,7 @@
 #define MODULE_KEY_ITEM_DOCK_ENABLED TRUE
 #define MODULE_MODERN_SHOP_UI_ENABLED TRUE
 #define MODULE_GAME_CORNER_ENABLED TRUE
+#define MODULE_BATTLE_BAG_ENABLED TRUE
 
 // Legacy compatibility name used by the imported Modern Shop UI. This must
 // live here rather than general.h: global.h reads general.h before TRUE/FALSE

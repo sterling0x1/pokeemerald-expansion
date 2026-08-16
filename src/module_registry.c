@@ -53,6 +53,9 @@ extern const struct ModuleDescriptor gModernShopUiModuleDescriptor;
 #if MODULE_GAME_CORNER_ENABLED
 extern const struct ModuleDescriptor gGameCornerModuleDescriptor;
 #endif
+#if MODULE_BATTLE_BAG_ENABLED
+extern const struct ModuleDescriptor gBattleBagModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -106,5 +109,8 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_GAME_CORNER_ENABLED
     [MODULE_ID_GAME_CORNER] = &gGameCornerModuleDescriptor,
+#endif
+#if MODULE_BATTLE_BAG_ENABLED
+    [MODULE_ID_BATTLE_BAG] = &gBattleBagModuleDescriptor,
 #endif
 };
