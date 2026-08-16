@@ -110,7 +110,7 @@ static const struct WindowTemplate sDamageNumberWindowTemplate =
     .bg = 0,
     .tilemapLeft = 0,
     .tilemapTop = 0,
-    .width = 5,
+    .width = 4,
     .height = 2,
     .paletteNum = DAMAGE_NUMBER_PALETTE,
     .baseBlock = DAMAGE_NUMBER_BASE_BLOCK,
@@ -608,9 +608,7 @@ static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCrit
 {
     struct WindowTemplate template = sDamageNumberWindowTemplate;
     u8 text[8];
-    s16 spriteLeft;
-    s16 spriteRight;
-    s16 spriteTop;
+    u8 textX;
     s16 x;
     s16 y;
     u8 taskId;
@@ -635,13 +633,14 @@ static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCrit
     }
     DestroyDamageNumber(battler);
 
-    spriteLeft = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_LEFT);
-    spriteRight = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_RIGHT);
-    spriteTop = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_TOP);
-    x = (spriteLeft + spriteRight) / 2 - 20;
-    y = spriteTop - 20;
-    x = max(0, min(x, 200));
-    y = max(8, min(y, 112));
+    // Keep the stable BG-window renderer, but anchor it to the healthbox's
+    // live position rather than the battler sprite.
+    x = gSprites[gHealthboxSpriteIds[battler]].x
+      + gSprites[gHealthboxSpriteIds[battler]].x2 + 16;
+    y = gSprites[gHealthboxSpriteIds[battler]].y
+      + gSprites[gHealthboxSpriteIds[battler]].y2 - 24;
+    x = max(0, min(x, DISPLAY_WIDTH - 32));
+    y = max(0, min(y, DISPLAY_HEIGHT - 16));
     template.tilemapLeft = x / 8;
     template.tilemapTop = y / 8;
     template.baseBlock = DAMAGE_NUMBER_BASE_BLOCK + battler * template.width * template.height;
@@ -657,7 +656,8 @@ static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCrit
     LoadPalette(sDamageNumberPalette, BG_PLTT_ID(DAMAGE_NUMBER_PALETTE), sizeof(sDamageNumberPalette));
     StringCopy(text, isHealing ? sHealPlusText : sDamageMinusText);
     ConvertIntToDecimalStringN(text + 1, amount, STR_CONV_MODE_LEFT_ALIGN, 4);
-    AddTextPrinterParameterized4(number->windowId, FONT_SMALL_NARROWER, 3, 2, 0, 0,
+    textX = (32 - min(GetStringWidth(FONT_SMALL, text, 0), 32)) / 2;
+    AddTextPrinterParameterized4(number->windowId, FONT_SMALL, textX, 2, 0, 0,
                                  isHealing ? sHealNumberColors
                                            : isCritical ? sCriticalDamageNumberColors : sDamageNumberColors,
                                  TEXT_SKIP_DRAW, text);
