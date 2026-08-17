@@ -636,9 +636,11 @@ static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCrit
     // Keep the stable BG-window renderer, but anchor it to the healthbox's
     // live position rather than the battler sprite.
     x = gSprites[gHealthboxSpriteIds[battler]].x
-      + gSprites[gHealthboxSpriteIds[battler]].x2 + 16;
+      + gSprites[gHealthboxSpriteIds[battler]].x2
+      + (IsOnPlayerSide(battler) ? 42 : 42);
     y = gSprites[gHealthboxSpriteIds[battler]].y
-      + gSprites[gHealthboxSpriteIds[battler]].y2 - 24;
+      + gSprites[gHealthboxSpriteIds[battler]].y2
+      - (IsOnPlayerSide(battler) ? 32 : 24);
     x = max(0, min(x, DISPLAY_WIDTH - 32));
     y = max(0, min(y, DISPLAY_HEIGHT - 16));
     template.tilemapLeft = x / 8;
