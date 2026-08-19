@@ -58,6 +58,20 @@ static const u8 sCompactMoveTextColors[] = {TEXT_COLOR_TRANSPARENT, 13, 15};
 #define COMPACT_ARROW_RED   1
 #define COMPACT_ARROW_GREEN 6
 #define COMPACT_ARROW_GRAY  11
+static const u8 sCompactActionTextColors[] =
+{
+    TEXT_COLOR_TRANSPARENT,
+    13,
+    TEXT_COLOR_TRANSPARENT,
+};
+
+// Compact battle command orbit.  The selected command sits at the front of a
+// four-point dial while the other three commands occupy top/rear/bottom nodes.
+// Up/down rotates the whole dial instead of moving a cursor through a list.
+#define ACTION_ORBIT_ANIM_FRAMES 6
+static bool8 sActionOrbitAnimating[MAX_BATTLERS_COUNT];
+static s8 sActionOrbitDirection[MAX_BATTLERS_COUNT];
+static u8 sActionOrbitFrame[MAX_BATTLERS_COUNT];
 // Both player controllers can be choosing commands at the same time in a
 // double battle. Keep compact-menu state per battler so opening one battler's
 // action menu cannot overwrite the other battler's move/picker state.
@@ -138,6 +152,9 @@ static void DestroyCompactAttackerStatusSprite(enum BattlerId battler);
 static void LoadCompactMoveInfoForAttacker(enum BattlerId battler, struct Pokemon *mon);
 static void FormatCompactAttackerName(u8 *dst, struct Pokemon *mon);
 static void DrawModernActionMenu(enum BattlerId battler);
+static void DrawModernActionOrbit(enum BattlerId battler, bool32 animating, u8 frame, s8 direction);
+static void StartModernActionOrbit(enum BattlerId battler, s8 direction);
+static void UpdateModernActionOrbit(enum BattlerId battler);
 #if MODULE_BATTLE_BAG_ENABLED
 static void OpenBattleBagMenu(enum BattlerId battler);
 static void HandleInputBattleBagMenu(enum BattlerId battler);
@@ -365,6 +382,15 @@ static void HandleInputChooseAction(enum BattlerId battler)
         }
     }
 
+    // While the command dial is rotating, consume this frame here.  The
+    // selection is committed only after the animation reaches the next node,
+    // so A/B cannot act on a half-rotated wheel.
+    if (sUsingModernActionMenu && sActionOrbitAnimating[battler])
+    {
+        UpdateModernActionOrbit(battler);
+        return;
+    }
+
     if (JOY_NEW(A_BUTTON))
     {
         PlaySE(SE_SELECT);
@@ -373,7 +399,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
 
         switch (gActionSelectionCursor[battler])
         {
-        case 0: // Top left
+        case 0: // Battle
             if (CanChooseReserveAttacker(battler))
             {
                 sBlockCompactAUntilReleased[battler] = TRUE;
@@ -382,7 +408,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
             }
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_MOVE, 0);
             break;
-        case 1: // Top right
+        case 1: // Bag
             if (Nuzlocke_IsActive()
              && (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
              && !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK))
@@ -391,6 +417,7 @@ static void HandleInputChooseAction(enum BattlerId battler)
                && gBattleResults.playerItemsUsed != 0)))
             {
                 PlaySE(SE_BOO);
+                sUsingModernActionMenu = TRUE;
                 return;
             }
 #if MODULE_BATTLE_BAG_ENABLED
@@ -400,10 +427,10 @@ static void HandleInputChooseAction(enum BattlerId battler)
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_USE_ITEM, 0);
 #endif
             break;
-        case 2: // Bottom left
+        case 2: // Pokémon
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_SWITCH, 0);
             break;
-        case 3: // Bottom right
+        case 3: // Run
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_RUN, 0);
             break;
         }
@@ -411,21 +438,13 @@ static void HandleInputChooseAction(enum BattlerId battler)
     }
     else if (sUsingModernActionMenu && JOY_NEW(DPAD_UP))
     {
-        if (gActionSelectionCursor[battler] != 0)
-        {
-            PlaySE(SE_SELECT);
-            gActionSelectionCursor[battler]--;
-            DrawModernActionMenu(battler);
-        }
+        PlaySE(SE_SELECT);
+        StartModernActionOrbit(battler, -1);
     }
     else if (sUsingModernActionMenu && JOY_NEW(DPAD_DOWN))
     {
-        if (gActionSelectionCursor[battler] != 3)
-        {
-            PlaySE(SE_SELECT);
-            gActionSelectionCursor[battler]++;
-            DrawModernActionMenu(battler);
-        }
+        PlaySE(SE_SELECT);
+        StartModernActionOrbit(battler, 1);
     }
     else if (!sUsingModernActionMenu && JOY_NEW(DPAD_LEFT))
     {
@@ -928,7 +947,6 @@ static void UpdateCompactAttackerStatusSprite(enum BattlerId battler, struct Pok
     StartSpriteAnim(&gSprites[spriteId], ailment - 1);
     gSprites[spriteId].invisible = FALSE;
 }
-
 static void DestroyCompactAttackerStatusSprite(enum BattlerId battler)
 {
     u8 spriteId = sCompactAttackerStatusSpriteIds[battler];
@@ -939,16 +957,138 @@ static void DestroyCompactAttackerStatusSprite(enum BattlerId battler)
         sCompactAttackerStatusSpriteIds[battler] = SPRITE_NONE;
     }
 }
+static const u8 sModernActionBattle[] = _("Battle");
+static const u8 sModernActionBag[] = _("Bag");
+static const u8 sModernActionPokemon[] = _("Pokémon");
+static const u8 sModernActionRun[] = _("Run");
+static const u8 *const sModernActionNames[] =
+{
+    sModernActionBattle,
+    sModernActionBag,
+    sModernActionPokemon,
+    sModernActionRun,
+};
+
+// Two-character tags remain readable while moving and let the whole dial fit in
+// the original 14x4-tile command window without changing the battle layout.
+static const u8 sModernActionBattleTag[] = _("BT");
+static const u8 sModernActionBagTag[] = _("BG");
+static const u8 sModernActionPokemonTag[] = _("PK");
+static const u8 sModernActionRunTag[] = _("RN");
+static const u8 *const sModernActionTags[] =
+{
+    sModernActionBattleTag,
+    sModernActionBagTag,
+    sModernActionPokemonTag,
+    sModernActionRunTag,
+};
+
+static s16 ActionOrbitLerp(s16 from, s16 to, u8 numerator, u8 denominator)
+{
+    return from + ((to - from) * numerator) / denominator;
+}
+
+static void DrawModernActionOrbit(enum BattlerId battler, bool32 animating, u8 frame, s8 direction)
+{
+    // Eight points describe an ellipse/diamond.  Resting commands occupy every
+    // other point: top, front/right, bottom, rear/left.  The in-between points
+    // give us a visible curved rotation without any runtime trig.
+    static const s8 sOrbitX[8] = {14, 21, 28, 21, 14, 7, 2, 7};
+    static const s8 sOrbitY[8] = { 0,  4, 10, 16, 20,16,10, 4};
+    static const u8 sCursor[] = _("{RIGHT_ARROW}");
+    static const u8 sHub[] = _("o");
+    u32 action;
+
+    FillWindowPixelBuffer(B_WIN_ACTION_MENU, PIXEL_FILL(0xE));
+
+    // Fixed hub: the command nodes rotate around this point.
+    AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 17, 10, 0, 0,
+                                 sCompactActionTextColors, TEXT_SKIP_DRAW, sHub);
+
+    for (action = 0; action < ARRAY_COUNT(sModernActionNames); action++)
+    {
+        u32 relative = (action + 4 - gActionSelectionCursor[battler]) % 4;
+        u32 slot = (relative + 1) % 4; // selected=front, next=bottom, opposite=rear, previous=top
+        u8 point = slot * 2;
+        s16 x = sOrbitX[point];
+        s16 y = sOrbitY[point];
+
+        if (animating)
+        {
+            s8 step = direction > 0 ? -1 : 1;
+            u8 midPoint = (point + step + 8) % 8;
+            u8 endPoint = (point + step * 2 + 16) % 8;
+
+            // Six frames: start -> intermediate orbit point -> next command node.
+            if (frame <= 2)
+            {
+                x = ActionOrbitLerp(sOrbitX[point], sOrbitX[midPoint], frame, 2);
+                y = ActionOrbitLerp(sOrbitY[point], sOrbitY[midPoint], frame, 2);
+            }
+            else
+            {
+                u8 t = frame - 2;
+                x = ActionOrbitLerp(sOrbitX[midPoint], sOrbitX[endPoint], t, 3);
+                y = ActionOrbitLerp(sOrbitY[midPoint], sOrbitY[endPoint], t, 3);
+            }
+
+            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, x, y, 0, 0,
+                                         sCompactActionTextColors, TEXT_SKIP_DRAW, sModernActionTags[action]);
+        }
+        else if (action == gActionSelectionCursor[battler])
+        {
+            // Only the front command expands to its full label.  This is the
+            // focal point of the dial and avoids the old four-line clipping.
+            u8 *dst = StringCopy(gDisplayedStringBattle, sCursor);
+            StringAppend(dst, sModernActionNames[action]);
+            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 28, 10, 0, 0,
+                                         sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
+        }
+        else
+        {
+            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, x, y, 0, 0,
+                                         sCompactActionTextColors, TEXT_SKIP_DRAW, sModernActionTags[action]);
+        }
+    }
+
+    PutWindowTilemap(B_WIN_ACTION_MENU);
+    CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
+}
+
+static void StartModernActionOrbit(enum BattlerId battler, s8 direction)
+{
+    if (sActionOrbitAnimating[battler])
+        return;
+
+    sActionOrbitAnimating[battler] = TRUE;
+    sActionOrbitDirection[battler] = direction;
+    sActionOrbitFrame[battler] = 0;
+    DrawModernActionOrbit(battler, TRUE, 0, direction);
+}
+
+static void UpdateModernActionOrbit(enum BattlerId battler)
+{
+    if (!sActionOrbitAnimating[battler])
+        return;
+
+    if (++sActionOrbitFrame[battler] < ACTION_ORBIT_ANIM_FRAMES)
+    {
+        DrawModernActionOrbit(battler, TRUE, sActionOrbitFrame[battler], sActionOrbitDirection[battler]);
+        return;
+    }
+
+    if (sActionOrbitDirection[battler] > 0)
+        gActionSelectionCursor[battler] = (gActionSelectionCursor[battler] + 1) % 4;
+    else
+        gActionSelectionCursor[battler] = (gActionSelectionCursor[battler] + 3) % 4;
+
+    sActionOrbitAnimating[battler] = FALSE;
+    sActionOrbitFrame[battler] = 0;
+    DrawModernActionMenu(battler);
+}
 
 static void DrawModernActionMenu(enum BattlerId battler)
 {
-    static const u8 sCursor[] = _("{RIGHT_ARROW}");
-    static const u8 sBlank[] = _(" ");
-    static const u8 sBattle[] = _("Battle");
-    static const u8 sBag[] = _("Bag");
-    static const u8 sPokemon[] = _("Pokémon");
-    static const u8 sRun[] = _("Run");
-    static const u8 *const sActions[] = {sBattle, sBag, sPokemon, sRun};
     static const u8 sEnemyInfo[] = _("Enemy Info:");
     static const u8 sHp[] = _("HP:");
     static const u8 sType[] = _("T:");
@@ -957,25 +1097,20 @@ static void DrawModernActionMenu(enum BattlerId battler)
     static const u8 sTypeSlash[] = _("/");
     static const u8 sWeak[] = _("Weak:");
     static const u8 sNone[] = _("--");
+
     enum BattlerId opponent = GetOppositeBattler(battler);
     enum Type type1 = gBattleMons[opponent].types[0];
     enum Type type2 = gBattleMons[opponent].types[1];
     u8 *dst;
 
-    // The vanilla background has the two bottom frames in their old positions.
-    // Redraw them here with the narrow command panel on the left.
+    sActionOrbitAnimating[battler] = FALSE;
+    sActionOrbitFrame[battler] = 0;
+
     HandleBattleWindow(0, 34, 29, 39, WINDOW_CLEAR);
     HandleBattleWindow(0, 34, 13, 39, 0);
     HandleBattleWindow(14, 34, 29, 39, 0);
 
-    FillWindowPixelBuffer(B_WIN_ACTION_MENU, PIXEL_FILL(0xE));
-    for (u32 i = 0; i < 4; i++)
-    {
-        dst = StringCopy(gDisplayedStringBattle, i == gActionSelectionCursor[battler] ? sCursor : sBlank);
-        StringAppend(dst, sActions[i]);
-        AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 0, i * 7, 0, 0,
-                                     sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
-    }
+    DrawModernActionOrbit(battler, FALSE, 0, 0);
 
     FillWindowPixelBuffer(B_WIN_ACTION_PROMPT, PIXEL_FILL(0xE));
     AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 0, 0, 0,
@@ -995,7 +1130,7 @@ static void DrawModernActionMenu(enum BattlerId battler)
         dst = StringAppend(dst, gTypesInfo[type2].name);
     }
     *dst = EOS;
-    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 11, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 10, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
 
     dst = StringCopy(gDisplayedStringBattle, sWeak);
@@ -1032,10 +1167,7 @@ static void DrawModernActionMenu(enum BattlerId battler)
     AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 20, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
 
-    ScrollWindow(B_WIN_ACTION_MENU, 0, 2, PIXEL_FILL(0xE));
     ScrollWindow(B_WIN_ACTION_PROMPT, 0, 2, PIXEL_FILL(0xE));
-    PutWindowTilemap(B_WIN_ACTION_MENU);
-    CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
     PutWindowTilemap(B_WIN_ACTION_PROMPT);
     CopyWindowToVram(B_WIN_ACTION_PROMPT, COPYWIN_FULL);
     CopyBgTilemapBufferToVram(0);
@@ -1044,7 +1176,8 @@ static void DrawModernActionMenu(enum BattlerId battler)
 #if MODULE_BATTLE_BAG_ENABLED
 enum
 {
-    BATTLE_BAG_ITEMS,
+    BATTLE_BAG_HEALING,
+    BATTLE_BAG_BATTLE,
     BATTLE_BAG_BALLS,
     BATTLE_BAG_BERRIES,
     BATTLE_BAG_COUNT,
@@ -1054,7 +1187,8 @@ static enum Pocket GetBattleBagPocket(enum BattlerId battler)
 {
     static const enum Pocket sPockets[BATTLE_BAG_COUNT] =
     {
-        [BATTLE_BAG_ITEMS] = POCKET_ITEMS,
+        [BATTLE_BAG_HEALING] = POCKET_ITEMS,
+        [BATTLE_BAG_BATTLE] = POCKET_ITEMS,
         [BATTLE_BAG_BALLS] = POCKET_POKE_BALLS,
         [BATTLE_BAG_BERRIES] = POCKET_BERRIES,
     };
@@ -1080,9 +1214,30 @@ static u32 GetBattleBagPocketCapacity(enum Pocket pocket)
 static enum Item GetBattleBagItemAt(enum BattlerId battler, u8 pocketPos)
 {
     enum Item item = GetBagItemId(GetBattleBagPocket(battler), pocketPos);
+    u16 battleUsage;
 
     if (item == ITEM_NONE || GetItemBattleUsage(item) == 0)
         return ITEM_NONE;
+
+    battleUsage = GetItemBattleUsage(item);
+    if (sBattleBagCursor[battler] == BATTLE_BAG_HEALING)
+    {
+        if (battleUsage != EFFECT_ITEM_RESTORE_HP
+         && battleUsage != EFFECT_ITEM_CURE_STATUS
+         && battleUsage != EFFECT_ITEM_HEAL_AND_CURE_STATUS
+         && battleUsage != EFFECT_ITEM_REVIVE
+         && battleUsage != EFFECT_ITEM_RESTORE_PP)
+            return ITEM_NONE;
+    }
+    else if (sBattleBagCursor[battler] == BATTLE_BAG_BATTLE)
+    {
+        if (battleUsage == EFFECT_ITEM_RESTORE_HP
+         || battleUsage == EFFECT_ITEM_CURE_STATUS
+         || battleUsage == EFFECT_ITEM_HEAL_AND_CURE_STATUS
+         || battleUsage == EFFECT_ITEM_REVIVE
+         || battleUsage == EFFECT_ITEM_RESTORE_PP)
+            return ITEM_NONE;
+    }
     return item;
 }
 
@@ -1205,7 +1360,9 @@ static void OpenBattleBagMenu(enum BattlerId battler)
         sBattleBagCursor[battler] = BATTLE_BAG_BERRIES;
         break;
     default:
-        sBattleBagCursor[battler] = BATTLE_BAG_ITEMS;
+        if (sBattleBagCursor[battler] != BATTLE_BAG_HEALING
+         && sBattleBagCursor[battler] != BATTLE_BAG_BATTLE)
+            sBattleBagCursor[battler] = BATTLE_BAG_HEALING;
         break;
     }
 
@@ -1281,11 +1438,17 @@ static void HandleInputBattleBagMenu(enum BattlerId battler)
     }
 
     if (JOY_NEW(DPAD_UP))
-        sBattleBagCursor[battler] = BATTLE_BAG_ITEMS;
-    else if (JOY_NEW(DPAD_LEFT))
-        sBattleBagCursor[battler] = BATTLE_BAG_BALLS;
-    else if (JOY_NEW(DPAD_RIGHT))
-        sBattleBagCursor[battler] = BATTLE_BAG_BERRIES;
+    {
+        if (sBattleBagCursor[battler] == 0)
+            sBattleBagCursor[battler] = BATTLE_BAG_COUNT - 1;
+        else
+            sBattleBagCursor[battler]--;
+    }
+    else if (JOY_NEW(DPAD_DOWN))
+    {
+        if (++sBattleBagCursor[battler] == BATTLE_BAG_COUNT)
+            sBattleBagCursor[battler] = 0;
+    }
     else if (JOY_NEW(A_BUTTON))
     {
         if (OpenBattleBagPocket(battler))
@@ -1300,6 +1463,8 @@ static void HandleInputBattleBagMenu(enum BattlerId battler)
         PlaySE(SE_SELECT);
         TryRestoreLastUsedBall();
         sUsingModernActionMenu = TRUE;
+        sActionOrbitAnimating[battler] = FALSE;
+        sActionOrbitFrame[battler] = 0;
         DrawModernActionMenu(battler);
         gBattlerControllerFuncs[battler] = HandleInputChooseAction;
         return;
@@ -1316,27 +1481,32 @@ static void DrawBattleBagMenu(enum BattlerId battler)
 {
     static const u8 sCursor[] = _("{RIGHT_ARROW}");
     static const u8 sBlank[] = _(" ");
-    static const u8 sItems[] = _("ITEMS");
+    static const u8 sHealing[] = _("HEALING");
+    static const u8 sBattle[] = _("BATTLE");
     static const u8 sBalls[] = _("BALLS");
     static const u8 sBerries[] = _("BERRIES");
     static const u8 sTitle[] = _("BATTLE BAG");
     static const u8 sHint[] = _("A:SELECT  B:BACK");
+    static const u8 sHealingInfo[] = _("HEALING ITEMS");
+    static const u8 sBattleInfo[] = _("BATTLE ITEMS");
+    static const u8 sBallsInfo[] = _("POKE BALLS");
+    static const u8 sBerriesInfo[] = _("BATTLE BERRIES");
     static const u8 sQuantitySeparator[] = _(" ×");
     static const u8 sNoUsableItems[] = _("NO USABLE ITEMS");
     static const u8 *const sLabels[BATTLE_BAG_COUNT] =
     {
-        [BATTLE_BAG_ITEMS] = sItems,
+        [BATTLE_BAG_HEALING] = sHealing,
+        [BATTLE_BAG_BATTLE] = sBattle,
         [BATTLE_BAG_BALLS] = sBalls,
         [BATTLE_BAG_BERRIES] = sBerries,
     };
-    static const u8 sWindows[BATTLE_BAG_COUNT] =
+    static const u8 *const sPocketInfo[BATTLE_BAG_COUNT] =
     {
-        [BATTLE_BAG_ITEMS] = B_WIN_ACTION_MENU,
-        [BATTLE_BAG_BALLS] = B_WIN_ACTION_MENU,
-        [BATTLE_BAG_BERRIES] = B_WIN_ACTION_MENU,
+        [BATTLE_BAG_HEALING] = sHealingInfo,
+        [BATTLE_BAG_BATTLE] = sBattleInfo,
+        [BATTLE_BAG_BALLS] = sBallsInfo,
+        [BATTLE_BAG_BERRIES] = sBerriesInfo,
     };
-    static const u8 sX[BATTLE_BAG_COUNT] = {26, 0, 46};
-    static const u8 sY[BATTLE_BAG_COUNT] = {0, 14, 14};
     u8 *dst;
 
     HandleBattleWindow(0, 34, 29, 39, WINDOW_CLEAR);
@@ -1389,19 +1559,27 @@ static void DrawBattleBagMenu(enum BattlerId battler)
     {
         AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 0, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, sTitle);
-        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 22, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 10, 0, 0,
+                                     sCompactMoveTextColors, TEXT_SKIP_DRAW,
+                                     sPocketInfo[sBattleBagCursor[battler]]);
+        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 20, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, sHint);
 
-        for (u32 i = 0; i < BATTLE_BAG_COUNT; i++)
+        // Keep the selected pocket centred between its two neighbours, using
+        // the same continuous three-row wheel as the main action menu.
+        for (u32 row = 0; row < 3; row++)
         {
-            dst = StringCopy(gDisplayedStringBattle, i == sBattleBagCursor[battler] ? sCursor : sBlank);
-            StringAppend(dst, sLabels[i]);
-            AddTextPrinterParameterized4(sWindows[i], FONT_SMALL_NARROWER, sX[i], sY[i], 0, 0,
+            u32 pocket = (sBattleBagCursor[battler] + row + BATTLE_BAG_COUNT - 1) % BATTLE_BAG_COUNT;
+
+            dst = StringCopy(gDisplayedStringBattle, row == 1 ? sCursor : sBlank);
+            StringAppend(dst, sLabels[pocket]);
+            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 4, 1 + row * 9, 0, 0,
                                          sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
         }
     }
 
-    ScrollWindow(B_WIN_ACTION_MENU, 0, 2, PIXEL_FILL(0xE));
+    if (sBattleBagBrowsingItems[battler])
+        ScrollWindow(B_WIN_ACTION_MENU, 0, 2, PIXEL_FILL(0xE));
     ScrollWindow(B_WIN_ACTION_PROMPT, 0, 2, PIXEL_FILL(0xE));
     PutWindowTilemap(B_WIN_ACTION_MENU);
     CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
@@ -1415,6 +1593,8 @@ void DrawModernActionMenuForScriptedBattle(enum BattlerId battler)
 {
     sUsingCompactMoveList[battler] = FALSE;
     sUsingModernActionMenu = TRUE;
+    sActionOrbitAnimating[battler] = FALSE;
+    sActionOrbitFrame[battler] = 0;
     DrawModernActionMenu(battler);
 }
 
@@ -3253,6 +3433,8 @@ static void PlayerHandleChooseAction(enum BattlerId battler)
     // The normal command screen replaces the compact move/picker screen.
     sUsingCompactMoveList[battler] = FALSE;
     sUsingModernActionMenu = TRUE;
+    sActionOrbitAnimating[battler] = FALSE;
+    sActionOrbitFrame[battler] = 0;
     gBattlerControllerFuncs[battler] = HandleChooseActionAfterDma3;
     BattleTv_ClearExplosionFaintCause();
 
