@@ -58,20 +58,7 @@ static const u8 sCompactMoveTextColors[] = {TEXT_COLOR_TRANSPARENT, 13, 15};
 #define COMPACT_ARROW_RED   1
 #define COMPACT_ARROW_GREEN 6
 #define COMPACT_ARROW_GRAY  11
-static const u8 sCompactActionTextColors[] =
-{
-    TEXT_COLOR_TRANSPARENT,
-    13,
-    TEXT_COLOR_TRANSPARENT,
-};
 
-// Compact battle command orbit.  The selected command sits at the front of a
-// four-point dial while the other three commands occupy top/rear/bottom nodes.
-// Up/down rotates the whole dial instead of moving a cursor through a list.
-#define ACTION_ORBIT_ANIM_FRAMES 6
-static bool8 sActionOrbitAnimating[MAX_BATTLERS_COUNT];
-static s8 sActionOrbitDirection[MAX_BATTLERS_COUNT];
-static u8 sActionOrbitFrame[MAX_BATTLERS_COUNT];
 // Both player controllers can be choosing commands at the same time in a
 // double battle. Keep compact-menu state per battler so opening one battler's
 // action menu cannot overwrite the other battler's move/picker state.
@@ -152,9 +139,6 @@ static void DestroyCompactAttackerStatusSprite(enum BattlerId battler);
 static void LoadCompactMoveInfoForAttacker(enum BattlerId battler, struct Pokemon *mon);
 static void FormatCompactAttackerName(u8 *dst, struct Pokemon *mon);
 static void DrawModernActionMenu(enum BattlerId battler);
-static void DrawModernActionOrbit(enum BattlerId battler, bool32 animating, u8 frame, s8 direction);
-static void StartModernActionOrbit(enum BattlerId battler, s8 direction);
-static void UpdateModernActionOrbit(enum BattlerId battler);
 #if MODULE_BATTLE_BAG_ENABLED
 static void OpenBattleBagMenu(enum BattlerId battler);
 static void HandleInputBattleBagMenu(enum BattlerId battler);
@@ -382,15 +366,6 @@ static void HandleInputChooseAction(enum BattlerId battler)
         }
     }
 
-    // While the command dial is rotating, consume this frame here.  The
-    // selection is committed only after the animation reaches the next node,
-    // so A/B cannot act on a half-rotated wheel.
-    if (sUsingModernActionMenu && sActionOrbitAnimating[battler])
-    {
-        UpdateModernActionOrbit(battler);
-        return;
-    }
-
     if (JOY_NEW(A_BUTTON))
     {
         PlaySE(SE_SELECT);
@@ -439,12 +414,14 @@ static void HandleInputChooseAction(enum BattlerId battler)
     else if (sUsingModernActionMenu && JOY_NEW(DPAD_UP))
     {
         PlaySE(SE_SELECT);
-        StartModernActionOrbit(battler, -1);
+        gActionSelectionCursor[battler] = (gActionSelectionCursor[battler] + 3) % 4;
+        DrawModernActionMenu(battler);
     }
     else if (sUsingModernActionMenu && JOY_NEW(DPAD_DOWN))
     {
         PlaySE(SE_SELECT);
-        StartModernActionOrbit(battler, 1);
+        gActionSelectionCursor[battler] = (gActionSelectionCursor[battler] + 1) % 4;
+        DrawModernActionMenu(battler);
     }
     else if (!sUsingModernActionMenu && JOY_NEW(DPAD_LEFT))
     {
@@ -744,7 +721,14 @@ static void DrawCompactAttackerPicker(enum BattlerId battler)
         struct Pokemon *mon = &gParties[B_TRAINER_PLAYER][i];
         // Two 52-pixel cells use the full width of the left compact panel.
         u8 x = (i & 1) ? 52 : 0;
-        u8 y = (i / 2) * 8;
+static const u8 sPartyRowY[3] =
+{
+    0,
+    12,
+    24,
+};
+
+u8 y = sPartyRowY[i / 2];
         const u8 *name = sEmptySlot;
 
         if (GetMonData(mon, MON_DATA_SPECIES_OR_EGG) != SPECIES_NONE)
@@ -753,9 +737,9 @@ static void DrawCompactAttackerPicker(enum BattlerId battler)
             name = sCompactAttackerNames[i];
         }
 
-        AddTextPrinterParameterized4(B_WIN_MOVE_NAME_1, FONT_SMALL_NARROWER, x, y, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_MOVE_NAME_1, FONT_COMPACT, x, y, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, (i == sCompactAttackerCursor[battler]) ? sCursor : sBlank);
-        AddTextPrinterParameterized4(B_WIN_MOVE_NAME_1, FONT_SMALL_NARROWER, x + 8, y, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_MOVE_NAME_1, FONT_COMPACT, x + 8, y, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, name);
     }
 
@@ -784,7 +768,7 @@ static void DrawCompactAttackerSummary(enum BattlerId battler)
     if (species == SPECIES_NONE || species == SPECIES_EGG)
     {
         DestroyCompactAttackerStatusSprite(battler);
-        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 8, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 8, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, sEmpty);
         return;
     }
@@ -797,7 +781,7 @@ static void DrawCompactAttackerSummary(enum BattlerId battler)
     dst = StringAppend(dst, sSlash);
     dst = ConvertIntToDecimalStringN(dst, GetMonData(mon, MON_DATA_MAX_HP), STR_CONV_MODE_LEFT_ALIGN, 3);
     *dst = EOS;
-    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 0, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 0, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
     UpdateCompactAttackerStatusSprite(battler, mon);
 
@@ -810,12 +794,12 @@ static void DrawCompactAttackerSummary(enum BattlerId battler)
         dst = StringAppend(dst, gTypesInfo[type2].name);
     }
     *dst = EOS;
-    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 8, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 8, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
 
     if (level == MAX_LEVEL)
     {
-        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 18, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 16, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, sExpMax);
     }
     else
@@ -829,7 +813,7 @@ static void DrawCompactAttackerSummary(enum BattlerId battler)
         dst = StringAppend(dst, sSlash);
         dst = ConvertIntToDecimalStringN(dst, expAtNextLevel - expAtCurrentLevel, STR_CONV_MODE_LEFT_ALIGN, 5);
         *dst = EOS;
-        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 18, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 16, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
     }
 
@@ -887,7 +871,7 @@ static void DrawCompactEvolutionIndicator(struct Pokemon *mon, enum Species spec
         }
     }
 
-    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 66, 10, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 66, 8, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, sEvo);
 
     if (nearestLevel != 0xFFFF)
@@ -917,7 +901,7 @@ static void DrawCompactEvolutionIndicator(struct Pokemon *mon, enum Species spec
         methodText = sSpecial;
     }
 
-    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 66, 20, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 66, 16, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, methodText);
 }
 
@@ -936,7 +920,7 @@ static void UpdateCompactAttackerStatusSprite(enum BattlerId battler, struct Pok
     {
         // The compact summary occupies x 136-231 and y 120-151 on screen.
         // The stock 32x8 status badge sits neatly against its upper-right edge.
-        spriteId = CreateSprite(&gSpriteTemplate_StatusIcons, 214, 124, 0);
+spriteId = CreateSprite(&gSpriteTemplate_StatusIcons, 223, 123, 0);
         if (spriteId == MAX_SPRITES)
             return;
 
@@ -957,138 +941,24 @@ static void DestroyCompactAttackerStatusSprite(enum BattlerId battler)
         sCompactAttackerStatusSpriteIds[battler] = SPRITE_NONE;
     }
 }
-static const u8 sModernActionBattle[] = _("Battle");
-static const u8 sModernActionBag[] = _("Bag");
-static const u8 sModernActionPokemon[] = _("Pokémon");
-static const u8 sModernActionRun[] = _("Run");
-static const u8 *const sModernActionNames[] =
-{
-    sModernActionBattle,
-    sModernActionBag,
-    sModernActionPokemon,
-    sModernActionRun,
-};
-
-// Two-character tags remain readable while moving and let the whole dial fit in
-// the original 14x4-tile command window without changing the battle layout.
-static const u8 sModernActionBattleTag[] = _("BT");
-static const u8 sModernActionBagTag[] = _("BG");
-static const u8 sModernActionPokemonTag[] = _("PK");
-static const u8 sModernActionRunTag[] = _("RN");
-static const u8 *const sModernActionTags[] =
-{
-    sModernActionBattleTag,
-    sModernActionBagTag,
-    sModernActionPokemonTag,
-    sModernActionRunTag,
-};
-
-static s16 ActionOrbitLerp(s16 from, s16 to, u8 numerator, u8 denominator)
-{
-    return from + ((to - from) * numerator) / denominator;
-}
-
-static void DrawModernActionOrbit(enum BattlerId battler, bool32 animating, u8 frame, s8 direction)
-{
-    // Eight points describe an ellipse/diamond.  Resting commands occupy every
-    // other point: top, front/right, bottom, rear/left.  The in-between points
-    // give us a visible curved rotation without any runtime trig.
-    static const s8 sOrbitX[8] = {14, 21, 28, 21, 14, 7, 2, 7};
-    static const s8 sOrbitY[8] = { 0,  4, 10, 16, 20,16,10, 4};
-    static const u8 sCursor[] = _("{RIGHT_ARROW}");
-    static const u8 sHub[] = _("o");
-    u32 action;
-
-    FillWindowPixelBuffer(B_WIN_ACTION_MENU, PIXEL_FILL(0xE));
-
-    // Fixed hub: the command nodes rotate around this point.
-    AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 17, 10, 0, 0,
-                                 sCompactActionTextColors, TEXT_SKIP_DRAW, sHub);
-
-    for (action = 0; action < ARRAY_COUNT(sModernActionNames); action++)
-    {
-        u32 relative = (action + 4 - gActionSelectionCursor[battler]) % 4;
-        u32 slot = (relative + 1) % 4; // selected=front, next=bottom, opposite=rear, previous=top
-        u8 point = slot * 2;
-        s16 x = sOrbitX[point];
-        s16 y = sOrbitY[point];
-
-        if (animating)
-        {
-            s8 step = direction > 0 ? -1 : 1;
-            u8 midPoint = (point + step + 8) % 8;
-            u8 endPoint = (point + step * 2 + 16) % 8;
-
-            // Six frames: start -> intermediate orbit point -> next command node.
-            if (frame <= 2)
-            {
-                x = ActionOrbitLerp(sOrbitX[point], sOrbitX[midPoint], frame, 2);
-                y = ActionOrbitLerp(sOrbitY[point], sOrbitY[midPoint], frame, 2);
-            }
-            else
-            {
-                u8 t = frame - 2;
-                x = ActionOrbitLerp(sOrbitX[midPoint], sOrbitX[endPoint], t, 3);
-                y = ActionOrbitLerp(sOrbitY[midPoint], sOrbitY[endPoint], t, 3);
-            }
-
-            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, x, y, 0, 0,
-                                         sCompactActionTextColors, TEXT_SKIP_DRAW, sModernActionTags[action]);
-        }
-        else if (action == gActionSelectionCursor[battler])
-        {
-            // Only the front command expands to its full label.  This is the
-            // focal point of the dial and avoids the old four-line clipping.
-            u8 *dst = StringCopy(gDisplayedStringBattle, sCursor);
-            StringAppend(dst, sModernActionNames[action]);
-            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 28, 10, 0, 0,
-                                         sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
-        }
-        else
-        {
-            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, x, y, 0, 0,
-                                         sCompactActionTextColors, TEXT_SKIP_DRAW, sModernActionTags[action]);
-        }
-    }
-
-    PutWindowTilemap(B_WIN_ACTION_MENU);
-    CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
-}
-
-static void StartModernActionOrbit(enum BattlerId battler, s8 direction)
-{
-    if (sActionOrbitAnimating[battler])
-        return;
-
-    sActionOrbitAnimating[battler] = TRUE;
-    sActionOrbitDirection[battler] = direction;
-    sActionOrbitFrame[battler] = 0;
-    DrawModernActionOrbit(battler, TRUE, 0, direction);
-}
-
-static void UpdateModernActionOrbit(enum BattlerId battler)
-{
-    if (!sActionOrbitAnimating[battler])
-        return;
-
-    if (++sActionOrbitFrame[battler] < ACTION_ORBIT_ANIM_FRAMES)
-    {
-        DrawModernActionOrbit(battler, TRUE, sActionOrbitFrame[battler], sActionOrbitDirection[battler]);
-        return;
-    }
-
-    if (sActionOrbitDirection[battler] > 0)
-        gActionSelectionCursor[battler] = (gActionSelectionCursor[battler] + 1) % 4;
-    else
-        gActionSelectionCursor[battler] = (gActionSelectionCursor[battler] + 3) % 4;
-
-    sActionOrbitAnimating[battler] = FALSE;
-    sActionOrbitFrame[battler] = 0;
-    DrawModernActionMenu(battler);
-}
-
 static void DrawModernActionMenu(enum BattlerId battler)
 {
+    static const u8 sActionMenuY[4] =
+    {
+        0,
+        8,
+        16,
+        24,
+    };
+
+    static const u8 sCursor[] = _("{RIGHT_ARROW}");
+    static const u8 sBlank[] = _(" ");
+    static const u8 sBattle[] = _("Battle");
+    static const u8 sBag[] = _("Bag");
+    static const u8 sPokemon[] = _("Pokémon");
+    static const u8 sRun[] = _("Run");
+    static const u8 *const sActions[] = {sBattle, sBag, sPokemon, sRun};
+
     static const u8 sEnemyInfo[] = _("Enemy Info:");
     static const u8 sHp[] = _("HP:");
     static const u8 sType[] = _("T:");
@@ -1103,17 +973,39 @@ static void DrawModernActionMenu(enum BattlerId battler)
     enum Type type2 = gBattleMons[opponent].types[1];
     u8 *dst;
 
-    sActionOrbitAnimating[battler] = FALSE;
-    sActionOrbitFrame[battler] = 0;
-
     HandleBattleWindow(0, 34, 29, 39, WINDOW_CLEAR);
     HandleBattleWindow(0, 34, 13, 39, 0);
     HandleBattleWindow(14, 34, 29, 39, 0);
 
-    DrawModernActionOrbit(battler, FALSE, 0, 0);
+    FillWindowPixelBuffer(B_WIN_ACTION_MENU, PIXEL_FILL(0xE));
+
+  for (u32 i = 0; i < 4; i++)
+{
+    dst = StringCopy(
+        gDisplayedStringBattle,
+        i == gActionSelectionCursor[battler] ? sCursor : sBlank
+    );
+
+    StringAppend(dst, sActions[i]);
+
+AddTextPrinterParameterized4(
+    B_WIN_ACTION_MENU,
+    FONT_COMPACT,
+    4,
+    sActionMenuY[i],
+    0,
+    0,
+    sCompactMoveTextColors,
+    TEXT_SKIP_DRAW,
+    gDisplayedStringBattle
+);
+}
+
+    PutWindowTilemap(B_WIN_ACTION_MENU);
+    CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
 
     FillWindowPixelBuffer(B_WIN_ACTION_PROMPT, PIXEL_FILL(0xE));
-    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 0, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 0, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, sEnemyInfo);
 
     dst = StringCopy(gDisplayedStringBattle, sHp);
@@ -1130,12 +1022,12 @@ static void DrawModernActionMenu(enum BattlerId battler)
         dst = StringAppend(dst, gTypesInfo[type2].name);
     }
     *dst = EOS;
-    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 10, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 8, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
 
     dst = StringCopy(gDisplayedStringBattle, sWeak);
     {
-        u16 weaknessWidth = GetStringWidth(FONT_SMALL_NARROWER, sWeak, 0);
+        u16 weaknessWidth = GetStringWidth(FONT_COMPACT, sWeak, 0);
         u8 weaknessCount = 0;
 
         for (u32 i = 0; i < NUMBER_OF_MON_TYPES; i++)
@@ -1149,9 +1041,9 @@ static void DrawModernActionMenu(enum BattlerId battler)
             if (modifier < UQ_4_12(2.0))
                 continue;
 
-            addedWidth = GetStringWidth(FONT_SMALL_NARROWER, gTypesInfo[attackType].name, 0);
+            addedWidth = GetStringWidth(FONT_COMPACT, gTypesInfo[attackType].name, 0);
             if (weaknessCount != 0)
-                addedWidth += GetStringWidth(FONT_SMALL_NARROWER, sTypeSlash, 0);
+                addedWidth += GetStringWidth(FONT_COMPACT, sTypeSlash, 0);
             if (weaknessWidth + addedWidth > WindowWidthPx(B_WIN_ACTION_PROMPT))
                 continue;
 
@@ -1164,10 +1056,8 @@ static void DrawModernActionMenu(enum BattlerId battler)
         if (weaknessCount == 0)
             StringAppend(dst, sNone);
     }
-    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 20, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 16, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
-
-    ScrollWindow(B_WIN_ACTION_PROMPT, 0, 2, PIXEL_FILL(0xE));
     PutWindowTilemap(B_WIN_ACTION_PROMPT);
     CopyWindowToVram(B_WIN_ACTION_PROMPT, COPYWIN_FULL);
     CopyBgTilemapBufferToVram(0);
@@ -1306,10 +1196,10 @@ static void KeepBattleBagSelectionVisible(enum BattlerId battler)
 {
     u32 ordinal = GetBattleBagItemOrdinal(battler, sBattleBagPocketPos[battler]);
 
-    if (ordinal < sBattleBagListTop[battler])
-        sBattleBagListTop[battler] = ordinal;
-    else if (ordinal >= sBattleBagListTop[battler] + 3)
-        sBattleBagListTop[battler] = ordinal - 2;
+if (ordinal < sBattleBagListTop[battler])
+    sBattleBagListTop[battler] = ordinal;
+else if (ordinal >= sBattleBagListTop[battler] + 4)
+    sBattleBagListTop[battler] = ordinal - 3;
 }
 
 static const u8 *PrepareBattleBagDescription(enum Item item)
@@ -1319,7 +1209,7 @@ static const u8 *PrepareBattleBagDescription(enum Item item)
     StringCopy(gStringVar4, GetItemDescription(item));
     StripLineBreaks(gStringVar4);
     BreakStringAutomatic(gStringVar4, WindowWidthPx(B_WIN_ACTION_PROMPT) - 2, 2,
-                         FONT_SMALL_NARROWER, HIDE_SCROLL_PROMPT);
+                         FONT_COMPACT, HIDE_SCROLL_PROMPT);
 
     for (u32 i = 0; gStringVar4[i] != EOS; i++)
     {
@@ -1463,8 +1353,6 @@ static void HandleInputBattleBagMenu(enum BattlerId battler)
         PlaySE(SE_SELECT);
         TryRestoreLastUsedBall();
         sUsingModernActionMenu = TRUE;
-        sActionOrbitAnimating[battler] = FALSE;
-        sActionOrbitFrame[battler] = 0;
         DrawModernActionMenu(battler);
         gBattlerControllerFuncs[battler] = HandleInputChooseAction;
         return;
@@ -1520,7 +1408,7 @@ static void DrawBattleBagMenu(enum BattlerId battler)
     {
         if (sBattleBagPocketEmpty[battler])
         {
-            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 8, 8, 0, 0,
+            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_COMPACT, 8, 8, 0, 0,
                                          sCompactMoveTextColors, TEXT_SKIP_DRAW, sNoUsableItems);
         }
         else
@@ -1530,7 +1418,7 @@ static void DrawBattleBagMenu(enum BattlerId battler)
             u32 itemCount = GetBattleBagUsableItemCount(battler);
             u32 selectedOrdinal = GetBattleBagItemOrdinal(battler, sBattleBagPocketPos[battler]);
 
-            for (u32 row = 0; row < 3 && sBattleBagListTop[battler] + row < itemCount; row++)
+for (u32 row = 0; row < 4 && sBattleBagListTop[battler] + row < itemCount; row++)
             {
                 u32 ordinal = sBattleBagListTop[battler] + row;
                 u8 pocketPos = GetBattleBagPocketPosFromOrdinal(battler, ordinal);
@@ -1539,48 +1427,47 @@ static void DrawBattleBagMenu(enum BattlerId battler)
                 dst = StringCopy(gDisplayedStringBattle, ordinal == selectedOrdinal ? sCursor : sBlank);
                 CopyItemName(rowItem, gStringVar1);
                 StringAppend(dst, gStringVar1);
-                AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 0, row * 10, 0, 0,
+                AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_COMPACT, 0, row * 8, 0, 0,
                                              sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
             }
 
             ConvertIntToDecimalStringN(gStringVar2, slot.quantity, STR_CONV_MODE_LEFT_ALIGN, 3);
             dst = StringCopy(gDisplayedStringBattle, sQuantitySeparator);
             StringAppend(dst, gStringVar2);
-            AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER,
+            AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT,
                                          WindowWidthPx(B_WIN_ACTION_PROMPT)
-                                         - GetStringWidth(FONT_SMALL_NARROWER, gDisplayedStringBattle, 0),
+                                         - GetStringWidth(FONT_COMPACT, gDisplayedStringBattle, 0),
                                          0, 0, 0,
                                          sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
-            AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 10, 0, 0,
+            AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 8, 0, 0,
                                          sCompactMoveTextColors, TEXT_SKIP_DRAW, PrepareBattleBagDescription(item));
         }
     }
     else
     {
-        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 0, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 0, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, sTitle);
-        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 10, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 8, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW,
                                      sPocketInfo[sBattleBagCursor[battler]]);
-        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_SMALL_NARROWER, 0, 20, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 16, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, sHint);
 
-        // Keep the selected pocket centred between its two neighbours, using
-        // the same continuous three-row wheel as the main action menu.
-        for (u32 row = 0; row < 3; row++)
+        // Pocket/category selector uses the same fixed four-row layout as
+        // the main action menu. The actual item browser below remains a
+        // scrolling three-row list.
+        for (u32 pocket = 0; pocket < BATTLE_BAG_COUNT; pocket++)
         {
-            u32 pocket = (sBattleBagCursor[battler] + row + BATTLE_BAG_COUNT - 1) % BATTLE_BAG_COUNT;
-
-            dst = StringCopy(gDisplayedStringBattle, row == 1 ? sCursor : sBlank);
+            dst = StringCopy(gDisplayedStringBattle,
+                             pocket == sBattleBagCursor[battler] ? sCursor : sBlank);
             StringAppend(dst, sLabels[pocket]);
-            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_SMALL_NARROWER, 4, 1 + row * 9, 0, 0,
+            AddTextPrinterParameterized4(B_WIN_ACTION_MENU, FONT_COMPACT, 4, pocket * 8, 0, 0,
                                          sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
         }
     }
 
-    if (sBattleBagBrowsingItems[battler])
-        ScrollWindow(B_WIN_ACTION_MENU, 0, 2, PIXEL_FILL(0xE));
-    ScrollWindow(B_WIN_ACTION_PROMPT, 0, 2, PIXEL_FILL(0xE));
+    // FONT_COMPACT is a true 8px renderer, so no post-draw pixel scroll is
+    // needed. Keeping coordinates on the 8px grid avoids cross-page offsets.
     PutWindowTilemap(B_WIN_ACTION_MENU);
     CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
     PutWindowTilemap(B_WIN_ACTION_PROMPT);
@@ -1593,8 +1480,6 @@ void DrawModernActionMenuForScriptedBattle(enum BattlerId battler)
 {
     sUsingCompactMoveList[battler] = FALSE;
     sUsingModernActionMenu = TRUE;
-    sActionOrbitAnimating[battler] = FALSE;
-    sActionOrbitFrame[battler] = 0;
     DrawModernActionMenu(battler);
 }
 
@@ -1627,7 +1512,7 @@ static void FormatCompactAttackerName(u8 *dst, struct Pokemon *mon)
 
     // Each column has 44 pixels after its cursor. Keep the name readable and
     // use an ellipsis for genuine overflow instead of silently chopping it.
-    while (GetStringWidth(FONT_SMALL_NARROWER, dst, 0) > 44 && length > 1)
+    while (GetStringWidth(FONT_COMPACT, dst, 0) > 44 && length > 1)
     {
         dst[--length] = EOS;
         StringAppend(dst, sEllipsis);
@@ -3091,7 +2976,7 @@ static const u8 *BuildCompactDescriptionLine(const u8 *src, u8 *dst, u16 maxWidt
             *lineEnd++ = *src++;
         *lineEnd = EOS;
 
-        if (GetStringWidth(FONT_SMALL_NARROWER, dst, 0) > maxWidth && previousLineEnd != dst)
+        if (GetStringWidth(FONT_COMPACT, dst, 0) > maxWidth && previousLineEnd != dst)
         {
             *previousLineEnd = EOS;
             return wordStart;
@@ -3107,7 +2992,7 @@ static const u8 *BuildCompactDescriptionLine(const u8 *src, u8 *dst, u16 maxWidt
 static void DrawCompactEffectivenessIndicator(u32 effectiveness, u16 x)
 {
     u8 color;
-    u16 y = 24;
+    u16 y = 16;
 
     switch (effectiveness)
     {
@@ -3178,7 +3063,7 @@ static void DrawCompactMoveInfo(enum BattlerId battler)
     {
         description = BuildCompactDescriptionLine(description, gDisplayedStringBattle,
                                                    WindowWidthPx(B_WIN_MOVE_DESCRIPTION));
-        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, line * 8, 0, 0,
+        AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, line * 8, 0, 0,
                                      sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
     }
 
@@ -3190,10 +3075,10 @@ static void DrawCompactMoveInfo(enum BattlerId battler)
     dst = StringAppend(dst, sType);
     dst = StringAppend(dst, gTypesInfo[type].name);
     *dst = EOS;
-    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_SMALL_NARROWER, 0, 20, 0, 0,
+    AddTextPrinterParameterized4(B_WIN_MOVE_DESCRIPTION, FONT_COMPACT, 0, 16, 0, 0,
                                  sCompactMoveTextColors, TEXT_SKIP_DRAW, gDisplayedStringBattle);
 
-    arrowX = GetStringWidth(FONT_SMALL_NARROWER, gDisplayedStringBattle, 0) + 2;
+    arrowX = GetStringWidth(FONT_COMPACT, gDisplayedStringBattle, 0) + 2;
     DrawCompactEffectivenessIndicator(foeEffectiveness, arrowX);
 
     PutWindowTilemap(B_WIN_MOVE_DESCRIPTION);
@@ -3433,8 +3318,6 @@ static void PlayerHandleChooseAction(enum BattlerId battler)
     // The normal command screen replaces the compact move/picker screen.
     sUsingCompactMoveList[battler] = FALSE;
     sUsingModernActionMenu = TRUE;
-    sActionOrbitAnimating[battler] = FALSE;
-    sActionOrbitFrame[battler] = 0;
     gBattlerControllerFuncs[battler] = HandleChooseActionAfterDma3;
     BattleTv_ClearExplosionFaintCause();
 
@@ -3539,7 +3422,7 @@ static void DrawCompactMoveList(enum BattlerId battler)
     for (i = 0; i < MAX_MON_MOVES; i++)
     {
         u8 *txtPtr;
-        u8 y = i * 7;
+        u8 y = i * 8;
 
         if (i == gMoveSelectionCursor[battler])
             StringCopy(gDisplayedStringBattle, sCursor);
@@ -3552,7 +3435,7 @@ static void DrawCompactMoveList(enum BattlerId battler)
             StringAppend(gDisplayedStringBattle, GetMoveName(moveInfo->moves[i]));
         AddTextPrinterParameterized4(
             B_WIN_MOVE_NAME_1,
-            FONT_SMALL_NARROWER,
+            FONT_COMPACT,
             0,
             y,
             0,
@@ -3576,7 +3459,7 @@ static void DrawCompactMoveList(enum BattlerId battler)
 
         AddTextPrinterParameterized4(
             B_WIN_MOVE_NAME_1,
-            FONT_SMALL_NARROWER,
+            FONT_COMPACT,
             68,
             y,
             0,
@@ -3589,9 +3472,7 @@ static void DrawCompactMoveList(enum BattlerId battler)
             gNumberOfMovesToChoose++;
     }
 
-    // The first row begins at y = 0, so scroll the completed panel upward
-    // to achieve the requested -2px visual offset without unsigned wrapping.
-    ScrollWindow(B_WIN_MOVE_NAME_1, 0, 2, PIXEL_FILL(0xE));
+    // Four 8px rows fill the 32px panel exactly; no post-draw scroll needed.
     PutWindowTilemap(B_WIN_MOVE_NAME_1);
     CopyWindowToVram(B_WIN_MOVE_NAME_1, COPYWIN_FULL);
 }

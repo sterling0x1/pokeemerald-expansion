@@ -89,7 +89,7 @@ static const struct GlyphWidthFunc sGlyphWidthFuncs[] =
     { FONT_SMALL_NARROWER, GetGlyphWidth_SmallNarrower },
     { FONT_SHORT_NARROW,   GetGlyphWidth_ShortNarrow },
     { FONT_SHORT_NARROWER, GetGlyphWidth_ShortNarrower },
-    { FONT_COMPACT,        GetGlyphWidth_SmallNarrow },
+{ FONT_COMPACT, GetGlyphWidth_SmallNarrower },
 };
 
 struct
@@ -2377,7 +2377,7 @@ static void DecompressGlyph_Compact(u16 glyphId, bool32 isJapanese)
     else
     {
         glyphs = gFontCompactLatinGlyphs + (0x20 * glyphId);
-        gCurGlyph.width = gFontSmallNarrowLatinGlyphWidths[glyphId];
+gCurGlyph.width = gFontSmallNarrowerLatinGlyphWidths[glyphId];
 
         if (gCurGlyph.width <= 8)
         {
@@ -2545,14 +2545,14 @@ static void DecompressGlyph_SmallNarrower(u16 glyphId, bool32 isJapanese)
         DecompressGlyphTile(glyphs, gCurGlyph.gfxBufferTop);
         DecompressGlyphTile(glyphs + 0x80, gCurGlyph.gfxBufferBottom);
         gCurGlyph.width = 8;
-        gCurGlyph.height = 15;
+        gCurGlyph.height = 7;
     }
     else
     {
         glyphs = gFontSmallNarrowerLatinGlyphs + (0x20 * glyphId);
         gCurGlyph.width = gFontSmallNarrowerLatinGlyphWidths[glyphId];
 
-        if (gCurGlyph.width <= 8)
+        if (gCurGlyph.width <= 7)
         {
             DecompressGlyphTile(glyphs, gCurGlyph.gfxBufferTop);
             DecompressGlyphTile(glyphs + 0x10, gCurGlyph.gfxBufferBottom);

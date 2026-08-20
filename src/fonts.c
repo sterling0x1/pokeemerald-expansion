@@ -1,8 +1,9 @@
 #include "global.h"
 
 ALIGNED(4) const u16 gFontSmallNarrowLatinGlyphs[] = INCGFX_U16("graphics/fonts/latin_small_narrow.png", ".latfont");
-ALIGNED(4) const u16 gFontCompactLatinGlyphs[] = INCGFX_U16("graphics/fonts/latin_compact_thin.png", ".latfont");
-ALIGNED(4) const u8 gFontSmallNarrowLatinGlyphWidths[] = {
+ALIGNED(4) const u16 gFontCompactLatinGlyphs[] =
+    INCGFX_U16("graphics/fonts/latin_battle_minimal_mono.png", ".latfont");
+    ALIGNED(4) const u8 gFontSmallNarrowLatinGlyphWidths[] = {
     3,  5,  5,  5,  5,  5,  5,  5,  5,  4,  3,  4,  4,  5,  5,  5,
     5,  5,  5,  5,  5,  5,  5,  5,  3,  4,  5,  5,  5,  5,  4,  3,
     4,  4,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  8,  5,  6,  3,
