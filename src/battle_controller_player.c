@@ -68,6 +68,9 @@ static bool8 sUsingCompactMoveList[MAX_BATTLERS_COUNT];
 // changes how the other battler's picker completes.
 static bool8 sCompactAttackerPickerFromMoveList[MAX_BATTLERS_COUNT];
 static bool8 sUsingModernActionMenu;
+// The enemy-info pane is static while the command cursor moves. Redrawing it
+// every input frame caused a visible flash on the right side of the screen.
+static bool8 sModernActionMenuPromptNeedsRefresh;
 static u8 sCompactAttackerCursor[MAX_BATTLERS_COUNT];
 static u8 sCompactAttackerNames[PARTY_SIZE][POKEMON_NAME_BUFFER_SIZE];
 static bool8 sBlockCompactAUntilReleased[MAX_BATTLERS_COUNT];
@@ -973,9 +976,12 @@ static void DrawModernActionMenu(enum BattlerId battler)
     enum Type type2 = gBattleMons[opponent].types[1];
     u8 *dst;
 
-    HandleBattleWindow(0, 34, 29, 39, WINDOW_CLEAR);
-    HandleBattleWindow(0, 34, 13, 39, 0);
-    HandleBattleWindow(14, 34, 29, 39, 0);
+    if (sModernActionMenuPromptNeedsRefresh)
+    {
+        HandleBattleWindow(0, 34, 29, 39, WINDOW_CLEAR);
+        HandleBattleWindow(0, 34, 13, 39, 0);
+        HandleBattleWindow(14, 34, 29, 39, 0);
+    }
 
     FillWindowPixelBuffer(B_WIN_ACTION_MENU, PIXEL_FILL(0xE));
 
@@ -1003,6 +1009,9 @@ AddTextPrinterParameterized4(
 
     PutWindowTilemap(B_WIN_ACTION_MENU);
     CopyWindowToVram(B_WIN_ACTION_MENU, COPYWIN_FULL);
+
+    if (!sModernActionMenuPromptNeedsRefresh)
+        return;
 
     FillWindowPixelBuffer(B_WIN_ACTION_PROMPT, PIXEL_FILL(0xE));
     AddTextPrinterParameterized4(B_WIN_ACTION_PROMPT, FONT_COMPACT, 0, 0, 0, 0,
@@ -1061,6 +1070,7 @@ AddTextPrinterParameterized4(
     PutWindowTilemap(B_WIN_ACTION_PROMPT);
     CopyWindowToVram(B_WIN_ACTION_PROMPT, COPYWIN_FULL);
     CopyBgTilemapBufferToVram(0);
+    sModernActionMenuPromptNeedsRefresh = FALSE;
 }
 
 #if MODULE_BATTLE_BAG_ENABLED
@@ -1353,6 +1363,7 @@ static void HandleInputBattleBagMenu(enum BattlerId battler)
         PlaySE(SE_SELECT);
         TryRestoreLastUsedBall();
         sUsingModernActionMenu = TRUE;
+        sModernActionMenuPromptNeedsRefresh = TRUE;
         DrawModernActionMenu(battler);
         gBattlerControllerFuncs[battler] = HandleInputChooseAction;
         return;
@@ -1480,6 +1491,7 @@ void DrawModernActionMenuForScriptedBattle(enum BattlerId battler)
 {
     sUsingCompactMoveList[battler] = FALSE;
     sUsingModernActionMenu = TRUE;
+    sModernActionMenuPromptNeedsRefresh = TRUE;
     DrawModernActionMenu(battler);
 }
 
@@ -3318,6 +3330,7 @@ static void PlayerHandleChooseAction(enum BattlerId battler)
     // The normal command screen replaces the compact move/picker screen.
     sUsingCompactMoveList[battler] = FALSE;
     sUsingModernActionMenu = TRUE;
+    sModernActionMenuPromptNeedsRefresh = TRUE;
     gBattlerControllerFuncs[battler] = HandleChooseActionAfterDma3;
     BattleTv_ClearExplosionFaintCause();
 

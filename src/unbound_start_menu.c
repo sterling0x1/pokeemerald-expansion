@@ -134,6 +134,7 @@ struct Usm_State {
     u8 windowCount;
     u8 frameCounter;
     u8 dpadHeldFrames;
+    bool8 waitForStartRelease;
     u8 mainTaskId;
     u8 itemOffset;
     u8 items[USM_ICO_COUNT];
@@ -146,6 +147,7 @@ struct Usm_State {
 struct Usm_Memory {
     struct Usm_State state;
     u8 spriteIds[USM_MAX_ICON_COUNT];
+    u8 iconMaskSpriteIds[USM_MAX_ICON_COUNT];
     u8 windowIds[USM_WIN_COUNT];
     u8 leftArrowId;
     u8 rightArrowId;
@@ -355,6 +357,7 @@ static void Usm_PrintClockText();
 static void Usm_PrintButtonHints();
 static void Usm_AnimateSelectedIcon(void);
 static struct Sprite* Usm_GetIconSprite(u8 iconId);
+static struct Sprite* Usm_GetIconMaskSprite(u8 iconId);
 static void Usm_ExitStartMenu(void);
 static void Usm_SwitchSelectedIcon(enum Usm_Icons iconId);
 static void Usm_HandleDPadInput();
@@ -738,6 +741,7 @@ void Usm_InitStartMenu(void)
 
     sUsmState->itemOffset = sUsmSavedOffset;
     sUsmState->selectedVisibleIdx = sUsmSavedIcon;
+    sUsmState->waitForStartRelease = JOY_HELD(START_BUTTON);
     sUsmSavedOffset = 0;
     sUsmSavedIcon = 0;
     Usm_BuildMenuItems();
@@ -762,6 +766,9 @@ void Usm_InitStartMenu(void)
 
 static void Task_UsmMain(u8 taskId)
 {
+    if (sUsmState->waitForStartRelease && !JOY_HELD(START_BUTTON))
+        sUsmState->waitForStartRelease = FALSE;
+
     if (JOY_HELD(DPAD_ANY))
         sUsmState->dpadHeldFrames++;
     else
@@ -1108,9 +1115,25 @@ static void Usm_BuildVisibleList(void)
 static void Usm_DestroyVisibleIcons(void)
 {
     for (u32 i = 0; i < sUsmState->visible.count; i++) {
-        struct Sprite* sprite = &gSprites[sUsmMemory->spriteIds[i]];
-        FreeSpriteOamMatrix(sprite);
-        DestroySprite(sprite);
+        struct Sprite* sprite;
+
+        if (sUsmMemory->spriteIds[i] != MAX_SPRITES)
+        {
+            sprite = &gSprites[sUsmMemory->spriteIds[i]];
+            if (sprite->oam.affineMode != ST_OAM_AFFINE_OFF)
+                FreeSpriteOamMatrix(sprite);
+            DestroySprite(sprite);
+            sUsmMemory->spriteIds[i] = MAX_SPRITES;
+        }
+
+        if (sUsmMemory->iconMaskSpriteIds[i] != MAX_SPRITES)
+        {
+            sprite = &gSprites[sUsmMemory->iconMaskSpriteIds[i]];
+            if (sprite->oam.affineMode != ST_OAM_AFFINE_OFF)
+                FreeSpriteOamMatrix(sprite);
+            DestroySprite(sprite);
+            sUsmMemory->iconMaskSpriteIds[i] = MAX_SPRITES;
+        }
     }
 }
 
@@ -1125,10 +1148,26 @@ static void Usm_CreateIcons(s16 x, s16 y)
 
         u8 iconId = sUsmState->visible.iconIndex[i];
 
+        sUsmMemory->spriteIds[i] = MAX_SPRITES;
+        sUsmMemory->iconMaskSpriteIds[i] = MAX_SPRITES;
+
         u8 id = CreateSprite(sUsmMenuItems[iconId].template, posX, y, 1);
         if (id == MAX_SPRITES)
             continue;
         sUsmMemory->spriteIds[i] = id;
+
+        // Flash darkness uses an OBJ window to hide sprites outside the lit
+        // circle.  A matching OBJ-window sprite exposes only this menu icon,
+        // without making unrelated overworld sprites visible in the dark.
+        if (Usm_IsFlashObscured())
+        {
+            u8 maskId = CreateSprite(sUsmMenuItems[iconId].template, posX, y, 1);
+            if (maskId != MAX_SPRITES)
+            {
+                gSprites[maskId].oam.objMode = ST_OAM_OBJ_WINDOW;
+                sUsmMemory->iconMaskSpriteIds[i] = maskId;
+            }
+        }
     }
 }
 
@@ -1153,24 +1192,52 @@ static void Usm_AnimateSelectedIcon(void)
 static void Usm_StartIconAffineAnim(u8 visibleIndex)
 {
     struct Sprite *sprite = Usm_GetIconSprite(visibleIndex);
-    sprite->oam.affineMode = ST_OAM_AFFINE_NORMAL;
     u8 matrixNum = AllocOamMatrix();
-    if (matrixNum == 0xFF)
-        return;
-    sprite->oam.matrixNum = matrixNum;
-    StartSpriteAffineAnim(sprite, 0);
+    if (matrixNum != 0xFF)
+    {
+        sprite->oam.affineMode = ST_OAM_AFFINE_NORMAL;
+        sprite->oam.matrixNum = matrixNum;
+        StartSpriteAffineAnim(sprite, 0);
+    }
+
+    sprite = Usm_GetIconMaskSprite(visibleIndex);
+    if (sprite != NULL)
+    {
+        matrixNum = AllocOamMatrix();
+        if (matrixNum != 0xFF)
+        {
+            sprite->oam.affineMode = ST_OAM_AFFINE_NORMAL;
+            sprite->oam.matrixNum = matrixNum;
+            StartSpriteAffineAnim(sprite, 0);
+        }
+    }
 }
 
 static void Usm_StopIconAffineAnim(u8 visibleIndex)
 {
     struct Sprite* sprite = Usm_GetIconSprite(visibleIndex);
-    FreeSpriteOamMatrix(sprite);
+    if (sprite->oam.affineMode != ST_OAM_AFFINE_OFF)
+    {
+        FreeSpriteOamMatrix(sprite);
+        sprite->oam.affineMode = ST_OAM_AFFINE_OFF;
+    }
+
+    sprite = Usm_GetIconMaskSprite(visibleIndex);
+    if (sprite != NULL && sprite->oam.affineMode != ST_OAM_AFFINE_OFF)
+    {
+        FreeSpriteOamMatrix(sprite);
+        sprite->oam.affineMode = ST_OAM_AFFINE_OFF;
+    }
 }
 
 static void Usm_SetIconFrame(u8 visibleIndex, enum Usm_Activation activation)
 {
     struct Sprite* sprite = Usm_GetIconSprite(visibleIndex);
     StartSpriteAnim(sprite, activation);
+
+    sprite = Usm_GetIconMaskSprite(visibleIndex);
+    if (sprite != NULL)
+        StartSpriteAnim(sprite, activation);
 }
 
 static void Usm_StopIconAnim(u8 visibleIndex)
@@ -1183,6 +1250,16 @@ static struct Sprite* Usm_GetIconSprite(u8 iconId)
 {
     struct Sprite* sprite = &gSprites[sUsmMemory->spriteIds[iconId]];
     return sprite;
+}
+
+static struct Sprite* Usm_GetIconMaskSprite(u8 iconId)
+{
+    u8 spriteId = sUsmMemory->iconMaskSpriteIds[iconId];
+
+    if (spriteId == MAX_SPRITES)
+        return NULL;
+
+    return &gSprites[spriteId];
 }
 
 static enum Usm_Icons Usm_GetSelectedIconId(void)
@@ -1225,7 +1302,9 @@ static void Usm_HandleMainInput(void)
         return;
     }
 
-    if (JOY_NEW(B_BUTTON))
+    // START mirrors B so the same button that opens the menu can close it.
+    if (JOY_NEW(B_BUTTON)
+     || (!sUsmState->waitForStartRelease && JOY_NEW(START_BUTTON)))
     {
         PlaySE(SE_PC_OFF);
         sUsmMenuCallback = UsmMenuCB_Exit;
@@ -1498,10 +1577,10 @@ static bool32 Usm_IsFlashObscured(void)
 
 bool32 Usm_IsEnabled(void)
 {
-    // This Expansion snapshot does not provide the template branch's
-    // duplicate OBJ-window sprite support. Preserve the proven vanilla menu
-    // anywhere the field is obscured instead of rendering a partial UI.
-    return !Usm_IsFlashObscured();
+    // Usm_InitStartMenu preserves the OBJ window needed by Flash darkness.
+    // Battle Pyramid remains on the vanilla menu path because it has its own
+    // special field-menu behaviour.
+    return !Usm_IsPlayerInBattlePyramid();
 }
 
 #endif // MODULE_START_MENU_UI_ENABLED
