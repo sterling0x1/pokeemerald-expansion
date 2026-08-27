@@ -24,6 +24,7 @@ static EWRAM_DATA enum GameMode sPendingMode = GAME_MODE_VANILLA;
 
 static const u8 sModeNameNuzlocke[] = _("NUZLOCKE");
 static const u8 sModeNameCarnage[] = _("CARNAGE");
+static const u8 sModeNameRogue[] = _("ROGUE");
 
 static struct GameModeSaveData *GetSaveData(void)
 {
@@ -57,6 +58,8 @@ bool32 GameMode_IsAvailable(enum GameMode mode)
         return MODULE_NUZLOCKE_ENABLED;
     case GAME_MODE_CARNAGE:
         return MODULE_RANDOMIZER_ENABLED;
+    case GAME_MODE_ROGUE:
+        return MODULE_ROGUE_ENABLED;
     default:
         return FALSE;
     }
@@ -128,6 +131,8 @@ const u8 *GameMode_GetName(enum GameMode mode)
         return sModeNameNuzlocke;
     case GAME_MODE_CARNAGE:
         return sModeNameCarnage;
+    case GAME_MODE_ROGUE:
+        return sModeNameRogue;
     case GAME_MODE_VANILLA:
     default:
         return sModeNameVanilla;

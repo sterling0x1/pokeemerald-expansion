@@ -56,6 +56,9 @@ extern const struct ModuleDescriptor gGameCornerModuleDescriptor;
 #if MODULE_BATTLE_BAG_ENABLED
 extern const struct ModuleDescriptor gBattleBagModuleDescriptor;
 #endif
+#if MODULE_ROGUE_ENABLED
+extern const struct ModuleDescriptor gRogueModuleDescriptor;
+#endif
 
 const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 {
@@ -112,5 +115,8 @@ const struct ModuleDescriptor *const gModuleRegistry[MODULE_ID_COUNT] =
 #endif
 #if MODULE_BATTLE_BAG_ENABLED
     [MODULE_ID_BATTLE_BAG] = &gBattleBagModuleDescriptor,
+#endif
+#if MODULE_ROGUE_ENABLED
+    [MODULE_ID_ROGUE] = &gRogueModuleDescriptor,
 #endif
 };

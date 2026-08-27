@@ -45,15 +45,19 @@ static const u8 sTextHeader[] = _("CHOOSE YOUR ADVENTURE");
 static const u8 sTextVanilla[] = _("VANILLA");
 static const u8 sTextNuzlocke[] = _("NUZLOCKE");
 static const u8 sTextCarnage[] = _("CARNAGE");
+static const u8 sTextRogue[] = _("ROGUE");
 static const u8 sTagVanilla[] = _("CLASSIC");
 static const u8 sTagNuzlocke[] = _("CHALLENGE");
 static const u8 sTagCarnage[] = _("CHAOS");
+static const u8 sTagRogue[] = _("ROGUELIKE");
 static const u8 sHeadlineVanilla[] = _("THE ORIGINAL\nJOURNEY");
 static const u8 sHeadlineNuzlocke[] = _("EVERY CHOICE\nMATTERS");
 static const u8 sHeadlineCarnage[] = _("EMBRACE THE\nUNEXPECTED");
+static const u8 sHeadlineRogue[] = _("EVERY ROAD\nCHANGES");
 static const u8 sDescVanilla[] = _("Classic rules.\nRandomizer optional.");
 static const u8 sDescNuzlocke[] = _("Custom high-stakes\nNuzlocke rules.");
 static const u8 sDescCarnage[] = _("Randomizers and\nlevel chaos stay on.");
+static const u8 sDescRogue[] = _("Generated routes.\nOne run at a time.");
 static const u8 sTextControls[] = _("{DPAD_UPDOWN} MOVE     {A_BUTTON} SELECT     {B_BUTTON} BACK");
 
 static const u8 sTextColorsNormal[] = {TEXT_COLOR_WHITE, TEXT_COLOR_DARK_GRAY, TEXT_COLOR_LIGHT_GRAY};
@@ -65,6 +69,7 @@ static const u8 *const sModeNames[GAME_MODE_COUNT] =
     [GAME_MODE_VANILLA] = sTextVanilla,
     [GAME_MODE_NUZLOCKE] = sTextNuzlocke,
     [GAME_MODE_CARNAGE] = sTextCarnage,
+    [GAME_MODE_ROGUE] = sTextRogue,
 };
 
 static const u8 *const sModeDescriptions[GAME_MODE_COUNT] =
@@ -72,6 +77,7 @@ static const u8 *const sModeDescriptions[GAME_MODE_COUNT] =
     [GAME_MODE_VANILLA] = sDescVanilla,
     [GAME_MODE_NUZLOCKE] = sDescNuzlocke,
     [GAME_MODE_CARNAGE] = sDescCarnage,
+    [GAME_MODE_ROGUE] = sDescRogue,
 };
 
 static const u8 *const sModeHeadlines[GAME_MODE_COUNT] =
@@ -79,6 +85,7 @@ static const u8 *const sModeHeadlines[GAME_MODE_COUNT] =
     [GAME_MODE_VANILLA] = sHeadlineVanilla,
     [GAME_MODE_NUZLOCKE] = sHeadlineNuzlocke,
     [GAME_MODE_CARNAGE] = sHeadlineCarnage,
+    [GAME_MODE_ROGUE] = sHeadlineRogue,
 };
 
 static const u8 *const sModeTags[GAME_MODE_COUNT] =
@@ -86,6 +93,7 @@ static const u8 *const sModeTags[GAME_MODE_COUNT] =
     [GAME_MODE_VANILLA] = sTagVanilla,
     [GAME_MODE_NUZLOCKE] = sTagNuzlocke,
     [GAME_MODE_CARNAGE] = sTagCarnage,
+    [GAME_MODE_ROGUE] = sTagRogue,
 };
 
 static const struct WindowTemplate sWindows[] =
@@ -211,8 +219,17 @@ static void CB2_InitGameModeMenu(void)
 static void DrawMenu(u8 taskId)
 {
     u32 i;
+    u32 availableCount = 0;
     u32 visibleRow = 0;
     u8 selection = gTasks[taskId].tSelection;
+    u8 rowHeight;
+
+    for (i = 0; i < GAME_MODE_COUNT; i++)
+    {
+        if (GameMode_IsAvailable(i))
+            availableCount++;
+    }
+    rowHeight = availableCount > 3 ? 18 : 24;
 
     FillWindowPixelBuffer(WIN_BODY, PIXEL_FILL(1));
     FillWindowPixelRect(WIN_BODY, PIXEL_FILL(2), 96, 4, 1, 72);
@@ -224,11 +241,11 @@ static void DrawMenu(u8 taskId)
 
         if (!GameMode_IsAvailable(i))
             continue;
-        y = visibleRow * 24 + 5;
+        y = visibleRow * rowHeight + (rowHeight == 18 ? 3 : 5);
 
         if (i == selection)
         {
-            FillWindowPixelRect(WIN_BODY, PIXEL_FILL(2), 0, visibleRow * 24 + 2, 94, 20);
+            FillWindowPixelRect(WIN_BODY, PIXEL_FILL(2), 0, visibleRow * rowHeight + 1, 94, rowHeight - 2);
             AddTextPrinterParameterized3(WIN_BODY, FONT_NORMAL, 4, y, colors, TEXT_SKIP_DRAW, sCursor);
         }
         AddTextPrinterParameterized3(WIN_BODY, FONT_NORMAL, 20, y, colors, TEXT_SKIP_DRAW, sModeNames[i]);
