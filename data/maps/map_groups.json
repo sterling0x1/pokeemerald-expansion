@@ -624,7 +624,18 @@
     "NavelRock_Down10",
     "NavelRock_Down11",
     "NavelRock_Bottom",
-    "TrainerHill_Elevator"
+    "TrainerHill_Elevator",
+    "RogueHub",
+    "RogueCasino",
+    "RogueRoute",
+    "RogueRoute2",
+    "RogueRoute3",
+    "RogueRoute4",
+    "RogueRoute5",
+    "RogueRoute6",
+    "RogueRoute7",
+    "RogueRoute8",
+    "RogueBossArena"
   ],
   "gMapGroup_IndoorRoute104Prototype": [
     "Route104_Prototype",

@@ -146,6 +146,366 @@
           }
         },
         {
+          "map": "MAP_ROGUE_ROUTE",
+          "base_label": "gRogueRoute",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              }
+            ]
+          }
+        },
+        {
+          "map": "MAP_ROGUE_ROUTE_2",
+          "base_label": "gRogueRoute2",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              }
+            ]
+          }
+        },
+        {
+          "map": "MAP_ROGUE_ROUTE_3",
+          "base_label": "gRogueRoute3",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              }
+            ]
+          }
+        },
+        {
+          "map": "MAP_ROGUE_ROUTE_4",
+          "base_label": "gRogueRoute4",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 3,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_POOCHYENA"
+              },
+              {
+                "min_level": 3,
+                "max_level": 4,
+                "species": "SPECIES_ZIGZAGOON"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_WURMPLE"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_LOTAD"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_SEEDOT"
+              },
+              {
+                "min_level": 4,
+                "max_level": 5,
+                "species": "SPECIES_RALTS"
+              }
+            ]
+          }
+        },
+        {
+          "map": "MAP_ROGUE_ROUTE_5",
+          "base_label": "gRogueRoute5",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              { "min_level": 12, "max_level": 13, "species": "SPECIES_WURMPLE" },
+              { "min_level": 12, "max_level": 13, "species": "SPECIES_SHROOMISH" },
+              { "min_level": 12, "max_level": 14, "species": "SPECIES_SILCOON" },
+              { "min_level": 12, "max_level": 14, "species": "SPECIES_CASCOON" },
+              { "min_level": 13, "max_level": 14, "species": "SPECIES_SLAKOTH" },
+              { "min_level": 13, "max_level": 14, "species": "SPECIES_TAILLOW" },
+              { "min_level": 12, "max_level": 13, "species": "SPECIES_WURMPLE" },
+              { "min_level": 12, "max_level": 13, "species": "SPECIES_SHROOMISH" },
+              { "min_level": 12, "max_level": 14, "species": "SPECIES_SILCOON" },
+              { "min_level": 12, "max_level": 14, "species": "SPECIES_CASCOON" },
+              { "min_level": 13, "max_level": 14, "species": "SPECIES_SLAKOTH" },
+              { "min_level": 13, "max_level": 14, "species": "SPECIES_TAILLOW" }
+            ]
+          }
+        },
+        {
+          "map": "MAP_ROGUE_ROUTE_6",
+          "base_label": "gRogueRoute6",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              { "min_level": 15, "max_level": 16, "species": "SPECIES_ZUBAT" },
+              { "min_level": 15, "max_level": 16, "species": "SPECIES_GEODUDE" },
+              { "min_level": 15, "max_level": 17, "species": "SPECIES_MAKUHITA" },
+              { "min_level": 15, "max_level": 17, "species": "SPECIES_ABRA" },
+              { "min_level": 16, "max_level": 17, "species": "SPECIES_ARON" },
+              { "min_level": 16, "max_level": 17, "species": "SPECIES_SABLEYE" },
+              { "min_level": 15, "max_level": 16, "species": "SPECIES_ZUBAT" },
+              { "min_level": 15, "max_level": 16, "species": "SPECIES_GEODUDE" },
+              { "min_level": 15, "max_level": 17, "species": "SPECIES_MAKUHITA" },
+              { "min_level": 15, "max_level": 17, "species": "SPECIES_ABRA" },
+              { "min_level": 16, "max_level": 17, "species": "SPECIES_ARON" },
+              { "min_level": 16, "max_level": 17, "species": "SPECIES_SABLEYE" }
+            ]
+          }
+        },
+        {
+          "map": "MAP_ROGUE_ROUTE_7",
+          "base_label": "gRogueRoute7",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              { "min_level": 18, "max_level": 19, "species": "SPECIES_NUMEL" },
+              { "min_level": 18, "max_level": 19, "species": "SPECIES_SLUGMA" },
+              { "min_level": 18, "max_level": 20, "species": "SPECIES_TORKOAL" },
+              { "min_level": 18, "max_level": 20, "species": "SPECIES_MACHOP" },
+              { "min_level": 19, "max_level": 20, "species": "SPECIES_KOFFING" },
+              { "min_level": 19, "max_level": 20, "species": "SPECIES_GRIMER" },
+              { "min_level": 18, "max_level": 19, "species": "SPECIES_NUMEL" },
+              { "min_level": 18, "max_level": 19, "species": "SPECIES_SLUGMA" },
+              { "min_level": 18, "max_level": 20, "species": "SPECIES_TORKOAL" },
+              { "min_level": 18, "max_level": 20, "species": "SPECIES_MACHOP" },
+              { "min_level": 19, "max_level": 20, "species": "SPECIES_KOFFING" },
+              { "min_level": 19, "max_level": 20, "species": "SPECIES_GRIMER" }
+            ]
+          }
+        },
+        {
+          "map": "MAP_ROGUE_ROUTE_8",
+          "base_label": "gRogueRoute8",
+          "land_mons": {
+            "encounter_rate": 20,
+            "mons": [
+              { "min_level": 21, "max_level": 22, "species": "SPECIES_WHISMUR" },
+              { "min_level": 21, "max_level": 22, "species": "SPECIES_NINCADA" },
+              { "min_level": 21, "max_level": 23, "species": "SPECIES_MARILL" },
+              { "min_level": 21, "max_level": 23, "species": "SPECIES_SKITTY" },
+              { "min_level": 22, "max_level": 23, "species": "SPECIES_NOSEPASS" },
+              { "min_level": 22, "max_level": 23, "species": "SPECIES_MAWILE" },
+              { "min_level": 21, "max_level": 22, "species": "SPECIES_WHISMUR" },
+              { "min_level": 21, "max_level": 22, "species": "SPECIES_NINCADA" },
+              { "min_level": 21, "max_level": 23, "species": "SPECIES_MARILL" },
+              { "min_level": 21, "max_level": 23, "species": "SPECIES_SKITTY" },
+              { "min_level": 22, "max_level": 23, "species": "SPECIES_NOSEPASS" },
+              { "min_level": 22, "max_level": 23, "species": "SPECIES_MAWILE" }
+            ]
+          }
+        },
+        {
           "map": "MAP_ROUTE102",
           "base_label": "gRoute102",
           "land_mons": {

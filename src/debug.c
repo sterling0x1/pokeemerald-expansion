@@ -42,6 +42,7 @@
 #include "pokemon_storage_system.h"
 #include "random.h"
 #include "region_map.h"
+#include "rogue.h"
 #include "rtc.h"
 #include "script.h"
 #include "script_pokemon_util.h"
@@ -354,6 +355,7 @@ static void DebugAction_Give_Decoration(u8 taskId);
 static void DebugAction_Give_Decoration_SelectId(u8 taskId);
 static void DebugAction_Give_MaxMoney(u8 taskId);
 static void DebugAction_Give_MaxCoins(u8 taskId);
+static void DebugAction_Give_MaxRogueChips(u8 taskId);
 static void DebugAction_Give_MaxBattlePoints(u8 taskId);
 static void DebugAction_Give_DayCareEgg(u8 taskId);
 
@@ -651,6 +653,7 @@ static const struct DebugMenuOption sDebugMenu_Actions_Give[] =
     { COMPOUND_STRING("Give Decoration…"),  DebugAction_Give_Decoration },
     { COMPOUND_STRING("Max Money"),         DebugAction_Give_MaxMoney },
     { COMPOUND_STRING("Max Coins"),         DebugAction_Give_MaxCoins },
+    { COMPOUND_STRING("Max Rogue Chips"),   DebugAction_Give_MaxRogueChips },
     { COMPOUND_STRING("Max Battle Points"), DebugAction_Give_MaxBattlePoints },
     { COMPOUND_STRING("Daycare Egg"),       DebugAction_Give_DayCareEgg },
     { NULL }
@@ -3662,6 +3665,16 @@ static void DebugAction_Give_MaxCoins(u8 taskId)
 
     if (!CheckBagHasItem(ITEM_COIN_CASE, 1))
         AddBagItem(ITEM_COIN_CASE, 1);
+}
+
+static void DebugAction_Give_MaxRogueChips(u8 taskId)
+{
+    u16 coins = GetCoins();
+
+    RogueScript_BeginCasinoSession();
+    SetCoins(MAX_COINS);
+    RogueScript_EndCasinoSession();
+    SetCoins(coins);
 }
 
 static void DebugAction_Give_MaxBattlePoints(u8 taskId)

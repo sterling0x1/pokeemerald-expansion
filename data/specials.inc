@@ -18,6 +18,26 @@
 gSpecials::
 .endif
 	def_special HealPlayerParty
+	def_special RogueScript_SelectFirstRoute
+	def_special RogueScript_CompleteRoom
+	def_special RogueScript_BufferNextRoomNumber
+	def_special RogueScript_BufferChapterNumber
+	def_special RogueScript_GetCurrentRouteVariant
+	def_special RogueScript_GetChapter
+	def_special RogueScript_IsBossReady
+	def_special RogueScript_IsBossRoom
+	def_special RogueScript_IsRunComplete
+	def_special RogueScript_IsRunFailed
+	def_special RogueScript_StartNewRun
+	def_special RogueScript_CollectPayout
+	def_special RogueScript_BufferChipBalance
+	def_special RogueScript_BeginCasinoSession
+	def_special RogueScript_EndCasinoSession
+	def_special RogueScript_TryPurchaseUnlock
+	def_special RogueScript_HasBonusStarterUnlock
+	def_special RogueScript_HasMysteryPartnerUnlock
+	def_special RogueScript_GrantStartingBundle
+	def_special RogueScript_GiveMysteryPartner
 	def_special StartBlackJack
 	def_special StartGacha
 	def_special StartBlockStacker

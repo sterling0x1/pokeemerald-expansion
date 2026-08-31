@@ -7,6 +7,7 @@
 #include "main.h"
 #include "nuzlocke.h"
 #include "qol.h"
+#include "rogue.h"
 #include "task.h"
 #include "safari_zone.h"
 #include "script.h"
@@ -1470,6 +1471,9 @@ static void CB2_EndTrainerBattle(void)
 {
     HandleBattleVariantEndParty();
 
+    if (gBattleOutcome == B_OUTCOME_WON)
+        Rogue_RecordTrainerWin();
+
     gIsDebugBattle = FALSE;
     if (FollowerNPCIsBattlePartner())
     {
@@ -1539,6 +1543,9 @@ static void CB2_EndTrainerBattle(void)
 
 static void CB2_EndRematchBattle(void)
 {
+    if (gBattleOutcome == B_OUTCOME_WON)
+        Rogue_RecordTrainerWin();
+
     Nuzlocke_ProcessFaintedParty();
 
     if (TRAINER_BATTLE_PARAM.opponentA == TRAINER_SECRET_BASE)

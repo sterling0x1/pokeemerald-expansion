@@ -182,6 +182,7 @@
 static EWRAM_DATA bool8 sStartedPokeBallTask = 0;
 static EWRAM_DATA u16 sCurrItemAndOptionMenuCheck = 0;
 static EWRAM_DATA bool8 sStartingNuzlocke = FALSE;
+static EWRAM_DATA bool8 sStartingRogue = FALSE;
 
 static u8 sBirchSpeechMainTaskId;
 
@@ -1240,6 +1241,7 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
 #if MAIN_MENU_NUZLOCKE_ENTRY
         case ACTION_NUZLOCKE:
             sStartingNuzlocke = TRUE;
+            sStartingRogue = FALSE;
             goto start_new_game;
 #endif
         case ACTION_NEW_GAME:
@@ -1249,10 +1251,12 @@ static void Task_HandleMainMenuAPressed(u8 taskId)
             break;
 #else
             sStartingNuzlocke = FALSE;
+            sStartingRogue = FALSE;
             goto start_new_game;
 #endif
         default:
             sStartingNuzlocke = FALSE;
+            sStartingRogue = FALSE;
 #if MAIN_MENU_NUZLOCKE_ENTRY || !MODULE_GAME_MODES_ENABLED
 start_new_game:
 #endif
@@ -1538,7 +1542,7 @@ static void Task_NewGameBirchSpeech_Init(u8 taskId)
     ShowBg(0);
     ShowBg(1);
 
-    if (sStartingNuzlocke)
+    if (sStartingNuzlocke || sStartingRogue)
     {
         InitWindows(sNewGameBirchSpeechTextWindows);
         LoadMainMenuWindowFrameTiles(0, 0xF3);
@@ -1744,7 +1748,7 @@ static void Task_NewGameBirchSpeech_WaitForPlayerFadeIn(u8 taskId)
 static void Task_NewGameBirchSpeech_BoyOrGirl(u8 taskId)
 {
     NewGameBirchSpeech_ClearWindow(0);
-    StringExpandPlaceholders(gStringVar4, sStartingNuzlocke ? sText_ChooseCharacter : gText_Birch_BoyOrGirl);
+    StringExpandPlaceholders(gStringVar4, (sStartingNuzlocke || sStartingRogue) ? sText_ChooseCharacter : gText_Birch_BoyOrGirl);
     AddTextPrinterForMessage(TRUE);
     gTasks[taskId].func = Task_NewGameBirchSpeech_WaitToShowGenderMenu;
 }
@@ -2055,6 +2059,12 @@ static void CB2_NewGameBirchSpeech_ReturnFromNamingScreen(void)
     if (sStartingNuzlocke)
     {
         SetMainCallback2(CB2_NewNuzlockeGame);
+        return;
+    }
+
+    if (sStartingRogue)
+    {
+        SetMainCallback2(CB2_NewGame);
         return;
     }
 
@@ -2410,6 +2420,7 @@ static void MainMenu_FormatSavegameText(void)
 void CB2_StartSelectedNewGame(void)
 {
     sStartingNuzlocke = GameMode_GetPending() == GAME_MODE_NUZLOCKE;
+    sStartingRogue = GameMode_GetPending() == GAME_MODE_ROGUE;
     ResetTasks();
     // Birch's introduction reuses the main menu's BG1 configuration for its
     // gradient map. Restore it after returning from the game mode selector.

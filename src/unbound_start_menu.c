@@ -134,7 +134,7 @@ struct Usm_State {
     u8 windowCount;
     u8 frameCounter;
     u8 dpadHeldFrames;
-    bool8 waitForStartRelease;
+    bool8 waitForInputRelease;
     u8 mainTaskId;
     u8 itemOffset;
     u8 items[USM_ICO_COUNT];
@@ -741,7 +741,11 @@ void Usm_InitStartMenu(void)
 
     sUsmState->itemOffset = sUsmSavedOffset;
     sUsmState->selectedVisibleIdx = sUsmSavedIcon;
-    sUsmState->waitForStartRelease = JOY_HELD(START_BUTTON);
+    // The menu can be recreated by another menu task in the same frame that
+    // accepted A or B (for example, choosing No in the save prompt).  Wait for
+    // those buttons to be released so that input cannot activate the first
+    // start-menu item immediately.
+    sUsmState->waitForInputRelease = JOY_HELD(A_BUTTON | B_BUTTON | START_BUTTON);
     sUsmSavedOffset = 0;
     sUsmSavedIcon = 0;
     Usm_BuildMenuItems();
@@ -766,8 +770,13 @@ void Usm_InitStartMenu(void)
 
 static void Task_UsmMain(u8 taskId)
 {
-    if (sUsmState->waitForStartRelease && !JOY_HELD(START_BUTTON))
-        sUsmState->waitForStartRelease = FALSE;
+    if (sUsmState->waitForInputRelease)
+    {
+        if (JOY_HELD(A_BUTTON | B_BUTTON | START_BUTTON))
+            return;
+
+        sUsmState->waitForInputRelease = FALSE;
+    }
 
     if (JOY_HELD(DPAD_ANY))
         sUsmState->dpadHeldFrames++;
@@ -1304,7 +1313,7 @@ static void Usm_HandleMainInput(void)
 
     // START mirrors B so the same button that opens the menu can close it.
     if (JOY_NEW(B_BUTTON)
-     || (!sUsmState->waitForStartRelease && JOY_NEW(START_BUTTON)))
+     || (!sUsmState->waitForInputRelease && JOY_NEW(START_BUTTON)))
     {
         PlaySE(SE_PC_OFF);
         sUsmMenuCallback = UsmMenuCB_Exit;

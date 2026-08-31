@@ -36,6 +36,7 @@
 #include "item.h"
 #include "item_icon.h"
 #include "qol.h"
+#include "rogue.h"
 #include "line_break.h"
 #include "link.h"
 #include "link_rfu.h"
@@ -407,7 +408,15 @@ void DoWhiteOut(void)
     RunScriptImmediately(EventScript_WhiteOut);
     HealPlayerParty();
     Overworld_ResetStateAfterWhiteOut();
-    SetWarpDestinationToLastHealLocation();
+    if (Rogue_IsModeActive())
+    {
+        Rogue_HandleWhiteOut();
+        SetWarpDestination(MAP_GROUP(MAP_ROGUE_HUB), MAP_NUM(MAP_ROGUE_HUB), WARP_ID_NONE, 12, 8);
+    }
+    else
+    {
+        SetWarpDestinationToLastHealLocation();
+    }
     WarpIntoMap();
 }
 
@@ -755,6 +764,8 @@ void SetWarpDestinationToHealLocation(u8 healLocationId)
 
 static bool32 IsWhiteoutCutscene(void)
 {
+    if (Rogue_IsModeActive())
+        return FALSE;
     if (OW_WHITEOUT_CUTSCENE < GEN_4)
         return FALSE;
     return GetHealNpcLocalId(GetHealLocationIndexByWarpData(&gSaveBlock1Ptr->lastHealLocation)) != LOCALID_NONE;
@@ -1945,7 +1956,7 @@ static void CB2_ContinueNewGame(void)
     PlayTimeCounter_Start();
     ScriptContext_Init();
     UnlockPlayerFieldControls();
-    if (IS_FRLG)
+    if (IS_FRLG || GameMode_GetActive() == GAME_MODE_ROGUE)
         gFieldCallback = FieldCB_WarpExitFadeFromBlack;
     else
         gFieldCallback = ExecuteTruckSequence;
@@ -1979,7 +1990,7 @@ void CB2_NewGame(void)
     }
     else
 #endif
-    if (GameMode_GetActive() == GAME_MODE_CARNAGE)
+    if (GameMode_GetActive() == GAME_MODE_CARNAGE || GameMode_GetActive() == GAME_MODE_ROGUE)
     {
         CB2_ContinueNewGame();
     }

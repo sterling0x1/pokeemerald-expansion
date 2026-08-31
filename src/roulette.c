@@ -15,6 +15,7 @@
 #include "palette.h"
 #include "palette_util.h"
 #include "random.h"
+#include "rogue.h"
 #include "roulette.h"
 #include "rtc.h"
 #include "scanline_effect.h"
@@ -28,6 +29,7 @@
 #include "tv.h"
 #include "window.h"
 #include "constants/coins.h"
+#include "constants/map_groups.h"
 #include "constants/rgb.h"
 #include "constants/roulette.h"
 #include "constants/songs.h"
@@ -2001,6 +2003,9 @@ static void Task_ExitRoulette(u8 taskId)
         ResetPaletteFade();
         ResetSpriteData();
         FreeRoulette();
+        if (gSaveBlock1Ptr->location.mapGroup == MAP_GROUP(MAP_ROGUE_CASINO)
+         && gSaveBlock1Ptr->location.mapNum == MAP_NUM(MAP_ROGUE_CASINO))
+            RogueScript_EndCasinoSession();
         gFieldCallback = FieldCB_ContinueScriptHandleMusic;
         SetMainCallback2(CB2_ReturnToField);
         DestroyTask(taskId);
