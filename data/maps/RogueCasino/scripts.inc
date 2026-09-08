@@ -13,6 +13,33 @@ RogueCasino_EventScript_Host::
 	release
 	end
 
+RogueCasino_EventScript_SuppliesVendor::
+	lock
+	faceplayer
+	message RogueCasino_Text_SuppliesWelcome
+	waitmessage
+	special RogueScript_BeginCasinoSession
+	variablecoinmart RogueCasino_Supplies
+	special RogueScript_EndCasinoSession
+	msgbox RogueCasino_Text_SuppliesGoodbye, MSGBOX_DEFAULT
+	release
+	end
+
+	.align 2
+RogueCasino_Supplies:
+	.2byte ITEM_POKE_BALL, 5
+	.2byte ITEM_GREAT_BALL, 10
+	.2byte ITEM_POTION, 4
+	.2byte ITEM_SUPER_POTION, 10
+	.2byte ITEM_ANTIDOTE, 3
+	.2byte ITEM_PARALYZE_HEAL, 3
+	.2byte ITEM_AWAKENING, 3
+	.2byte ITEM_BURN_HEAL, 3
+	.2byte ITEM_ICE_HEAL, 3
+	.2byte ITEM_REPEL, 5
+	.2byte ITEM_ESCAPE_ROPE, 8
+	pokemartlistend
+
 RogueCasino_EventScript_SlotMachine0::
 	setvar VAR_0x8004, 0
 	goto RogueCasino_EventScript_PlaySlots
@@ -417,6 +444,12 @@ RogueCasino_EventScript_FinishGame::
 
 RogueCasino_Text_Host:
 	.string "Welcome to the ROGUE CASINO!\nYour balance is {STR_VAR_1} ROGUE CHIPS.\pEvery machine uses the same chip balance.\lVisit the counter for permanent rewards.$"
+
+RogueCasino_Text_SuppliesWelcome:
+	.string "Need supplies for your next run?\nEverything here costs ROGUE CHIPS.$"
+
+RogueCasino_Text_SuppliesGoodbye:
+	.string "Good luck on your next route!$"
 
 RogueCasino_Text_Blackjack:
 	.string "Play BLACKJACK using ROGUE CHIPS?$"

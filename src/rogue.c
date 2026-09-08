@@ -17,7 +17,32 @@
 
 #define ROGUE_SAVE_MAGIC 0x524F4731 // ROG1
 
-STATIC_ASSERT(sizeof(struct RogueSaveData) == 36, RogueSaveDataSize);
+STATIC_ASSERT(sizeof(struct RogueSaveData) == 40, RogueSaveDataSize);
+
+struct RogueSaveDataV3
+{
+    u32 magic;
+    u32 baseSeed;
+    u32 runSeed;
+    u32 rngCounter;
+    u16 runNumber;
+    u8 state;
+    u8 phase;
+    u8 currentRoom;
+    u8 roomCount;
+    u8 difficulty;
+    u8 currentRoomType;
+    u8 selectedRoute;
+    u8 pendingChoices;
+    u8 routeRevision;
+    u8 unlockFlags;
+    u16 rogueChips;
+    u16 pendingChips;
+    u16 bundleClaimedRun;
+    u16 mysteryPartnerClaimedRun;
+};
+
+STATIC_ASSERT(sizeof(struct RogueSaveDataV3) == 36, RogueSaveDataV3Size);
 
 struct RogueSaveDataV2
 {
@@ -74,6 +99,7 @@ static struct RogueSaveData *CreateSaveData(u32 seed, enum RogueRunState state)
 
     if (data == NULL)
         return NULL;
+    memset(data, 0, sizeof(*data));
     data->magic = ROGUE_SAVE_MAGIC;
     data->baseSeed = seed != 0 ? seed : 1;
     data->runSeed = Hash32(data->baseSeed ^ 0x52554E31);
@@ -85,19 +111,51 @@ static struct RogueSaveData *MigrateSaveData(void)
 {
     u16 version;
     u16 size;
-    struct RogueSaveDataV2 legacy;
-    struct RogueSaveDataV2 *oldData = ModuleSave_GetChunk(MODULE_ID_ROGUE, &version, &size);
+    struct RogueSaveDataV2 legacyV2;
+    struct RogueSaveDataV3 legacyV3;
+    void *oldData = ModuleSave_GetChunk(MODULE_ID_ROGUE, &version, &size);
     struct RogueSaveData *data;
 
-    if (oldData == NULL || version != 2 || size != sizeof(*oldData) || oldData->magic != ROGUE_SAVE_MAGIC)
+    if (oldData == NULL)
         return NULL;
 
-    legacy = *oldData;
+    if (version == 3 && size == sizeof(legacyV3))
+    {
+        memcpy(&legacyV3, oldData, sizeof(legacyV3));
+        if (legacyV3.magic != ROGUE_SAVE_MAGIC)
+            return NULL;
+    }
+    else if (version == 2 && size == sizeof(legacyV2))
+    {
+        memcpy(&legacyV2, oldData, sizeof(legacyV2));
+        if (legacyV2.magic != ROGUE_SAVE_MAGIC)
+            return NULL;
+    }
+    else
+    {
+        return NULL;
+    }
+
     data = ModuleSave_RecreateChunk(MODULE_ID_ROGUE, ROGUE_SAVE_VERSION, sizeof(*data));
     if (data == NULL)
         return NULL;
 
-    memcpy(data, &legacy, offsetof(struct RogueSaveDataV2, reserved));
+    memset(data, 0, sizeof(*data));
+    if (version == 3)
+    {
+        memcpy(data, &legacyV3, sizeof(legacyV3));
+
+        // Let existing unlock owners claim their rewards once after upgrading.
+        if (data->unlockFlags & (1 << ROGUE_UNLOCK_STARTING_BUNDLE))
+            data->bundleClaimedRun = data->runNumber - 1;
+        if (data->unlockFlags & (1 << ROGUE_UNLOCK_MYSTERY_PARTNER))
+            data->mysteryPartnerClaimedRun = data->runNumber - 1;
+    }
+    else
+    {
+        memcpy(data, &legacyV2, offsetof(struct RogueSaveDataV2, reserved));
+    }
+    data->bonusStarterClaimedRun = data->runNumber - 1;
     return data;
 }
 
@@ -263,11 +321,13 @@ u8 Rogue_GetRoomCount(void)
 u8 Rogue_GetCurrentRouteVariant(void)
 {
     struct RogueSaveData *data = GetSaveData();
+    struct RogueRoomChoice choice;
 
     if (data == NULL)
         return 0;
 
-    return min(data->roomCount, ROGUE_ROUTE_VARIANT_COUNT - 1);
+    BuildRouteChoice(data, data->selectedRoute, &choice);
+    return choice.routeKey % ROGUE_ROUTE_VARIANT_COUNT;
 }
 
 enum RogueRoomType Rogue_GetCurrentRoomType(void)
@@ -510,6 +570,12 @@ u16 RogueScript_TryPurchaseUnlock(void)
 
     data->rogueChips -= sPrices[unlock];
     data->unlockFlags |= mask;
+    if (unlock == ROGUE_UNLOCK_STARTING_BUNDLE)
+        data->bundleClaimedRun = data->runNumber - 1;
+    else if (unlock == ROGUE_UNLOCK_MYSTERY_PARTNER)
+        data->mysteryPartnerClaimedRun = data->runNumber - 1;
+    else if (unlock == ROGUE_UNLOCK_BONUS_STARTER)
+        data->bonusStarterClaimedRun = data->runNumber - 1;
     return ROGUE_PURCHASE_SUCCESS;
 #else
     return ROGUE_PURCHASE_INVALID;
@@ -523,6 +589,30 @@ u16 RogueScript_HasBonusStarterUnlock(void)
     return data != NULL && (data->unlockFlags & (1 << ROGUE_UNLOCK_BONUS_STARTER));
 #else
     return FALSE;
+#endif
+}
+
+u16 RogueScript_CanChooseBonusStarter(void)
+{
+#if MODULE_ROGUE_ENABLED
+    struct RogueSaveData *data = GetSaveData();
+
+    return data != NULL
+        && (data->unlockFlags & (1 << ROGUE_UNLOCK_BONUS_STARTER))
+        && data->bonusStarterClaimedRun != data->runNumber
+        && CalculatePlayerPartyCount() < PARTY_SIZE;
+#else
+    return FALSE;
+#endif
+}
+
+void RogueScript_MarkBonusStarterClaimed(void)
+{
+#if MODULE_ROGUE_ENABLED
+    struct RogueSaveData *data = GetSaveData();
+
+    if (data != NULL && (data->unlockFlags & (1 << ROGUE_UNLOCK_BONUS_STARTER)))
+        data->bonusStarterClaimedRun = data->runNumber;
 #endif
 }
 
@@ -546,10 +636,28 @@ u16 RogueScript_GrantStartingBundle(void)
      || data->bundleClaimedRun == data->runNumber)
         return FALSE;
 
+    if (!AddBagItem(ITEM_POTION, 3))
+        return FALSE;
+    if (!AddBagItem(ITEM_ANTIDOTE, 2))
+    {
+        RemoveBagItem(ITEM_POTION, 3);
+        return FALSE;
+    }
+    if (!AddBagItem(ITEM_REVIVE, 1))
+    {
+        RemoveBagItem(ITEM_ANTIDOTE, 2);
+        RemoveBagItem(ITEM_POTION, 3);
+        return FALSE;
+    }
+    if (!AddBagItem(ITEM_POKE_BALL, 5))
+    {
+        RemoveBagItem(ITEM_REVIVE, 1);
+        RemoveBagItem(ITEM_ANTIDOTE, 2);
+        RemoveBagItem(ITEM_POTION, 3);
+        return FALSE;
+    }
+
     data->bundleClaimedRun = data->runNumber;
-    AddBagItem(ITEM_POTION, 3);
-    AddBagItem(ITEM_ANTIDOTE, 2);
-    AddBagItem(ITEM_REVIVE, 1);
     return TRUE;
 #else
     return FALSE;
@@ -570,12 +678,20 @@ u16 RogueScript_GiveMysteryPartner(void)
     struct RogueSaveData *data = GetSaveData();
     enum Species species;
 
-    if (data == NULL)
+    if (data == NULL
+     || !(data->unlockFlags & (1 << ROGUE_UNLOCK_MYSTERY_PARTNER))
+     || data->mysteryPartnerClaimedRun == data->runNumber
+     || CalculatePlayerPartyCount() == 0
+     || CalculatePlayerPartyCount() >= PARTY_SIZE)
         return FALSE;
 
     species = sMysteryPartners[Rogue_RandomRange(ROGUE_RNG_REWARD, data->runNumber, ARRAY_COUNT(sMysteryPartners))];
     StringCopy(gStringVar1, GetSpeciesName(species));
-    return ScriptGiveMonWithoutRandomization(species, 5, ITEM_NONE) != MON_CANT_GIVE;
+    if (ScriptGiveMonWithoutRandomization(species, 5, ITEM_NONE) == MON_CANT_GIVE)
+        return FALSE;
+
+    data->mysteryPartnerClaimedRun = data->runNumber;
+    return TRUE;
 #else
     return FALSE;
 #endif

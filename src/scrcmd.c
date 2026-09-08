@@ -2524,6 +2524,9 @@ bool8 ScrCmd_pokemart(struct ScriptContext *ctx)
     case NEW_SHOP_PRICE_TYPE_COINS:
         NewShop_CreateCoinPokemartMenu(ptr);
         break;
+    case NEW_SHOP_PRICE_TYPE_VARIABLE_COINS:
+        NewShop_CreateVariableCoinPokemartMenu(ptr);
+        break;
     case NEW_SHOP_PRICE_TYPE_POINTS:
         NewShop_CreatePointsPokemartMenu(ptr);
         break;

@@ -4,7 +4,7 @@
 #include "global.h"
 #include "config/modules.h"
 
-#define ROGUE_SAVE_VERSION 3
+#define ROGUE_SAVE_VERSION 4
 #define ROGUE_MAX_ROUTE_CHOICES 3
 #define ROGUE_ROUTES_PER_CHAPTER 2
 #define ROGUE_CHAPTER_COUNT 4
@@ -94,7 +94,8 @@ struct RogueSaveData
     u16 rogueChips;
     u16 pendingChips;
     u16 bundleClaimedRun;
-    u8 reserved[2];
+    u16 mysteryPartnerClaimedRun;
+    u16 bonusStarterClaimedRun;
 };
 
 #if MODULE_ROGUE_ENABLED
@@ -163,6 +164,8 @@ void RogueScript_BeginCasinoSession(void);
 void RogueScript_EndCasinoSession(void);
 u16 RogueScript_TryPurchaseUnlock(void);
 u16 RogueScript_HasBonusStarterUnlock(void);
+u16 RogueScript_CanChooseBonusStarter(void);
+void RogueScript_MarkBonusStarterClaimed(void);
 u16 RogueScript_HasMysteryPartnerUnlock(void);
 u16 RogueScript_GrantStartingBundle(void);
 u16 RogueScript_GiveMysteryPartner(void);

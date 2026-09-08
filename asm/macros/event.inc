@@ -1312,6 +1312,11 @@
 	pokemart \products, NEW_SHOP_PRICE_TYPE_COINS
 	.endm
 
+	@ Pokemart using coins with item/price pairs in the product list
+	.macro variablecoinmart products:req
+	pokemart \products, NEW_SHOP_PRICE_TYPE_VARIABLE_COINS
+	.endm
+
 	@ Pokemart using battle points for currency
 	.macro battlepointmart products:req
 	pokemart \products, NEW_SHOP_PRICE_TYPE_POINTS

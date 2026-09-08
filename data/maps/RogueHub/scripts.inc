@@ -135,7 +135,7 @@ RogueHub_EventScript_RunGuide::
 	lock
 	faceplayer
 	specialvar VAR_RESULT, CalculatePlayerPartyCount
-	goto_if_ne VAR_RESULT, 0, RogueHub_EventScript_PartnerReady
+	goto_if_ne VAR_RESULT, 0, RogueHub_EventScript_CheckBonusStarter
 	msgbox RogueHub_Text_ChoosePartnerIntro, MSGBOX_DEFAULT
 
 RogueHub_EventScript_ChooseTreecko::
@@ -145,19 +145,7 @@ RogueHub_EventScript_ChooseTreecko::
 	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveTorchic
 	msgbox RogueHub_Text_ChooseMudkip, MSGBOX_YESNO
 	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveMudkip
-	specialvar VAR_RESULT, RogueScript_HasBonusStarterUnlock
-	goto_if_eq VAR_RESULT, TRUE, RogueHub_EventScript_ChooseEevee
-	goto RogueHub_EventScript_CheckMysteryPartner
-
-RogueHub_EventScript_ChooseEevee::
-	msgbox RogueHub_Text_ChooseEevee, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveEevee
-
-RogueHub_EventScript_CheckMysteryPartner::
-	specialvar VAR_RESULT, RogueScript_HasMysteryPartnerUnlock
-	goto_if_eq VAR_RESULT, TRUE, RogueHub_EventScript_ChooseMysteryPartner
 	goto RogueHub_EventScript_ChooseTreecko
-
 RogueHub_EventScript_GiveTreecko::
 	givemon SPECIES_TREECKO, 5, ITEM_NONE
 	goto RogueHub_EventScript_FinishPartnerChoice
@@ -170,17 +158,6 @@ RogueHub_EventScript_GiveMudkip::
 	givemon SPECIES_MUDKIP, 5, ITEM_NONE
 	goto RogueHub_EventScript_FinishPartnerChoice
 
-RogueHub_EventScript_GiveEevee::
-	givemon SPECIES_EEVEE, 5, ITEM_NONE
-	goto RogueHub_EventScript_FinishPartnerChoice
-
-RogueHub_EventScript_ChooseMysteryPartner::
-	msgbox RogueHub_Text_ChooseMysteryPartner, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, NO, RogueHub_EventScript_ChooseTreecko
-	specialvar VAR_RESULT, RogueScript_GiveMysteryPartner
-	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_ChooseTreecko
-	msgbox RogueHub_Text_MysteryPartnerGiven, MSGBOX_DEFAULT
-
 RogueHub_EventScript_FinishPartnerChoice::
 	setflag FLAG_SYS_POKEMON_GET
 	setflag FLAG_SYS_POKEDEX_GET
@@ -191,18 +168,60 @@ RogueHub_EventScript_FinishPartnerChoice::
 	special EnableNationalPokedex
 	giveitem ITEM_POKE_BALL, 5
 	msgbox RogueHub_Text_PartnerChosen, MSGBOX_DEFAULT
+
+RogueHub_EventScript_CheckBonusStarter::
+	specialvar VAR_RESULT, RogueScript_CanChooseBonusStarter
+	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_CheckMysteryPartner
+	msgbox RogueHub_Text_BonusStarterAvailable, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, RogueHub_EventScript_CheckMysteryPartner
+
+RogueHub_EventScript_ChooseBonusTreecko::
+	msgbox RogueHub_Text_ChooseTreecko, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusTreecko
+	msgbox RogueHub_Text_ChooseTorchic, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusTorchic
+	msgbox RogueHub_Text_ChooseMudkip, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusMudkip
+	msgbox RogueHub_Text_ChooseEevee, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusEevee
+	goto RogueHub_EventScript_ChooseBonusTreecko
+
+RogueHub_EventScript_GiveBonusTreecko::
+	givemon SPECIES_TREECKO, 5, ITEM_NONE
+	goto RogueHub_EventScript_FinishBonusStarter
+
+RogueHub_EventScript_GiveBonusTorchic::
+	givemon SPECIES_TORCHIC, 5, ITEM_NONE
+	goto RogueHub_EventScript_FinishBonusStarter
+
+RogueHub_EventScript_GiveBonusMudkip::
+	givemon SPECIES_MUDKIP, 5, ITEM_NONE
+	goto RogueHub_EventScript_FinishBonusStarter
+
+RogueHub_EventScript_GiveBonusEevee::
+	givemon SPECIES_EEVEE, 5, ITEM_NONE
+
+RogueHub_EventScript_FinishBonusStarter::
+	special RogueScript_MarkBonusStarterClaimed
+	msgbox RogueHub_Text_BonusStarterGiven, MSGBOX_DEFAULT
+
+RogueHub_EventScript_CheckMysteryPartner::
+	specialvar VAR_RESULT, RogueScript_GiveMysteryPartner
+	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_CheckStartingBundle
+	msgbox RogueHub_Text_MysteryPartnerGiven, MSGBOX_DEFAULT
+
+RogueHub_EventScript_CheckStartingBundle::
 	specialvar VAR_RESULT, RogueScript_GrantStartingBundle
 	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_PartnerChoiceDone
 	msgbox RogueHub_Text_StartingBundleGiven, MSGBOX_DEFAULT
 
 RogueHub_EventScript_PartnerChoiceDone::
+	msgbox RogueHub_Text_PartnerReady, MSGBOX_DEFAULT
 	release
 	end
 
 RogueHub_EventScript_PartnerReady::
-	msgbox RogueHub_Text_PartnerReady, MSGBOX_DEFAULT
-	release
-	end
+	goto RogueHub_EventScript_CheckBonusStarter
 
 RogueHub_EventScript_RestStation::
 	lock
@@ -252,9 +271,54 @@ RogueHub_EventScript_TryCasinoPurchase::
 RogueHub_EventScript_CasinoPurchaseSuccess::
 	special RogueScript_BufferChipBalance
 	msgbox RogueHub_Text_CasinoPurchaseSuccess, MSGBOX_DEFAULT
+	goto_if_eq VAR_0x8004, 0, RogueHub_EventScript_CasinoStarterPassReady
+	goto_if_eq VAR_0x8004, 1, RogueHub_EventScript_CasinoDeliverBundle
+	goto_if_eq VAR_0x8004, 2, RogueHub_EventScript_CasinoDeliverMystery
+	goto RogueHub_EventScript_CasinoMenu
+
+RogueHub_EventScript_CasinoStarterPassReady::
+	msgbox RogueHub_Text_CasinoStarterPassReady, MSGBOX_DEFAULT
+	goto RogueHub_EventScript_CasinoMenu
+
+RogueHub_EventScript_CasinoDeliverBundle::
+	specialvar VAR_RESULT, RogueScript_GrantStartingBundle
+	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_CasinoClaimLater
+	msgbox RogueHub_Text_StartingBundleGiven, MSGBOX_DEFAULT
+	goto RogueHub_EventScript_CasinoMenu
+
+RogueHub_EventScript_CasinoDeliverMystery::
+	specialvar VAR_RESULT, RogueScript_GiveMysteryPartner
+	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_CasinoClaimLater
+	msgbox RogueHub_Text_MysteryPartnerGiven, MSGBOX_DEFAULT
+	goto RogueHub_EventScript_CasinoMenu
+
+RogueHub_EventScript_CasinoClaimLater::
+	msgbox RogueHub_Text_CasinoClaimLater, MSGBOX_DEFAULT
 	goto RogueHub_EventScript_CasinoMenu
 
 RogueHub_EventScript_CasinoAlreadyOwned::
+	goto_if_eq VAR_0x8004, 0, RogueHub_EventScript_CasinoStarterAlreadyOwned
+	goto_if_eq VAR_0x8004, 1, RogueHub_EventScript_CasinoDeliverOwnedBundle
+	goto_if_eq VAR_0x8004, 2, RogueHub_EventScript_CasinoDeliverOwnedMystery
+
+RogueHub_EventScript_CasinoStarterAlreadyOwned::
+	specialvar VAR_RESULT, RogueScript_CanChooseBonusStarter
+	goto_if_eq VAR_RESULT, TRUE, RogueHub_EventScript_CasinoStarterPassReady
+	goto RogueHub_EventScript_CasinoAlreadyOwnedMessage
+
+RogueHub_EventScript_CasinoDeliverOwnedBundle::
+	specialvar VAR_RESULT, RogueScript_GrantStartingBundle
+	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_CasinoAlreadyOwnedMessage
+	msgbox RogueHub_Text_StartingBundleGiven, MSGBOX_DEFAULT
+	goto RogueHub_EventScript_CasinoMenu
+
+RogueHub_EventScript_CasinoDeliverOwnedMystery::
+	specialvar VAR_RESULT, RogueScript_GiveMysteryPartner
+	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_CasinoAlreadyOwnedMessage
+	msgbox RogueHub_Text_MysteryPartnerGiven, MSGBOX_DEFAULT
+	goto RogueHub_EventScript_CasinoMenu
+
+RogueHub_EventScript_CasinoAlreadyOwnedMessage::
 	msgbox RogueHub_Text_CasinoAlreadyOwned, MSGBOX_DEFAULT
 	goto RogueHub_EventScript_CasinoMenu
 
@@ -302,13 +366,16 @@ RogueHub_Text_ChooseMudkip:
 	.string "Choose MUDKIP?$"
 
 RogueHub_Text_ChooseEevee:
-	.string "Use your STARTER PASS for EEVEE?$"
+	.string "Choose EEVEE?$"
 
-RogueHub_Text_ChooseMysteryPartner:
-	.string "Choose a mystery partner?$"
+RogueHub_Text_BonusStarterAvailable:
+	.string "Your STARTER PASS is ready.\nChoose a bonus partner for this run?$"
+
+RogueHub_Text_BonusStarterGiven:
+	.string "Your bonus partner has joined!$"
 
 RogueHub_Text_MysteryPartnerGiven:
-	.string "Your mystery partner is {STR_VAR_1}!$"
+	.string "MYSTERY BONUS: {STR_VAR_1}\nhas joined this run!$"
 
 RogueHub_Text_PartnerChosen:
 	.string "Your partner is ready!\nYou also received 5 POKE BALLS.$"
@@ -320,7 +387,7 @@ RogueHub_Text_RestStation:
 	.string "Your team has been restored.\nGood luck on the next route!$"
 
 RogueHub_Text_StartingBundleGiven:
-	.string "START KIT: 3 POTIONS,\n2 ANTIDOTES and 1 REVIVE.$"
+	.string "START KIT: 3 POTIONS,\n2 ANTIDOTES, 1 REVIVE\pand 5 POKE BALLS.$"
 
 RogueHub_Text_Payout:
 	.string "ROGUE PAYOUT: {STR_VAR_1} CHIPS!\nYour balance is now {STR_VAR_2}.$"
@@ -330,6 +397,12 @@ RogueHub_Text_CasinoWelcome:
 
 RogueHub_Text_CasinoPurchaseSuccess:
 	.string "Reward unlocked!\nYou have {STR_VAR_1} CHIPS left.$"
+
+RogueHub_Text_CasinoStarterPassReady:
+	.string "Speak with SCOTT in the hub to\nchoose your bonus starter.$"
+
+RogueHub_Text_CasinoClaimLater:
+	.string "Choose your first partner and leave\nparty space, then speak with SCOTT.$"
 
 RogueHub_Text_CasinoAlreadyOwned:
 	.string "You already own that reward.$"

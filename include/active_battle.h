@@ -37,6 +37,7 @@ struct ActiveBattleSaveData
 void ActiveBattle_InitNewSave(void);
 void ActiveBattle_LoadSave(void);
 void ActiveBattle_ResetBattleState(void);
+void ActiveBattle_EndBattle(void);
 bool32 ActiveBattle_AreCriticalsEnabled(void);
 void ActiveBattle_SetCriticalsEnabled(bool32 enabled);
 bool32 ActiveBattle_IsDodgingEnabled(void);
@@ -54,6 +55,7 @@ void ActiveBattle_ShowHealNumber(enum BattlerId battler, u16 healing);
 static inline void ActiveBattle_InitNewSave(void) {}
 static inline void ActiveBattle_LoadSave(void) {}
 static inline void ActiveBattle_ResetBattleState(void) {}
+static inline void ActiveBattle_EndBattle(void) {}
 static inline bool32 ActiveBattle_AreCriticalsEnabled(void) { return FALSE; }
 static inline void ActiveBattle_SetCriticalsEnabled(bool32 enabled) {}
 static inline bool32 ActiveBattle_IsDodgingEnabled(void) { return FALSE; }

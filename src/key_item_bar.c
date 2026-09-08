@@ -35,6 +35,19 @@ static void CreateDockNameWindow(void);
 static void RemoveDockNameWindow(void);
 static void PrintSelectedKeyItemName(void);
 
+static bool32 HasFreeTaskSlot(void)
+{
+    u8 taskId;
+
+    for (taskId = 0; taskId < NUM_TASKS; taskId++)
+    {
+        if (!gTasks[taskId].isActive)
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
 static EWRAM_DATA u8 sKeyItemBarSpriteIds[KEY_ITEM_BAR_VISIBLE_ICONS] = {0};
 static EWRAM_DATA u8 sKeyItemBarSpriteCount = 0;
 static EWRAM_DATA u8 sKeyItemBarItemCount = 0;
@@ -208,7 +221,7 @@ bool32 TryOpenKeyItemBar(void)
     // Prevent duplicate instances if Select is processed twice.
     if (FindTaskIdByFunc(Task_KeyItemBarWaitForInput) != TASK_NONE)
         return FALSE;
-    if (GetTaskCount() >= NUM_TASKS)
+    if (!HasFreeTaskSlot())
         return FALSE;
 
     FreezeObjectEvents();
@@ -305,7 +318,7 @@ static void UseSelectedKeyItem(u8 taskId)
         return;
     }
 
-    if (GetTaskCount() >= NUM_TASKS)
+    if (!HasFreeTaskSlot())
     {
         PlaySE(SE_FAILURE);
         return;

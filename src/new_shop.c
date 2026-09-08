@@ -554,7 +554,14 @@ static inline bool32 IsMartTypePoints(u8 martType)
 
 static inline bool32 IsMartTypeCoin(u8 martType)
 {
-    return martType == NEW_SHOP_TYPE_COINS;
+    return martType == NEW_SHOP_TYPE_COINS
+        || martType == NEW_SHOP_TYPE_VARIABLE_COINS;
+}
+
+static inline bool32 IsMartTypeVariable(u8 martType)
+{
+    return martType == NEW_SHOP_TYPE_VARIABLE
+        || martType == NEW_SHOP_TYPE_VARIABLE_COINS;
 }
 
 static inline bool32 IsMartTypeMoney(u8 martType)
@@ -638,7 +645,7 @@ static void SetShopItemsForSale(const u16 *items)
         sMartInfo.itemCount++;
         i++;
 
-        if (sMartInfo.martType == NEW_SHOP_TYPE_VARIABLE)
+        if (IsMartTypeVariable(sMartInfo.martType))
         {
             i++;
         }
@@ -663,7 +670,7 @@ static void InitShopItemsForSale(void)
         *itemList = sMartInfo.itemSource[i];
         i++;
         itemList++;
-        if (sMartInfo.martType == NEW_SHOP_TYPE_VARIABLE)
+        if (IsMartTypeVariable(sMartInfo.martType))
         {
             *itemPriceList = sMartInfo.itemSource[i];
             i++;
@@ -1179,6 +1186,7 @@ static inline u32 BuyMenuGetItemPrice(u32 id)
         case NEW_SHOP_TYPE_NORMAL:
             return Cheats_ApplyMartPrice(GetItemPrice(sMartInfo.itemList[id]) >> IsPokeNewsActive(POKENEWS_SLATEPORT));
         case NEW_SHOP_TYPE_VARIABLE:
+        case NEW_SHOP_TYPE_VARIABLE_COINS:
             return SearchItemListForPrice(sMartInfo.itemList[id]);
         case NEW_SHOP_TYPE_COINS:
             return ItemId_GetCoinPrice(sMartInfo.itemList[id]);
@@ -1963,6 +1971,14 @@ void NewShop_CreateVariablePokemartMenu(const u16 *itemsForSale)
 void NewShop_CreateCoinPokemartMenu(const u16 *itemsForSale)
 {
     CreateShopMenu(NEW_SHOP_TYPE_COINS);
+    SetShopItemsForSale(itemsForSale);
+    ClearItemPurchases();
+    SetShopMenuCallback(ScriptContext_Enable);
+}
+
+void NewShop_CreateVariableCoinPokemartMenu(const u16 *itemsForSale)
+{
+    CreateShopMenu(NEW_SHOP_TYPE_VARIABLE_COINS);
     SetShopItemsForSale(itemsForSale);
     ClearItemPurchases();
     SetShopMenuCallback(ScriptContext_Enable);

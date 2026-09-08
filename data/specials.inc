@@ -35,6 +35,8 @@ gSpecials::
 	def_special RogueScript_EndCasinoSession
 	def_special RogueScript_TryPurchaseUnlock
 	def_special RogueScript_HasBonusStarterUnlock
+	def_special RogueScript_CanChooseBonusStarter
+	def_special RogueScript_MarkBonusStarterClaimed
 	def_special RogueScript_HasMysteryPartnerUnlock
 	def_special RogueScript_GrantStartingBundle
 	def_special RogueScript_GiveMysteryPartner

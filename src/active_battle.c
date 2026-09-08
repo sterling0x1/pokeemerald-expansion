@@ -117,6 +117,21 @@ static const struct WindowTemplate sDamageNumberWindowTemplate =
 };
 
 static void Task_FloatDamageNumber(u8 taskId);
+static void DestroyPromptOverlay(void);
+static void DestroyDamageNumber(enum BattlerId battler);
+
+static bool32 HasFreeTaskSlot(void)
+{
+    u8 taskId;
+
+    for (taskId = 0; taskId < NUM_TASKS; taskId++)
+    {
+        if (!gTasks[taskId].isActive)
+            return TRUE;
+    }
+
+    return FALSE;
+}
 
 static struct ActiveBattleSaveData *GetSaveData(void)
 {
@@ -166,6 +181,28 @@ void ActiveBattle_LoadSave(void)
 
 void ActiveBattle_ResetBattleState(void)
 {
+    memset(&sPrompt, 0, sizeof(sPrompt));
+    memset(sDamageNumbers, 0, sizeof(sDamageNumbers));
+}
+
+void ActiveBattle_EndBattle(void)
+{
+    u8 taskId;
+    enum BattlerId battler;
+
+    // Floating-number tasks outlive the battle script. Stop them before the
+    // battle window system is freed, otherwise they can access stale windows
+    // while returning from the caught-Pokemon nickname prompt.
+    for (taskId = 0; taskId < NUM_TASKS; taskId++)
+    {
+        if (gTasks[taskId].isActive && gTasks[taskId].func == Task_FloatDamageNumber)
+            DestroyTask(taskId);
+    }
+
+    DestroyPromptOverlay();
+    for (battler = 0; battler < MAX_BATTLERS_COUNT; battler++)
+        DestroyDamageNumber(battler);
+
     memset(&sPrompt, 0, sizeof(sPrompt));
     memset(sDamageNumbers, 0, sizeof(sDamageNumbers));
 }
@@ -617,7 +654,7 @@ static void ShowFloatingNumber(enum BattlerId battler, u16 amount, bool32 isCrit
 
     if (amount == 0 || battler >= gBattlersCount)
         return;
-    if (GetTaskCount() >= NUM_TASKS)
+    if (!HasFreeTaskSlot())
         return;
 
     number = &sDamageNumbers[battler];

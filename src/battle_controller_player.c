@@ -91,9 +91,11 @@ enum
 {
     EFFECTIVENESS_CANNOT_VIEW,
     EFFECTIVENESS_NO_EFFECT,
+    EFFECTIVENESS_MOSTLY_INEFFECTIVE,
     EFFECTIVENESS_NOT_VERY_EFFECTIVE,
     EFFECTIVENESS_NORMAL,
     EFFECTIVENESS_SUPER_EFFECTIVE,
+    EFFECTIVENESS_EXTREMELY_EFFECTIVE,
 };
 static void PlayerHandleLoadMonSprite(enum BattlerId battler);
 static void PlayerHandleDrawTrainerPic(enum BattlerId battler);
@@ -3725,17 +3727,6 @@ static void PlayerHandleBattleDebug(enum BattlerId battler)
     gBattlerControllerFuncs[battler] = Controller_WaitForDebug;
 }
 
-// Order based numerically, with EFFECTIVENESS_CANNOT_VIEW at 0 to always prioritize any other effectiveness during comparison
-enum
-{
-    EFFECTIVENESS_CANNOT_VIEW,
-    EFFECTIVENESS_NO_EFFECT,
-    EFFECTIVENESS_MOSTLY_INEFFECTIVE,
-    EFFECTIVENESS_NOT_VERY_EFFECTIVE,
-    EFFECTIVENESS_NORMAL,
-    EFFECTIVENESS_SUPER_EFFECTIVE,
-    EFFECTIVENESS_EXTREMELY_EFFECTIVE,
-};
 static bool32 ShouldShowTypeEffectiveness(u32 targetId)
 {
     if (IsGhostBattleWithoutScope())

@@ -5587,6 +5587,7 @@ static void HandleEndTurn_FinishBattle(void)
             TryPutBreakingNewsOnAir();
         }
 
+        ActiveBattle_EndBattle();
         BeginFastPaletteFade(3);
         FadeOutMapMusic(5);
         TryRestoreHeldItems();
