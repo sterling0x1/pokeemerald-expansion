@@ -137,15 +137,12 @@ RogueHub_EventScript_RunGuide::
 	specialvar VAR_RESULT, CalculatePlayerPartyCount
 	goto_if_ne VAR_RESULT, 0, RogueHub_EventScript_CheckBonusStarter
 	msgbox RogueHub_Text_ChoosePartnerIntro, MSGBOX_DEFAULT
+	special ChooseRogueStarter
+	goto_if_eq VAR_RESULT, 0, RogueHub_EventScript_GiveTreecko
+	goto_if_eq VAR_RESULT, 1, RogueHub_EventScript_GiveTorchic
+	goto_if_eq VAR_RESULT, 2, RogueHub_EventScript_GiveMudkip
+	goto RogueHub_EventScript_GiveTreecko
 
-RogueHub_EventScript_ChooseTreecko::
-	msgbox RogueHub_Text_ChooseTreecko, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveTreecko
-	msgbox RogueHub_Text_ChooseTorchic, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveTorchic
-	msgbox RogueHub_Text_ChooseMudkip, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveMudkip
-	goto RogueHub_EventScript_ChooseTreecko
 RogueHub_EventScript_GiveTreecko::
 	givemon SPECIES_TREECKO, 5, ITEM_NONE
 	goto RogueHub_EventScript_FinishPartnerChoice
@@ -174,17 +171,12 @@ RogueHub_EventScript_CheckBonusStarter::
 	goto_if_eq VAR_RESULT, FALSE, RogueHub_EventScript_CheckMysteryPartner
 	msgbox RogueHub_Text_BonusStarterAvailable, MSGBOX_YESNO
 	goto_if_eq VAR_RESULT, NO, RogueHub_EventScript_CheckMysteryPartner
-
-RogueHub_EventScript_ChooseBonusTreecko::
-	msgbox RogueHub_Text_ChooseTreecko, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusTreecko
-	msgbox RogueHub_Text_ChooseTorchic, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusTorchic
-	msgbox RogueHub_Text_ChooseMudkip, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusMudkip
-	msgbox RogueHub_Text_ChooseEevee, MSGBOX_YESNO
-	goto_if_eq VAR_RESULT, YES, RogueHub_EventScript_GiveBonusEevee
-	goto RogueHub_EventScript_ChooseBonusTreecko
+	special ChooseRogueBonusStarter
+	goto_if_eq VAR_RESULT, 0, RogueHub_EventScript_GiveBonusTreecko
+	goto_if_eq VAR_RESULT, 1, RogueHub_EventScript_GiveBonusTorchic
+	goto_if_eq VAR_RESULT, 2, RogueHub_EventScript_GiveBonusMudkip
+	goto_if_eq VAR_RESULT, 3, RogueHub_EventScript_GiveBonusEevee
+	goto RogueHub_EventScript_CheckMysteryPartner
 
 RogueHub_EventScript_GiveBonusTreecko::
 	givemon SPECIES_TREECKO, 5, ITEM_NONE

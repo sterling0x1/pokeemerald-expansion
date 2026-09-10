@@ -5,6 +5,7 @@
 #include "nuzlocke.h"
 #include "nuzlocke_menu.h"
 #include "randomizer.h"
+#include "rogue.h"
 #include "config/module_ids.h"
 #include "config/modules.h"
 
@@ -163,8 +164,29 @@ static u8 RandomizeLevelWithSpread(u8 level, u32 key, u32 minimumSpread, u32 spr
     return minimum + (HashLevelKey(Randomizer_GetSeed() ^ key ^ level) % (maximum - minimum + 1));
 }
 
+static u8 ScaleRogueWildLevel(u8 level, u32 key)
+{
+    u32 routeIndex;
+    u32 minimum;
+    u32 maximum;
+    u32 totalRoutes = ROGUE_ROUTES_PER_CHAPTER * ROGUE_CHAPTER_COUNT;
+
+    if (GameMode_GetActive() != GAME_MODE_ROGUE || !Rogue_IsRunActive())
+        return level;
+
+    // Keep biome selection shuffled while advancing levels across the eight route rooms.
+    routeIndex = min(Rogue_GetRoomCount(), totalRoutes - 1);
+    minimum = 3 + (routeIndex * 18) / (totalRoutes - 1);
+    maximum = min(MAX_LEVEL, minimum + 2);
+
+    return minimum + (HashLevelKey(Rogue_GetRunSeed() ^ key ^ (routeIndex << 24) ^ level)
+                    % (maximum - minimum + 1));
+}
+
 u8 GameMode_RandomizeWildLevel(u8 level, u32 key)
 {
+    if (GameMode_GetActive() == GAME_MODE_ROGUE)
+        return ScaleRogueWildLevel(level, key ^ 0x524F4757);
     return RandomizeLevelWithSpread(level, key ^ 0x57494C44, 5, 2);
 }
 

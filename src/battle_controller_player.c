@@ -75,6 +75,10 @@ static u8 sCompactAttackerCursor[MAX_BATTLERS_COUNT];
 static u8 sCompactAttackerNames[PARTY_SIZE][POKEMON_NAME_BUFFER_SIZE];
 static bool8 sBlockCompactAUntilReleased[MAX_BATTLERS_COUNT];
 static EWRAM_DATA u8 sCompactAttackerStatusSpriteIds[MAX_BATTLERS_COUNT];
+// Remember the last move confirmed by each party Pokemon. Storing the move
+// itself (rather than only its slot) keeps the cursor correct after reordering.
+static EWRAM_DATA enum Move sLastConfirmedMoves[PARTY_SIZE];
+static EWRAM_DATA u32 sLastConfirmedMovePersonalities[PARTY_SIZE];
 #if MODULE_BATTLE_BAG_ENABLED
 static u8 sBattleBagCursor[MAX_BATTLERS_COUNT];
 static u8 sBattleBagPocketPos[MAX_BATTLERS_COUNT];
@@ -133,6 +137,8 @@ static void DrawCompactMoveInfo(enum BattlerId battler);
 static void TryMoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void MoveSelectionDisplayMoveDescription(enum BattlerId battler);
 static void DrawModernMoveSelectionPanels(void);
+static void RememberConfirmedMove(enum BattlerId battler);
+static void RestoreRememberedMoveCursor(enum BattlerId battler);
 static void OpenCompactAttackerPicker(enum BattlerId battler);
 static bool32 IsCompactAttackerSlotOccupied(enum BattlerId battler, u8 partyIndex);
 static void HandleInputCompactAttackerPicker(enum BattlerId battler);
@@ -229,6 +235,7 @@ void SetControllerToPlayer(enum BattlerId battler)
     gBattlerControllerFuncs[battler] = PlayerBufferRunCommand;
     gDoingBattleAnim = FALSE;
     gPlayerDpadHoldFrames = 0;
+    sCompactAttackerStatusSpriteIds[battler] = SPRITE_NONE;
 }
 
 void PlayerBufferExecCompleted(enum BattlerId battler)
@@ -529,9 +536,6 @@ static void OpenCompactAttackerPicker(enum BattlerId battler)
     gBattle_BG0_Y = DISPLAY_HEIGHT * 2;
     sCompactAttackerPickerFromMoveList[battler] = sUsingCompactMoveList[battler];
     sCompactAttackerCursor[battler] = gBattlerPartyIndexes[battler];
-    // Battle sprites are reset between battles, so initialise this picker-owned
-    // slot before its first use rather than relying on non-zero EWRAM data.
-    sCompactAttackerStatusSpriteIds[battler] = SPRITE_NONE;
     LoadPartyMenuAilmentGfx();
     DrawModernMoveSelectionPanels();
     DrawCompactAttackerPicker(battler);
@@ -925,7 +929,7 @@ static void UpdateCompactAttackerStatusSprite(enum BattlerId battler, struct Pok
     {
         // The compact summary occupies x 136-231 and y 120-151 on screen.
         // The stock 32x8 status badge sits neatly against its upper-right edge.
-spriteId = CreateSprite(&gSpriteTemplate_StatusIcons, 223, 123, 0);
+        spriteId = CreateSprite(&gSpriteTemplate_StatusIcons, 223, 123, 0);
         if (spriteId == MAX_SPRITES)
             return;
 
@@ -1516,6 +1520,72 @@ static void LoadCompactMoveInfoForAttacker(enum BattlerId battler, struct Pokemo
     }
 }
 
+static u8 GetMoveSelectionPartyIndex(enum BattlerId battler)
+{
+    if (gBattleStruct->reserveAttackerSelectionReady & (1u << battler))
+        return gBattleStruct->actingPartyIndexes[battler];
+
+    return gBattlerPartyIndexes[battler];
+}
+
+static void RememberConfirmedMove(enum BattlerId battler)
+{
+    u8 partyIndex = GetMoveSelectionPartyIndex(battler);
+    u8 moveSlot = gMoveSelectionCursor[battler];
+    struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)&gBattleResources->bufferA[battler][4];
+    struct Pokemon *mon;
+
+    if (partyIndex >= PARTY_SIZE || moveSlot >= MAX_MON_MOVES || moveInfo->moves[moveSlot] == MOVE_NONE)
+        return;
+
+    mon = &gParties[B_TRAINER_PLAYER][partyIndex];
+    sLastConfirmedMoves[partyIndex] = moveInfo->moves[moveSlot];
+    sLastConfirmedMovePersonalities[partyIndex] = GetMonData(mon, MON_DATA_PERSONALITY);
+}
+
+static void RestoreRememberedMoveCursor(enum BattlerId battler)
+{
+    u8 partyIndex = GetMoveSelectionPartyIndex(battler);
+    u8 firstPresentSlot = 0;
+    u8 firstUsableSlot = MAX_MON_MOVES;
+    enum Move rememberedMove;
+    struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)&gBattleResources->bufferA[battler][4];
+    struct Pokemon *mon;
+
+    if (partyIndex >= PARTY_SIZE)
+    {
+        gMoveSelectionCursor[battler] = 0;
+        return;
+    }
+
+    mon = &gParties[B_TRAINER_PLAYER][partyIndex];
+    rememberedMove = sLastConfirmedMoves[partyIndex];
+
+    for (u32 i = 0; i < MAX_MON_MOVES; i++)
+    {
+        if (moveInfo->moves[i] == MOVE_NONE)
+            continue;
+
+        if (moveInfo->currentPP[i] != 0 && firstUsableSlot == MAX_MON_MOVES)
+            firstUsableSlot = i;
+
+        if (rememberedMove != MOVE_NONE
+         && moveInfo->moves[i] == rememberedMove
+         && moveInfo->currentPP[i] != 0
+         && sLastConfirmedMovePersonalities[partyIndex] == GetMonData(mon, MON_DATA_PERSONALITY))
+        {
+            gMoveSelectionCursor[battler] = i;
+            return;
+        }
+    }
+
+    // The remembered move may have been forgotten, disabled by having no PP,
+    // or may belong to a Pokemon that previously occupied this party slot.
+    gMoveSelectionCursor[battler] = firstUsableSlot < MAX_MON_MOVES
+                                  ? firstUsableSlot
+                                  : firstPresentSlot;
+}
+
 static void FormatCompactAttackerName(u8 *dst, struct Pokemon *mon)
 {
     static const u8 sEllipsis[] = _("…");
@@ -1573,6 +1643,7 @@ void HandleInputChooseTarget(enum BattlerId battler)
     {
         PlaySE(SE_SELECT);
         gSprites[gBattlerSpriteIds[gMultiUsePlayerCursor]].callback = SpriteCB_HideAsMoveTarget;
+        RememberConfirmedMove(battler);
         if (gBattleStruct->gimmick.playerSelect)
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_EXEC_SCRIPT, gMoveSelectionCursor[battler] | RET_GIMMICK | (gMultiUsePlayerCursor << 8));
         else
@@ -1732,6 +1803,7 @@ void HandleInputShowEntireFieldTargets(enum BattlerId battler)
     {
         PlaySE(SE_SELECT);
         HideAllTargets();
+        RememberConfirmedMove(battler);
         if (gBattleStruct->gimmick.playerSelect)
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_EXEC_SCRIPT, gMoveSelectionCursor[battler] | RET_GIMMICK | (gMultiUsePlayerCursor << 8));
         else
@@ -1760,6 +1832,7 @@ void HandleInputShowTargets(enum BattlerId battler)
     {
         PlaySE(SE_SELECT);
         HideAllTargets();
+        RememberConfirmedMove(battler);
         if (gBattleStruct->gimmick.playerSelect)
             BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_EXEC_SCRIPT, gMoveSelectionCursor[battler] | RET_GIMMICK | (gMultiUsePlayerCursor << 8));
         else
@@ -1891,6 +1964,7 @@ void HandleInputChooseMove(enum BattlerId battler)
         {
         case 0:
         default:
+            RememberConfirmedMove(battler);
             if (gBattleStruct->gimmick.playerSelect)
                 BtlController_EmitTwoReturnValues(battler, B_COMM_TO_ENGINE, B_ACTION_EXEC_SCRIPT, gMoveSelectionCursor[battler] | RET_GIMMICK | (gMultiUsePlayerCursor << 8));
             else
@@ -3390,6 +3464,7 @@ void PlayerHandleChooseMove(enum BattlerId battler)
     {
         struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleResources->bufferA[battler][4]);
 
+        RestoreRememberedMoveCursor(battler);
         InitMoveSelectionsVarsAndStrings(battler);
         gBattleStruct->gimmick.playerSelect = FALSE;
         // The compact move panel replaces the vanilla L MOVE INFO prompt.

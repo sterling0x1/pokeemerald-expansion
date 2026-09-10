@@ -4754,7 +4754,12 @@ static void UpdatePartyMonAilmentGfx(u8 status, struct PartyMenuBox *menuBox)
 
 void LoadPartyMenuAilmentGfx(void)
 {
-    LoadCompressedSpriteSheet(&sSpriteSheet_StatusIcons);
+    // LoadSpriteSheet does not deduplicate tags. The compact battle attacker
+    // picker can open several times in one battle, so loading this sheet each
+    // time would steadily consume OBJ tile memory and eventually corrupt
+    // battle animation sprites.
+    if (GetSpriteTileStartByTag(TAG_STATUS_ICONS) == TAG_NONE)
+        LoadCompressedSpriteSheet(&sSpriteSheet_StatusIcons);
     LoadSpritePalette(&sSpritePalette_StatusIcons);
 }
 

@@ -9,5 +9,7 @@ extern const u32 gPokeballSelection_Gfx[];
 
 u16 GetStarterPokemon(u16 chosenStarterId);
 void CB2_ChooseStarter(void);
+void ChooseRogueStarter(void);
+void ChooseRogueBonusStarter(void);
 
 #endif // GUARD_STARTER_CHOOSE_H

@@ -36,6 +36,8 @@ gSpecials::
 	def_special RogueScript_TryPurchaseUnlock
 	def_special RogueScript_HasBonusStarterUnlock
 	def_special RogueScript_CanChooseBonusStarter
+	def_special ChooseRogueStarter, waitstate=1
+	def_special ChooseRogueBonusStarter, waitstate=1
 	def_special RogueScript_MarkBonusStarterClaimed
 	def_special RogueScript_HasMysteryPartnerUnlock
 	def_special RogueScript_GrantStartingBundle

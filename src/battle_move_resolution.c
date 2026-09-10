@@ -2645,6 +2645,33 @@ static enum CancelerResult CancelerDamageCalc(struct BattleCalcValues *cv)
     if (!ActiveBattle_UpdateDamagePrompt(cv->battlerAtk, cv->battlerDef, cv->move))
         return CANCELER_RESULT_RUN_SCRIPT;
 
+    if (ActiveBattle_GetDodgeResult() == ACTIVE_BATTLE_DODGE_PERFECT)
+    {
+        gBattleStruct->moveResultFlags[cv->battlerDef] |= MOVE_RESULT_MISSED;
+        gBattleStruct->moveDamage[cv->battlerDef] = 0;
+        gSpecialStatuses[cv->battlerDef].criticalHit = FALSE;
+        gSpecialStatuses[cv->battlerDef].damagedByAttack = FALSE;
+        gLastLandedMoves[cv->battlerDef] = 0;
+        gLastHitByType[cv->battlerDef] = 0;
+        gBattleScripting.battler = cv->battlerDef;
+        CancelMultiTurnMoves(cv->battlerAtk);
+        SetOrClearRageVolatile();
+        ActiveBattle_FinishDamageCalc();
+        gBattleStruct->eventState.atkCanceler = CANCELER_END;
+
+        if (gSpecialStatuses[cv->battlerAtk].multiHitOn)
+        {
+            gMultiHitCounter = 0;
+            BattleScriptCall(BattleScript_BattlerAvoidedMultiHit);
+        }
+        else
+        {
+            BattleScriptCall(BattleScript_BattlerAvoidedAttack);
+        }
+
+        return CANCELER_RESULT_RUN_SCRIPT;
+    }
+
     struct DamageContext ctx = {
         .battlerAtk = cv->battlerAtk,
         .move = cv->move,

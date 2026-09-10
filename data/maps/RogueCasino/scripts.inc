@@ -29,6 +29,7 @@ RogueCasino_EventScript_SuppliesVendor::
 RogueCasino_Supplies:
 	.2byte ITEM_POKE_BALL, 5
 	.2byte ITEM_GREAT_BALL, 10
+	.2byte ITEM_MASTER_BALL, 5000
 	.2byte ITEM_POTION, 4
 	.2byte ITEM_SUPER_POTION, 10
 	.2byte ITEM_ANTIDOTE, 3

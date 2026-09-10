@@ -34,7 +34,8 @@
 #define DODGE_START_DELAY_FRAMES 24
 #define PROMPT_BLANK_TILE 0x39F
 #define DAMAGE_NUMBER_FRAMES 28
-#define DAMAGE_NUMBER_BASE_BLOCK 0x3B0
+#define ACTIVE_BATTLE_PROMPT_BASE_BLOCK 0x3A0
+#define DAMAGE_NUMBER_BASE_BLOCK 0x210
 #define DAMAGE_NUMBER_PALETTE 15
 
 enum ActiveBattlePromptState
@@ -56,6 +57,8 @@ struct ActiveBattlePrompt
     u8 state;
     u8 frame;
     u8 marker;
+    u8 visibleMarker;
+    u8 previousVisibleMarker;
     u8 target;
     u8 result;
     u8 type;
@@ -102,7 +105,9 @@ static const struct WindowTemplate sPromptWindowTemplate =
     .width = 4,
     .height = 4,
     .paletteNum = 0,
-    .baseBlock = 0x3A0,
+    // Keep this in the proven high battle-window range. The prompt occupies
+    // 0x3A0-0x3AF, immediately before the catch prompt at 0x3BC.
+    .baseBlock = ACTIVE_BATTLE_PROMPT_BASE_BLOCK,
 };
 
 static const struct WindowTemplate sDamageNumberWindowTemplate =
@@ -117,6 +122,7 @@ static const struct WindowTemplate sDamageNumberWindowTemplate =
 };
 
 static void Task_FloatDamageNumber(u8 taskId);
+static void HidePromptOverlay(void);
 static void DestroyPromptOverlay(void);
 static void DestroyDamageNumber(enum BattlerId battler);
 
@@ -363,7 +369,7 @@ static u8 GetDodgeGoodRadius(void)
 
 static u8 GetDodgePerfectRadius(void)
 {
-    return 0;
+    return 1;
 }
 
 static u8 GetDodgeTarget(void)
@@ -400,9 +406,6 @@ static bool32 CreatePromptOverlay(enum BattlerId battler)
     s16 spriteTop;
     s16 spriteBottom;
 
-    if (sPrompt.windowActive)
-        return TRUE;
-
     spriteLeft = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_LEFT);
     spriteRight = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_RIGHT);
     spriteTop = GetBattlerSpriteCoordAttr(battler, BATTLER_COORD_ATTR_TOP);
@@ -419,10 +422,19 @@ static bool32 CreatePromptOverlay(enum BattlerId battler)
     sPrompt.windowTop = template.tilemapTop;
 
     LoadBgTiles(0, sPromptBlankTile, sizeof(sPromptBlankTile), PROMPT_BLANK_TILE);
-    sPrompt.windowId = AddWindow(&template);
-    if (sPrompt.windowId == WINDOW_NONE)
-        return FALSE;
-    sPrompt.windowActive = TRUE;
+    if (sPrompt.windowActive)
+    {
+        HidePromptOverlay();
+        SetWindowAttribute(sPrompt.windowId, WINDOW_TILEMAP_LEFT, template.tilemapLeft);
+        SetWindowAttribute(sPrompt.windowId, WINDOW_TILEMAP_TOP, template.tilemapTop);
+    }
+    else
+    {
+        sPrompt.windowId = AddWindow(&template);
+        if (sPrompt.windowId == WINDOW_NONE)
+            return FALSE;
+        sPrompt.windowActive = TRUE;
+    }
 
     FillWindowPixelBuffer(sPrompt.windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
     PutWindowTilemap(sPrompt.windowId);
@@ -430,15 +442,24 @@ static bool32 CreatePromptOverlay(enum BattlerId battler)
     return TRUE;
 }
 
+static void HidePromptOverlay(void)
+{
+    if (!sPrompt.windowActive)
+        return;
+
+    // Hide through the persistent BG tilemap. Do not clear/upload the window
+    // graphics here: DrawPrompt* may still have a queued transfer whose source
+    // is the window's tileData.
+    FillBgTilemapBufferRect(0, PROMPT_BLANK_TILE, sPrompt.windowLeft, sPrompt.windowTop, 4, 4, 0);
+    CopyBgTilemapBufferToVram(0);
+}
+
 static void DestroyPromptOverlay(void)
 {
     if (!sPrompt.windowActive)
         return;
 
-    FillWindowPixelBuffer(sPrompt.windowId, PIXEL_FILL(TEXT_COLOR_TRANSPARENT));
-    CopyWindowToVram(sPrompt.windowId, COPYWIN_GFX);
-    FillBgTilemapBufferRect(0, PROMPT_BLANK_TILE, sPrompt.windowLeft, sPrompt.windowTop, 4, 4, 0);
-    ScheduleBgCopyTilemapToVram(0);
+    HidePromptOverlay();
     RemoveWindow(sPrompt.windowId);
     sPrompt.windowActive = FALSE;
 }
@@ -496,11 +517,21 @@ static void DrawDodgePrompt(void)
     CopyWindowToVram(sPrompt.windowId, COPYWIN_GFX);
 }
 
-static void ResolvePrompt(void)
+static void ResolvePrompt(bool32 useInputBuffer)
 {
     u8 distance = abs((s16)sPrompt.marker - (s16)sPrompt.target);
     u8 perfectRadius = sPrompt.type == PROMPT_TYPE_DODGE ? GetDodgePerfectRadius() : GetPerfectRadius();
     u8 goodRadius = sPrompt.type == PROMPT_TYPE_DODGE ? GetDodgeGoodRadius() : GetGoodRadius();
+
+    if (useInputBuffer && sPrompt.type == PROMPT_TYPE_DODGE)
+    {
+        u8 visibleDistance = abs((s16)sPrompt.visibleMarker - (s16)sPrompt.target);
+        u8 previousVisibleDistance = abs((s16)sPrompt.previousVisibleMarker - (s16)sPrompt.target);
+
+        // Judge both the current ring position and the immediately preceding
+        // one so a display-latency frame cannot turn a visible hit into a miss.
+        distance = min(visibleDistance, previousVisibleDistance);
+    }
 
     if (distance <= perfectRadius)
         sPrompt.result = ACTIVE_BATTLE_CRIT_PERFECT;
@@ -509,6 +540,7 @@ static void ResolvePrompt(void)
     else
         sPrompt.result = ACTIVE_BATTLE_CRIT_NONE;
     sPrompt.state = PROMPT_RESOLVED;
+    HidePromptOverlay();
 }
 
 bool32 ActiveBattle_IsPromptActive(void)
@@ -550,6 +582,8 @@ if (sPrompt.state == PROMPT_IDLE)
         else
         {
             sPrompt.marker = DODGE_RING_MAX_RADIUS;
+            sPrompt.visibleMarker = DODGE_RING_MAX_RADIUS;
+            sPrompt.previousVisibleMarker = DODGE_RING_MAX_RADIUS;
             sPrompt.target = GetDodgeTarget();
         }
         sPrompt.result = ACTIVE_BATTLE_CRIT_NONE;
@@ -569,14 +603,16 @@ if (sPrompt.state == PROMPT_IDLE)
               ? ((sPrompt.frame - DODGE_START_DELAY_FRAMES) / GetDodgeStepInterval()) * GetDodgeSpeed()
               : 0;
         sPrompt.marker = phase < DODGE_RING_MAX_RADIUS ? DODGE_RING_MAX_RADIUS - phase : 0;
+        sPrompt.previousVisibleMarker = sPrompt.visibleMarker;
+        sPrompt.visibleMarker = sPrompt.marker;
         DrawDodgePrompt();
     }
 
     if (sPrompt.frame > OPENING_LOCK_FRAMES && JOY_NEW(R_BUTTON))
-        ResolvePrompt();
+        ResolvePrompt(TRUE);
     else if ((sPrompt.type == PROMPT_TYPE_CRITICAL && sPrompt.frame >= GetCriticalTimeoutFrames())
           || (sPrompt.type == PROMPT_TYPE_DODGE && sPrompt.frame >= GetDodgeTimeoutFrames()))
-        ResolvePrompt();
+        ResolvePrompt(FALSE);
 
     return sPrompt.state == PROMPT_RESOLVED;
 }
@@ -588,16 +624,20 @@ enum ActiveBattleCriticalResult ActiveBattle_GetCriticalResult(void)
          : ACTIVE_BATTLE_CRIT_NONE;
 }
 
+enum ActiveBattleDodgeResult ActiveBattle_GetDodgeResult(void)
+{
+    if (sPrompt.state != PROMPT_RESOLVED || sPrompt.type != PROMPT_TYPE_DODGE)
+        return ACTIVE_BATTLE_DODGE_NONE;
+
+    return sPrompt.result;
+}
+
 s32 ActiveBattle_AdjustDamageForDodge(s32 damage)
 {
     if (sPrompt.state != PROMPT_RESOLVED || sPrompt.type != PROMPT_TYPE_DODGE || damage <= 0)
         return damage;
     if (sPrompt.result == ACTIVE_BATTLE_DODGE_PERFECT)
-    {
-        gBattleStruct->moveResultFlags[gBattlerTarget] |= MOVE_RESULT_MISSED | MOVE_RESULT_AVOIDED_ATTACK;
-        gSpecialStatuses[gBattlerTarget].criticalHit = FALSE;
         return 0;
-    }
     if (sPrompt.result == ACTIVE_BATTLE_DODGE_GOOD)
         return max(1, damage / 2);
     return damage;
@@ -606,7 +646,7 @@ s32 ActiveBattle_AdjustDamageForDodge(s32 damage)
 void ActiveBattle_FinishDamageCalc(void)
 {
     if (sPrompt.type == PROMPT_TYPE_CRITICAL || sPrompt.type == PROMPT_TYPE_DODGE)
-        DestroyPromptOverlay();
+        HidePromptOverlay();
     sPrompt.state = PROMPT_IDLE;
     sPrompt.type = PROMPT_TYPE_NONE;
     sPrompt.result = ACTIVE_BATTLE_CRIT_NONE;
